@@ -1,0 +1,20 @@
+{
+  "name": "fullstack-mastery-tracker",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Full-Stack Mastery Path — a learning dashboard with Notion-synced progress and a built-in Claude AI tutor.",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.100.1",
+    "@notionhq/client": "^5.22.0",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1"
+  }
+}
