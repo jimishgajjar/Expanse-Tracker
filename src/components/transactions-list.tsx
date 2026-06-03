@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { startTransition, useMemo, useOptimistic } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { format, parseISO } from "date-fns";
@@ -20,37 +20,41 @@ type Props = { transactions: TransactionDTO[]; accounts: AccountDTO[]; categorie
 export function TransactionRows({ transactions, accounts, categories }: Props) {
   const router = useRouter();
   const { money } = useFormat();
+  const [optimistic, removeOptimistic] = useOptimistic(transactions, (state: TransactionDTO[], id: string) => state.filter((t) => t.id !== id));
 
   const groups = useMemo(() => {
     const m = new Map<string, TransactionDTO[]>();
-    for (const t of transactions) {
+    for (const t of optimistic) {
       const arr = m.get(t.date);
       if (arr) arr.push(t);
       else m.set(t.date, [t]);
     }
     return [...m.entries()].sort((a, b) => b[0].localeCompare(a[0]));
-  }, [transactions]);
+  }, [optimistic]);
 
-  async function remove(t: TransactionDTO) {
-    const res = await deleteTransaction(t.id);
-    if (!res.ok) { toast.error(res.error); return; }
-    router.refresh();
-    toast.success("Transaction deleted", {
-      action: {
-        label: "Undo",
-        onClick: async () => {
-          const r = await createTransaction({
-            type: t.type, amount: t.amount, date: t.date, note: t.note,
-            accountId: t.accountId, categoryId: t.categoryId,
-          });
-          if (r.ok) { toast.success("Transaction restored"); router.refresh(); }
-          else toast.error(r.error);
+  function remove(t: TransactionDTO) {
+    startTransition(async () => {
+      removeOptimistic(t.id); // vanish immediately
+      const res = await deleteTransaction(t.id);
+      if (!res.ok) { toast.error(res.error); router.refresh(); return; }
+      router.refresh();
+      toast.success("Transaction deleted", {
+        action: {
+          label: "Undo",
+          onClick: async () => {
+            const r = await createTransaction({
+              type: t.type, amount: t.amount, date: t.date, note: t.note,
+              accountId: t.accountId, categoryId: t.categoryId,
+            });
+            if (r.ok) { toast.success("Transaction restored"); router.refresh(); }
+            else toast.error(r.error);
+          },
         },
-      },
+      });
     });
   }
 
-  if (!transactions.length) {
+  if (!optimistic.length) {
     return <p className="py-12 text-center text-sm text-muted-foreground">No transactions match these filters.</p>;
   }
 
