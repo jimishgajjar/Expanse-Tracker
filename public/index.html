@@ -3,34 +3,94 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Full-Stack Mastery Path — Foundations → GraphQL → Deploy</title>
+<title>Money Tracker — Notion-backed</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,900&family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+
+<!-- Unlock gate — shown only when the server requires an access token -->
+<div class="unlock hidden" id="unlock">
+  <form class="unlockcard" id="unlockForm">
+    <div class="kicker">Locked</div>
+    <h2>Enter access token</h2>
+    <p class="umut">This tracker is password-gated. Enter the <code>APP_TOKEN</code> to continue — it's stored only in this browser.</p>
+    <input type="password" id="unlockInput" placeholder="Access token" autocomplete="current-password">
+    <div class="uerr" id="unlockErr"></div>
+    <button type="submit" class="btn primary block">Unlock</button>
+  </form>
+</div>
+
 <header>
-  <div class="kicker">Full-Stack Mastery · the complete path</div>
-  <h1>Zero to Full-Stack</h1>
-  <p class="sub">Every layer, every small detail — Foundations, Frontend, Angular, Java, Spring Boot, Databases, REST &amp; GraphQL, DevOps, and real Capstone projects. Each topic has theory, practice tasks, an AI tutor, and Read / Watch / Try links.</p>
-  <div class="overall">
-    <span class="pct" id="pct">0%</span>
-    <div class="bar"><i id="obar"></i></div>
-    <button class="resetbtn" id="reset">RESET PROGRESS</button>
-  </div>
-  <div class="note" id="storenote"></div>
-  <div class="plan" id="plan"></div>
+  <div class="kicker">Notion Money Tracker</div>
+  <h1>Where your money goes</h1>
+  <p class="sub">Incomes, expenses, accounts and categories — read straight from, and written straight to, your own Notion databases.</p>
+  <div class="modenote" id="modenote"></div>
+  <div class="summary" id="summary"></div>
 </header>
 
-<div class="wrap">
-  <div class="controls">
-    <input class="search" id="search" placeholder="Search anything — closures, flexbox, mutations, DataLoader, indexes…">
+<main class="wrap">
+  <section class="accounts" id="accounts"></section>
+
+  <div class="toolbar">
+    <button class="btn primary" id="addBtn">＋ Add transaction</button>
+    <div class="filters">
+      <select class="sel" id="monthFilter" aria-label="Filter by month"></select>
+      <select class="sel" id="typeFilter" aria-label="Filter by type">
+        <option value="all">All types</option>
+        <option value="expense">Expenses</option>
+        <option value="income">Income</option>
+      </select>
+      <input class="search" id="search" placeholder="Search notes, categories, accounts…">
+    </div>
   </div>
-  <div id="tabs"></div>
-  <div id="root"></div>
+
+  <div class="dash">
+    <section class="card charts" id="charts"></section>
+    <section class="card txwrap" id="txlist"></section>
+  </div>
+</main>
+
+<!-- Add-transaction modal -->
+<div class="modal hidden" id="formModal">
+  <form class="modalcard" id="txForm">
+    <div class="modalhead">
+      <h2 id="formTitle">Add transaction</h2>
+      <button type="button" class="x" id="formClose" aria-label="Close">✕</button>
+    </div>
+    <div class="typetoggle" id="typeToggle">
+      <button type="button" class="tt on" data-type="expense">Expense</button>
+      <button type="button" class="tt" data-type="income">Income</button>
+    </div>
+    <label class="fld"><span>Amount</span>
+      <input type="number" id="fAmount" step="0.01" min="0" inputmode="decimal" placeholder="0.00" required>
+    </label>
+    <label class="fld"><span id="fCatLabel">Category</span>
+      <input id="fCategory" list="catList" placeholder="Pick one, or type a new category" autocomplete="off">
+      <datalist id="catList"></datalist>
+    </label>
+    <label class="fld"><span id="fAccLabel">Account</span>
+      <select class="sel" id="fAccount"></select>
+    </label>
+    <div class="fldrow">
+      <label class="fld"><span>Date</span>
+        <input type="date" id="fDate" required>
+      </label>
+      <label class="fld grow"><span>Note</span>
+        <input id="fNote" placeholder="Optional description">
+      </label>
+    </div>
+    <div class="ferr" id="formErr"></div>
+    <div class="modalfoot">
+      <button type="button" class="btn ghost" id="formCancel">Cancel</button>
+      <button type="submit" class="btn primary" id="formSave">Save transaction</button>
+    </div>
+  </form>
 </div>
-<footer>BUILD · PRACTICE · SHIP · REPEAT</footer>
+
+<footer>Backed by Notion · your data lives in your databases</footer>
 
 <script type="module" src="app.js"></script>
 </body>

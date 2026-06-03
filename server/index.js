@@ -1,70 +1,59 @@
-import 'dotenv/config';
-import express from 'express';
-import { fileURLToPath } from 'node:url';
-import { dirname, join } from 'node:path';
-import * as notion from './notion.js';
-import { streamTutor, hasServerKey, aiError } from './ai.js';
+import "dotenv/config";
+import express from "express";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
+import * as notion from "./notion.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3000;
+const APP_TOKEN = process.env.APP_TOKEN || "";
 
 const app = express();
-app.use(express.json({ limit: '1mb' }));
+app.use(express.json({ limit: "1mb" }));
 
 let notionReady = false;
 if (notion.isConfigured()) {
   try { notionReady = await notion.init(); }
-  catch (e) { console.warn('[notion] init failed:', e.message); }
+  catch (e) { console.warn("[notion] init failed — running without sync:", e.message); }
 }
 
-// ── API ──────────────────────────────────────────────────
-app.get('/api/config', (_req, res) => {
-  res.json({ notion: notionReady, aiServerKey: hasServerKey() });
+// Optional shared-password gate. Active only when APP_TOKEN is set; otherwise
+// every request passes (fine for localhost / a trusted network).
+function auth(req, res, next) {
+  if (!APP_TOKEN) return next();
+  const token = (req.headers.authorization || "").replace(/^Bearer\s+/i, "");
+  if (token !== APP_TOKEN) return res.status(401).json({ error: "unauthorized" });
+  next();
+}
+
+// ── public probes (no auth — the UI needs these to decide what to show) ──
+app.get("/api/health", (_req, res) => res.json({ ok: true }));
+app.get("/api/config", (_req, res) => res.json({ notion: notionReady, authRequired: !!APP_TOKEN }));
+
+// ── data routes (gated by auth when APP_TOKEN is set) ──
+app.get("/api/data", auth, async (_req, res) => {
+  if (!notionReady) return res.status(503).json({ error: "Notion not configured" });
+  try { res.json(await notion.getAllData()); }
+  catch (e) { console.error(e); res.status(500).json({ error: e.message }); }
 });
 
-app.get('/api/progress', async (_req, res) => {
-  if (!notionReady) return res.json({ progress: {} });
-  try { res.json({ progress: await notion.getProgress() }); }
-  catch (e) { res.status(500).json({ error: e.message, progress: {} }); }
+app.post("/api/transactions", auth, async (req, res) => {
+  if (!notionReady) return res.status(503).json({ error: "Notion not configured" });
+  try { res.json(await notion.addTransaction(req.body || {})); }
+  catch (e) { console.error(e); res.status(500).json({ error: e.message }); }
 });
 
-app.put('/api/progress/:id', async (req, res) => {
-  if (!notionReady) return res.status(503).json({ error: 'Notion not configured' });
-  try {
-    await notion.setLesson(req.params.id, !!req.body?.done, req.body?.meta || {});
-    res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+app.delete("/api/transactions/:id", auth, async (req, res) => {
+  if (!notionReady) return res.status(503).json({ error: "Notion not configured" });
+  try { res.json(await notion.deleteTransaction(req.params.id)); }
+  catch (e) { console.error(e); res.status(500).json({ error: e.message }); }
 });
 
-app.post('/api/reset', async (_req, res) => {
-  if (!notionReady) return res.json({ ok: true });
-  try { await notion.reset(); res.json({ ok: true }); }
-  catch (e) { res.status(500).json({ error: e.message }); }
-});
-
-app.post('/api/ai', async (req, res) => {
-  const apiKey = req.get('x-anthropic-key') || process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) return res.status(400).json({ error: 'No Anthropic API key. Paste your key in the AI panel.' });
-
-  const { lesson, question } = req.body || {};
-  if (!question || !String(question).trim()) return res.status(400).json({ error: 'Empty question.' });
-
-  try {
-    const { started } = await streamTutor(res, { apiKey, lesson, question });
-    if (!started) { res.setHeader('Content-Type', 'text/plain; charset=utf-8'); res.write(''); }
-    res.end();
-  } catch (err) {
-    const msg = aiError(err);
-    if (!res.headersSent) res.status(err?.status || 500).json({ error: msg });
-    else { try { res.write(`\n\n⚠️ ${msg}`); } catch { /* ignore */ } res.end(); }
-  }
-});
-
-// ── Static frontend ──────────────────────────────────────
-app.use(express.static(join(__dirname, '..', 'public')));
+// ── static frontend ──
+app.use(express.static(join(__dirname, "..", "public")));
 
 app.listen(PORT, () => {
-  console.log(`\n  Full-Stack Mastery Tracker → http://localhost:${PORT}`);
-  console.log(`  Notion sync:   ${notionReady ? 'ON' : 'OFF (progress saved in the browser)'}`);
-  console.log(`  AI server key: ${hasServerKey() ? 'set' : 'not set (users paste their own in the UI)'}\n`);
+  console.log(`\n  Notion Money Tracker → http://localhost:${PORT}`);
+  console.log(`  Notion:   ${notionReady ? "ON" : "OFF (browser-local mode)"}`);
+  console.log(`  API lock: ${APP_TOKEN ? "on (APP_TOKEN set)" : "off"}\n`);
 });

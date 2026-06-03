@@ -1,20 +1,16 @@
-# Full-Stack Mastery Tracker
+# Notion Money Tracker
 
-A self-hosted learning dashboard for the full-stack path (Foundations → Frontend → Angular → Java → Spring Boot → Databases → REST & GraphQL → Testing → Security → DevOps → System Design → Career → Capstones).
+A self-hosted money tracker that uses **your own Notion databases as the backend**. The Notion key lives only on the server (in an environment variable) — the browser never sees it. Incomes, expenses, accounts and categories are read from and written straight back to Notion.
 
-- **Track progress** by checking off lessons. A live study plan estimates your finish date from a daily pace.
-- **Sync to Notion** — your completed lessons become rows in a Notion database you own, so progress follows you across devices and you can view/sort it natively in Notion.
-- **AI tutor** — every lesson has an "Ask AI" panel powered by Claude, with quick prompts (explain, example, quiz, gotchas) and streaming answers.
-- **Works immediately** — runs on browser `localStorage` out of the box; Notion and the AI key are optional add-ons that light up when configured.
+Runs out of the box: with no configuration it starts in a **browser-local demo mode** so you can try it immediately; add a Notion token to sync real data.
 
 ## Stack
 
-| Layer     | Tech |
-|-----------|------|
-| Frontend  | Vanilla HTML/CSS/JS (ES modules), no build step |
-| Backend   | Node + Express |
-| Database  | Notion (via `@notionhq/client`) |
-| AI        | Anthropic Claude (`@anthropic-ai/sdk`), streamed through the backend |
+| Layer    | Tech |
+|----------|------|
+| Frontend | Vanilla HTML/CSS/JS (ES modules), no build step |
+| Backend  | Node + Express |
+| Database | Notion (via `@notionhq/client` v5) |
 
 ## Quick start
 
@@ -24,52 +20,68 @@ cp .env.example .env      # optional — see below
 npm start                 # → http://localhost:3000
 ```
 
-With no `.env`, the app runs fully on browser storage and lets each user paste their own Anthropic key for the tutor. Add config to enable sync and a shared key.
+With no `.env`, the app runs entirely in the browser on `localStorage`, seeded with sample data. Add Notion config to switch to real, synced data.
 
 ## Enabling Notion sync
 
-The backend talks to Notion with an **internal integration token** (the browser can't call Notion directly — CORS). One-time setup:
+The browser can't call Notion directly (CORS + secret safety), so the server holds an **internal integration token**.
 
-1. Create an integration at <https://www.notion.so/my-integrations> → copy its token (`ntn_…`).
-2. In Notion, open (or create) a page to hold the data, click **•••  → Connections → Connect to** your integration.
-3. Copy that page's ID from its URL (the 32-char hex string).
-4. Fill in `.env`:
+1. Create an integration at <https://www.notion.so/my-integrations> and copy its token (`ntn_…` or `secret_…`).
+2. **Share your databases with it** — the step everyone misses. Open your **💰 Money Trackers** page in Notion → top-right **•••** → **Connections → Add connection →** your integration. Sharing the parent page grants access to the child databases (Incomes, Expenses, Accounts, Categories).
+3. Put the token in `.env`:
 
    ```ini
    NOTION_TOKEN=ntn_xxxxxxxx
-   NOTION_PARENT_PAGE_ID=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
    ```
 
-5. `npm start`. On first run the app creates a **"Full-Stack Mastery — Progress"** database under that page and remembers its ID in `.notion-db.json`. The console prints `Notion sync: ON`.
+4. `npm start`. The console prints `Notion: ON`. If a database can't be reached, the app logs why and falls back to local mode.
 
-Already have a database? Set `NOTION_DATABASE_ID` instead of `NOTION_PARENT_PAGE_ID` (share it with the integration first). The schema it expects: `Lesson` (title), `Lesson ID` (text), `Phase` (select), `Track` (select), `Module` (text), `Hours` (number), `Done` (checkbox), `Completed At` (date).
+The five database IDs and the property names live in [`server/config.js`](server/config.js) (IDs aren't secrets). They default to the bundled template; override any of them with `DB_EXPENSES`, `DB_INCOMES`, `DB_ACCOUNTS`, `DB_EXPENSE_CATEGORIES`, `DB_INCOME_CATEGORIES` env vars if your databases differ.
 
-> Daily-pace preference stays in the browser; completed lessons are what sync to Notion.
+## Optional: lock the app
 
-## Enabling the AI tutor
+For a deployed instance, set `APP_TOKEN` to any long random string:
 
-The tutor proxies to Claude through the backend (keeps the key off the wire to Anthropic, avoids browser CORS). Two options:
+```bash
+node -e "console.log(require('crypto').randomBytes(24).toString('hex'))"
+```
 
-- **Per-user key (default):** leave `ANTHROPIC_API_KEY` blank. Each user pastes their own key in the first AI panel they open; it's stored in their browser's `localStorage` and sent to your server per request.
-- **Shared server key:** set `ANTHROPIC_API_KEY` in `.env` and nobody has to paste anything.
+The browser then asks for it once (stored locally) and sends it on every API call; unauthenticated requests get `401`. On localhost you can leave it blank.
 
-Model defaults to `claude-opus-4-8`. To trade quality for cost, set `AI_MODEL=claude-haiku-4-5` (or `claude-sonnet-4-6`).
+## What it does
+
+- **Summary** — total balance across accounts, plus income / expenses / net for the selected month.
+- **Account cards** — live balance per account (income in − expenses out).
+- **Add transactions** — expense or income, with categories created on the fly; written to Notion.
+- **Charts** — spending-by-category (or income-by-source) donut with a legend, following the type filter.
+- **History** — transactions grouped by day, filterable by month / type / free-text search, with delete.
+
+> Editing an existing transaction is "delete + add" for now — the Notion relations make in-place edits fiddly. Easy to extend with a `PATCH /api/transactions/:id` route later.
 
 ## Scripts
 
 - `npm start` — run the server
-- `npm run dev` — run with `node --watch` (auto-restart on file changes)
+- `npm run dev` — run with `node --watch` (auto-restart on changes)
 
 ## Project layout
 
 ```
 server/
-  index.js     Express app: API routes + static serving
-  notion.js    Notion data access (create db, read/upsert/reset progress)
-  ai.js        Claude proxy (streaming + prompt caching)
+  config.js    Notion database IDs + property names (+ colour palette)
+  notion.js    Notion data access (read all, add, archive) via SDK v5 data sources
+  index.js     Express app: API routes + optional auth + static serving
 public/
   index.html   shell
-  styles.css   styling (from the original design)
-  data.js      the full curriculum
-  app.js       rendering, progress, study plan, search, AI panel
+  styles.css   styling
+  app.js        data layer (API or local), rendering, charts, add/delete, filters
 ```
+
+## Currency
+
+The display symbol defaults to `₹`. Change the `CURRENCY` constant at the top of [`public/app.js`](public/app.js) to `$`, `€`, `£`, etc.
+
+## Security notes
+
+- The Notion token only ever lives in the **server's** environment — never in the repo or the browser bundle. `.env` is git-ignored.
+- `APP_TOKEN` is a shared password gating the API; fine for a personal app. For multiple users, swap in real auth later.
+- Database IDs are not secret; the integration token is what grants access.
