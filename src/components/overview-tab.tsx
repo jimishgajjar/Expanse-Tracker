@@ -6,11 +6,13 @@ import { AccountsSection } from "@/components/accounts-section";
 import { CategoryDonut } from "@/components/category-donut";
 import { TrendChart } from "@/components/trend-chart";
 import type { RangeType } from "@/lib/dates";
-import type { AccountDTO, TransactionDTO } from "@/lib/queries";
+import type { AccountDTO, CategoryDTO, TransactionDTO, TransferDTO } from "@/lib/queries";
 
 export function OverviewTab({
   accounts,
   transactions,
+  transfers,
+  categories,
   totalBalance,
   rangeLabel,
   rangeType,
@@ -20,6 +22,8 @@ export function OverviewTab({
 }: {
   accounts: AccountDTO[];
   transactions: TransactionDTO[];
+  transfers: TransferDTO[];
+  categories: CategoryDTO[];
   totalBalance: number;
   rangeLabel: string;
   rangeType: RangeType;
@@ -42,7 +46,7 @@ export function OverviewTab({
         accountsCount={accounts.length}
         comparison={comparison}
       />
-      <AccountsSection accounts={accounts} />
+      <AccountsSection accounts={accounts} transactions={transactions} transfers={transfers} categories={categories} />
       <div className="grid gap-4 lg:grid-cols-2">
         <CategoryDonut transactions={transactions} />
         <TrendChart transactions={transactions} rangeType={rangeType} start={rangeStart} end={rangeEnd} />

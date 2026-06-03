@@ -8,12 +8,23 @@ import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/icon";
 import { AccountDialog } from "@/components/account-dialog";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { AccountDetailSheet } from "@/components/account-detail-sheet";
 import { deleteAccount } from "@/lib/actions";
 import { useFormat } from "@/components/settings-provider";
 import { cn } from "@/lib/utils";
-import type { AccountDTO } from "@/lib/queries";
+import type { AccountDTO, CategoryDTO, TransactionDTO, TransferDTO } from "@/lib/queries";
 
-export function AccountsSection({ accounts }: { accounts: AccountDTO[] }) {
+export function AccountsSection({
+  accounts,
+  transactions,
+  transfers,
+  categories,
+}: {
+  accounts: AccountDTO[];
+  transactions: TransactionDTO[];
+  transfers: TransferDTO[];
+  categories: CategoryDTO[];
+}) {
   const router = useRouter();
   const { balanceMoney } = useFormat();
   const total = accounts.reduce((s, a) => s + a.balance, 0);
@@ -35,27 +46,38 @@ export function AccountsSection({ accounts }: { accounts: AccountDTO[] }) {
       </div>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {accounts.map((a) => (
-          <Card key={a.id} className="group relative gap-0 p-4">
-            <div className="flex items-center gap-2.5">
-              <span className="grid size-9 shrink-0 place-items-center rounded-lg" style={{ backgroundColor: `${a.color}22`, color: a.color }}>
-                <Icon name={a.icon} size={18} />
-              </span>
-              <div className="min-w-0">
-                <div className="truncate font-medium">{a.name}</div>
-                <div className="text-xs text-muted-foreground capitalize">{a.type}</div>
-              </div>
-              <div className="ml-auto flex shrink-0 opacity-100 transition sm:opacity-0 sm:focus-within:opacity-100 sm:group-hover:opacity-100">
-                <AccountDialog account={a} trigger={<Button size="icon-sm" variant="ghost" aria-label="Edit account"><Pencil className="size-3.5" /></Button>} />
-                <ConfirmDialog
-                  trigger={<Button size="icon-sm" variant="ghost" aria-label="Delete account"><Trash2 className="size-3.5" /></Button>}
-                  title={`Delete "${a.name}"?`}
-                  description="Its transactions will be deleted too. This can't be undone."
-                  onConfirm={() => remove(a.id)}
-                />
-              </div>
-            </div>
-            <div className={cn("mt-3 font-mono text-xl font-semibold tracking-tight", a.balance < 0 && "text-negative")}>
-              {balanceMoney(a.balance)}
+          <Card key={a.id} className="group relative gap-0 overflow-hidden p-0">
+            <AccountDetailSheet
+              account={a}
+              transactions={transactions}
+              transfers={transfers}
+              categories={categories}
+              accounts={accounts}
+              trigger={
+                <button type="button" className="flex w-full flex-col items-start p-4 text-left transition-colors hover:bg-muted/40">
+                  <div className="flex w-full items-center gap-2.5">
+                    <span className="grid size-9 shrink-0 place-items-center rounded-lg" style={{ backgroundColor: `${a.color}22`, color: a.color }}>
+                      <Icon name={a.icon} size={18} />
+                    </span>
+                    <div className="min-w-0">
+                      <div className="truncate font-medium">{a.name}</div>
+                      <div className="text-xs text-muted-foreground capitalize">{a.type}</div>
+                    </div>
+                  </div>
+                  <div className={cn("mt-3 font-mono text-xl font-semibold tracking-tight", a.balance < 0 && "text-negative")}>
+                    {balanceMoney(a.balance)}
+                  </div>
+                </button>
+              }
+            />
+            <div className="absolute top-2 right-2 flex opacity-100 transition sm:opacity-0 sm:group-hover:opacity-100">
+              <AccountDialog account={a} trigger={<Button size="icon-sm" variant="ghost" aria-label="Edit account"><Pencil className="size-3.5" /></Button>} />
+              <ConfirmDialog
+                trigger={<Button size="icon-sm" variant="ghost" aria-label="Delete account"><Trash2 className="size-3.5" /></Button>}
+                title={`Delete "${a.name}"?`}
+                description="Its transactions and transfers will be deleted too. This can't be undone."
+                onConfirm={() => remove(a.id)}
+              />
             </div>
           </Card>
         ))}

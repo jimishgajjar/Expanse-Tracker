@@ -121,6 +121,8 @@ export function Dashboard({
           <OverviewTab
             accounts={accounts}
             transactions={transactions}
+            transfers={transfers}
+            categories={categories}
             totalBalance={totalBalance}
             rangeLabel={rangeLabel}
             rangeType={rangeType}
