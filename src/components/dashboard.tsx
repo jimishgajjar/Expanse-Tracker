@@ -12,9 +12,11 @@ import { TransactionDialog } from "@/components/transaction-dialog";
 import { PeriodBar } from "@/components/period-bar";
 import { OverviewTab } from "@/components/overview-tab";
 import { TransactionsTab } from "@/components/transactions-tab";
-import { AnalyticsTab } from "@/components/analytics-tab";
+import { AnalyticsTab, type Comparison } from "@/components/analytics-tab";
 import type { RangeType } from "@/lib/dates";
-import type { AccountDTO, CategoryDTO, TransactionDTO } from "@/lib/queries";
+import type { AccountDTO, BudgetProgressDTO, CategoryDTO, NetWorthPoint, TransactionDTO } from "@/lib/queries";
+
+type Tab = "overview" | "transactions" | "analytics";
 
 export function Dashboard({
   accounts,
@@ -29,6 +31,11 @@ export function Dashboard({
   currency,
   locale,
   currencyCode,
+  budgetProgress,
+  netWorth,
+  comparison,
+  authEnabled,
+  initialTab,
 }: {
   accounts: AccountDTO[];
   categories: CategoryDTO[];
@@ -42,8 +49,24 @@ export function Dashboard({
   currency: string;
   locale: string;
   currencyCode: string;
+  budgetProgress: BudgetProgressDTO[];
+  netWorth: NetWorthPoint[];
+  comparison: Comparison;
+  authEnabled: boolean;
+  initialTab: Tab;
 }) {
-  const [tab, setTab] = useState<"overview" | "transactions" | "analytics">("overview");
+  const [tab, setTab] = useState<Tab>(initialTab);
+
+  // Persist the active tab in the URL without a server round-trip.
+  function changeTab(t: Tab) {
+    setTab(t);
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      if (t === "overview") url.searchParams.delete("tab");
+      else url.searchParams.set("tab", t);
+      window.history.replaceState(null, "", url);
+    }
+  }
 
   return (
     <SettingsProvider currency={currency} locale={locale}>
@@ -67,6 +90,7 @@ export function Dashboard({
           />
           <SettingsDialog
             currencyCode={currencyCode}
+            authEnabled={authEnabled}
             trigger={<Button variant="ghost" size="icon" aria-label="Settings"><Settings className="size-4" /></Button>}
           />
           <ThemeToggle />
@@ -74,7 +98,7 @@ export function Dashboard({
 
         <PeriodBar rangeType={rangeType} anchor={anchor} rangeLabel={rangeLabel} />
 
-        <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
+        <Tabs value={tab} onValueChange={(v) => changeTab(v as Tab)}>
           <TabsList className="w-full sm:w-auto">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="transactions">Transactions</TabsTrigger>
@@ -91,13 +115,23 @@ export function Dashboard({
             rangeType={rangeType}
             rangeStart={rangeStart}
             rangeEnd={rangeEnd}
+            comparison={comparison}
           />
         )}
         {tab === "transactions" && (
           <TransactionsTab transactions={transactions} accounts={accounts} categories={categories} />
         )}
         {tab === "analytics" && (
-          <AnalyticsTab transactions={transactions} rangeType={rangeType} rangeStart={rangeStart} rangeEnd={rangeEnd} />
+          <AnalyticsTab
+            transactions={transactions}
+            rangeType={rangeType}
+            rangeStart={rangeStart}
+            rangeEnd={rangeEnd}
+            budgets={budgetProgress}
+            categories={categories}
+            netWorth={netWorth}
+            comparison={comparison}
+          />
         )}
       </div>
     </SettingsProvider>

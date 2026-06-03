@@ -16,6 +16,7 @@ export function OverviewTab({
   rangeType,
   rangeStart,
   rangeEnd,
+  comparison,
 }: {
   accounts: AccountDTO[];
   transactions: TransactionDTO[];
@@ -24,6 +25,7 @@ export function OverviewTab({
   rangeType: RangeType;
   rangeStart: string;
   rangeEnd: string;
+  comparison?: { prevIncome: number; prevExpense: number } | null;
 }) {
   const income = useMemo(() => transactions.filter((t) => t.type === "income").reduce((s, t) => s + t.amount, 0), [transactions]);
   const expense = useMemo(() => transactions.filter((t) => t.type === "expense").reduce((s, t) => s + t.amount, 0), [transactions]);
@@ -38,6 +40,7 @@ export function OverviewTab({
         net={net}
         rangeLabel={rangeLabel}
         accountsCount={accounts.length}
+        comparison={comparison}
       />
       <AccountsSection accounts={accounts} />
       <div className="grid gap-4 lg:grid-cols-2">

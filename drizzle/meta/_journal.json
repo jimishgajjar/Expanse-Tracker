@@ -15,6 +15,13 @@
       "when": 1780470928711,
       "tag": "0001_shiny_pestilence",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1780513185707,
+      "tag": "0002_curly_morph",
+      "breakpoints": true
     }
   ]
 }

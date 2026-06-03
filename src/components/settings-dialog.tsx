@@ -10,9 +10,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { updateSettings } from "@/lib/actions";
+import { logout } from "@/lib/auth";
 import { CURRENCIES } from "@/lib/currencies";
 
-export function SettingsDialog({ trigger, currencyCode }: { trigger: ReactElement; currencyCode: string }) {
+export function SettingsDialog({
+  trigger,
+  currencyCode,
+  authEnabled,
+}: {
+  trigger: ReactElement;
+  currencyCode: string;
+  authEnabled: boolean;
+}) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [pending, start] = useTransition();
@@ -54,6 +63,11 @@ export function SettingsDialog({ trigger, currencyCode }: { trigger: ReactElemen
           </Select>
           <p className="text-xs text-muted-foreground">Sets the symbol and number grouping used across the app.</p>
         </div>
+        {authEnabled && (
+          <form action={logout} className="border-t pt-3">
+            <Button type="submit" variant="outline" size="sm" className="w-full">Sign out</Button>
+          </form>
+        )}
         <DialogFooter className="mt-2">
           <DialogClose render={<Button type="button" variant="outline" />}>Cancel</DialogClose>
           <Button onClick={save} disabled={pending}>{pending ? "Saving…" : "Save"}</Button>

@@ -1,6 +1,6 @@
 import { and, asc, desc, eq, gte, lt, sql } from "drizzle-orm";
 import { getDb } from "./db";
-import { accounts, appSettings, categories, transactions } from "./db/schema";
+import { accounts, appSettings, budgets, categories, transactions } from "./db/schema";
 import { CURRENCIES, DEFAULT_CURRENCY_CODE, findCurrencyByCode } from "./currencies";
 
 export type AccountDTO = {
@@ -81,4 +81,67 @@ export async function getSettings(): Promise<SettingsDTO> {
   if (!rows.length) rows = await db.insert(appSettings).values({ id: "app" }).returning();
   const cur = findCurrencyByCode(rows[0]?.currencyCode ?? DEFAULT_CURRENCY_CODE) ?? CURRENCIES[0];
   return { currencyCode: cur.code, currency: cur.symbol, locale: cur.locale };
+}
+
+// ── budgets ──────────────────────────────────────────────
+export type BudgetProgressDTO = { categoryId: string; name: string; icon: string; color: string; budget: number; spent: number };
+
+/** Budgets (one per expense category) with this calendar month's spend. */
+export async function getBudgetProgress(): Promise<BudgetProgressDTO[]> {
+  const db = await getDb();
+  const rows = await db
+    .select({ categoryId: budgets.categoryId, amount: budgets.amount, name: categories.name, icon: categories.icon, color: categories.color })
+    .from(budgets)
+    .innerJoin(categories, eq(budgets.categoryId, categories.id));
+  if (!rows.length) return [];
+
+  const now = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const start = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-01`;
+  const nx = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  const end = `${nx.getFullYear()}-${pad(nx.getMonth() + 1)}-01`;
+
+  const spendRows = await db
+    .select({ categoryId: transactions.categoryId, total: sql<string>`coalesce(sum(${transactions.amount}), 0)` })
+    .from(transactions)
+    .where(and(eq(transactions.type, "expense"), gte(transactions.date, start), lt(transactions.date, end)))
+    .groupBy(transactions.categoryId);
+  const spent: Record<string, number> = {};
+  for (const r of spendRows) if (r.categoryId) spent[r.categoryId] = Number(r.total);
+
+  return rows
+    .map((r) => ({ categoryId: r.categoryId, name: r.name, icon: r.icon, color: r.color, budget: Number(r.amount), spent: spent[r.categoryId] ?? 0 }))
+    .sort((a, b) => b.spent / b.budget - a.spent / a.budget);
+}
+
+/** Income + expense totals over a [start, end) range (for period comparison). */
+export async function getRangeTotals(start: string, end: string): Promise<{ income: number; expense: number }> {
+  const db = await getDb();
+  const rows = await db
+    .select({ type: transactions.type, total: sql<string>`coalesce(sum(${transactions.amount}), 0)` })
+    .from(transactions)
+    .where(and(gte(transactions.date, start), lt(transactions.date, end)))
+    .groupBy(transactions.type);
+  let income = 0, expense = 0;
+  for (const r of rows) { if (r.type === "income") income = Number(r.total); else expense = Number(r.total); }
+  return { income, expense };
+}
+
+export type NetWorthPoint = { key: string; value: number };
+
+/** Cumulative net worth at the end of each month (initial balances + running income−expense). */
+export async function getNetWorthSeries(): Promise<NetWorthPoint[]> {
+  const db = await getDb();
+  const accs = await db.select({ initial: accounts.initialBalance }).from(accounts);
+  const base = accs.reduce((s, a) => s + Number(a.initial), 0);
+  const rows = await db
+    .select({
+      ym: sql<string>`to_char(${transactions.date}, 'YYYY-MM')`,
+      delta: sql<string>`coalesce(sum(case when ${transactions.type} = 'income' then ${transactions.amount} else -${transactions.amount} end), 0)`,
+    })
+    .from(transactions)
+    .groupBy(sql`to_char(${transactions.date}, 'YYYY-MM')`)
+    .orderBy(sql`to_char(${transactions.date}, 'YYYY-MM')`);
+  let running = base;
+  return rows.map((r) => ({ key: r.ym, value: (running += Number(r.delta)) }));
 }

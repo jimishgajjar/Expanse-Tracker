@@ -63,7 +63,16 @@ export const appSettings = pgTable("app_settings", {
   currencyCode: text("currency_code").notNull().default("INR"),
 });
 
+// Monthly spending budget for an expense category.
+export const budgets = pgTable("budgets", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  categoryId: text("category_id").notNull().unique().references(() => categories.id, { onDelete: "cascade" }),
+  amount: numeric("amount", { precision: 14, scale: 2 }).notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
 export type Account = typeof accounts.$inferSelect;
 export type Category = typeof categories.$inferSelect;
 export type Transaction = typeof transactions.$inferSelect;
 export type AppSettings = typeof appSettings.$inferSelect;
+export type Budget = typeof budgets.$inferSelect;

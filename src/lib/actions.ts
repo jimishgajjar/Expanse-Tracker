@@ -4,7 +4,7 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { eq } from "drizzle-orm";
 import { getDb } from "./db";
-import { accounts, appSettings, categories, transactions } from "./db/schema";
+import { accounts, appSettings, budgets, categories, transactions } from "./db/schema";
 import { findCurrencyByCode } from "./currencies";
 
 type Result<T = undefined> = { ok: true; data?: T } | { ok: false; error: string };
@@ -147,6 +147,34 @@ export async function updateSettings(input: unknown): Promise<Result> {
       .insert(appSettings)
       .values({ id: "app", currencyCode: d.currencyCode })
       .onConflictDoUpdate({ target: appSettings.id, set: { currencyCode: d.currencyCode } });
+    revalidatePath("/");
+    return { ok: true };
+  } catch (e) { return fail(e); }
+}
+
+// ── budgets ──────────────────────────────────────────────
+const budgetSchema = z.object({
+  categoryId: z.string().min(1, "Pick a category"),
+  amount: z.coerce.number().positive("Amount must be greater than 0"),
+});
+
+export async function setBudget(input: unknown): Promise<Result> {
+  try {
+    const d = budgetSchema.parse(input);
+    const db = await getDb();
+    await db
+      .insert(budgets)
+      .values({ categoryId: d.categoryId, amount: String(d.amount) })
+      .onConflictDoUpdate({ target: budgets.categoryId, set: { amount: String(d.amount) } });
+    revalidatePath("/");
+    return { ok: true };
+  } catch (e) { return fail(e); }
+}
+
+export async function deleteBudget(categoryId: string): Promise<Result> {
+  try {
+    const db = await getDb();
+    await db.delete(budgets).where(eq(budgets.categoryId, categoryId));
     revalidatePath("/");
     return { ok: true };
   } catch (e) { return fail(e); }

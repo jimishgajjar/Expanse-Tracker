@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/icon";
 import { TransactionDialog } from "@/components/transaction-dialog";
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { deleteTransaction } from "@/lib/actions";
+import { createTransaction, deleteTransaction } from "@/lib/actions";
 import { useFormat } from "@/components/settings-provider";
 import { cn } from "@/lib/utils";
 import type { AccountDTO, CategoryDTO, TransactionDTO } from "@/lib/queries";
@@ -31,10 +31,23 @@ export function TransactionRows({ transactions, accounts, categories }: Props) {
     return [...m.entries()].sort((a, b) => b[0].localeCompare(a[0]));
   }, [transactions]);
 
-  async function remove(id: string) {
-    const res = await deleteTransaction(id);
-    if (res.ok) { toast.success("Transaction deleted"); router.refresh(); }
-    else toast.error(res.error);
+  async function remove(t: TransactionDTO) {
+    const res = await deleteTransaction(t.id);
+    if (!res.ok) { toast.error(res.error); return; }
+    router.refresh();
+    toast.success("Transaction deleted", {
+      action: {
+        label: "Undo",
+        onClick: async () => {
+          const r = await createTransaction({
+            type: t.type, amount: t.amount, date: t.date, note: t.note,
+            accountId: t.accountId, categoryId: t.categoryId,
+          });
+          if (r.ok) { toast.success("Transaction restored"); router.refresh(); }
+          else toast.error(r.error);
+        },
+      },
+    });
   }
 
   if (!transactions.length) {
@@ -73,7 +86,7 @@ function Row({
   t: TransactionDTO;
   accounts: AccountDTO[];
   categories: CategoryDTO[];
-  onDelete: (id: string) => void;
+  onDelete: (t: TransactionDTO) => void;
   money: (n: number) => string;
 }) {
   const isIncome = t.type === "income";
@@ -103,7 +116,7 @@ function Row({
           trigger={<Button size="icon-xs" variant="ghost" aria-label="Delete transaction"><Trash2 className="size-3" /></Button>}
           title="Delete transaction?"
           description={`${t.note || t.category?.name || "This transaction"} · ${money(t.amount)}`}
-          onConfirm={() => onDelete(t.id)}
+          onConfirm={() => onDelete(t)}
         />
       </div>
     </div>

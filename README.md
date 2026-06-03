@@ -20,6 +20,8 @@ npm run dev          # → http://localhost:3000
 
 With no `DATABASE_URL`, the app spins up an **embedded Postgres (PGlite)** in `./.pglite`, runs migrations, and seeds sample accounts, categories and transactions automatically — so it works immediately. Your data persists in that folder (git-ignored).
 
+> **Local dev speed (Windows):** if compiles feel slow, it's usually antivirus scanning `.next`. Add the project's `.next` folder to Windows Defender's exclusions, or keep the project on a fast local SSD — Vercel builds are unaffected.
+
 ## Use a real database (Neon)
 
 1. Create a free Postgres database at <https://neon.tech> and copy its **pooled** connection string.
@@ -43,7 +45,7 @@ With no `DATABASE_URL`, the app spins up an **embedded Postgres (PGlite)** in `.
 ## Deploy to Vercel
 
 1. Push this repo to GitHub and **Import** it at <https://vercel.com/new> (Next.js is auto-detected).
-2. Add an Environment Variable **`DATABASE_URL`** = your Neon pooled connection string. (Optionally `NEXT_PUBLIC_CURRENCY` / `NEXT_PUBLIC_LOCALE`.)
+2. Add an Environment Variable **`DATABASE_URL`** = your Neon pooled connection string. (Optionally `APP_PASSWORD` to gate access, and `NEXT_PUBLIC_CURRENCY` / `NEXT_PUBLIC_LOCALE`.)
    - Tip: Vercel's **Neon** integration (Storage tab) can provision the database and set this for you.
 3. Run migrations against the production database once — locally with the prod `DATABASE_URL`, via `npm run db:migrate`. Deploy.
 
@@ -54,7 +56,10 @@ With no `DATABASE_URL`, the app spins up an **embedded Postgres (PGlite)** in `.
 - **Add / edit / delete** transactions, accounts and categories — all via Server Actions writing straight to Postgres.
 - **Separate income & expense sections**, plus filters: by category, by account, free-text search, and a time-range selector spanning day → multi-year → all with prev/next navigation.
 - **Tabbed views** — **Overview** (summary, all-accounts balances, charts), **Transactions** (filterable, paginated list), and **Analytics**, sharing one period selector.
-- **Detailed Analytics** — totals, savings rate, averages, biggest expense, the income-vs-expense trend, and full category/account breakdowns with bars.
+- **Detailed Analytics** — totals, savings rate, averages, biggest expense, **net worth over time**, **period-over-period comparison** (▲/▼ vs last), the income-vs-expense trend, full category/account breakdowns, and **top merchants / largest transactions**.
+- **Budgets** — set a monthly limit per expense category; progress bars warn when you go over.
+- **Password gate (optional)** — set `APP_PASSWORD` to require a password before anyone can see your data.
+- **Undo** — deleting a transaction shows an Undo toast to restore it.
 - **Pagination** — the transactions list is paginated with a **rows-per-page** selector (10 / 25 / 50 / 100).
 - **Export to Excel** — one click downloads an `.xlsx` of all data (Transactions / Accounts / Categories sheets) via `/api/export`.
 - **Currency setting** — change the display currency in-app (Settings ⚙); stored in the database and applied everywhere.
