@@ -2,7 +2,8 @@ import { Dashboard } from "@/components/dashboard";
 import { getRange, RANGE_TYPES, shiftAnchor, todayISO, type RangeType } from "@/lib/dates";
 import {
   getAccountsWithBalances, getBudgetProgress, getCategories,
-  getNetWorthSeries, getRangeTotals, getSettings, getTransactionsInRange,
+  getNetWorthSeries, getRangeTotals, getRecurring, getSettings, getTransactionsInRange, getTransfersInRange,
+  processRecurring,
 } from "@/lib/queries";
 import { isAuthEnabled } from "@/lib/auth-token";
 
@@ -20,13 +21,18 @@ export default async function Page({
   const range = getRange(rangeType, anchor);
   const prevRange = rangeType === "all" ? null : getRange(rangeType, shiftAnchor(rangeType, anchor, -1));
 
-  const [accounts, categories, transactions, settings, budgetProgress, netWorth, prevTotals] = await Promise.all([
+  // Materialise any due recurring rules before reading data.
+  await processRecurring();
+
+  const [accounts, categories, transactions, transfers, settings, budgetProgress, netWorth, recurring, prevTotals] = await Promise.all([
     getAccountsWithBalances(),
     getCategories(),
     getTransactionsInRange(range.start, range.end),
+    getTransfersInRange(range.start, range.end),
     getSettings(),
     getBudgetProgress(),
     getNetWorthSeries(),
+    getRecurring(),
     prevRange ? getRangeTotals(prevRange.start, prevRange.end) : Promise.resolve(null),
   ]);
 
@@ -39,6 +45,7 @@ export default async function Page({
       accounts={accounts}
       categories={categories}
       transactions={transactions}
+      transfers={transfers}
       rangeType={rangeType}
       anchor={anchor}
       rangeLabel={range.label}
@@ -51,6 +58,7 @@ export default async function Page({
       budgetProgress={budgetProgress}
       netWorth={netWorth}
       comparison={comparison}
+      recurring={recurring}
       authEnabled={isAuthEnabled()}
       initialTab={initialTab}
     />

@@ -4,7 +4,7 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { eq } from "drizzle-orm";
 import { getDb } from "./db";
-import { accounts, appSettings, budgets, categories, transactions } from "./db/schema";
+import { accounts, appSettings, budgets, categories, recurring, transactions, transfers } from "./db/schema";
 import { findCurrencyByCode } from "./currencies";
 
 type Result<T = undefined> = { ok: true; data?: T } | { ok: false; error: string };
@@ -175,6 +175,73 @@ export async function deleteBudget(categoryId: string): Promise<Result> {
   try {
     const db = await getDb();
     await db.delete(budgets).where(eq(budgets.categoryId, categoryId));
+    revalidatePath("/");
+    return { ok: true };
+  } catch (e) { return fail(e); }
+}
+
+// ── transfers ────────────────────────────────────────────
+const transferSchema = z
+  .object({
+    amount: z.coerce.number().positive("Amount must be greater than 0"),
+    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Pick a valid date"),
+    note: z.string().trim().max(200).default(""),
+    fromAccountId: z.string().min(1, "Pick a source account"),
+    toAccountId: z.string().min(1, "Pick a destination account"),
+  })
+  .refine((d) => d.fromAccountId !== d.toAccountId, { message: "Choose two different accounts", path: ["toAccountId"] });
+
+export async function createTransfer(input: unknown): Promise<Result> {
+  try {
+    const d = transferSchema.parse(input);
+    const db = await getDb();
+    await db.insert(transfers).values({
+      amount: String(d.amount), date: d.date, note: d.note ?? "",
+      fromAccountId: d.fromAccountId, toAccountId: d.toAccountId,
+    });
+    revalidatePath("/");
+    return { ok: true };
+  } catch (e) { return fail(e); }
+}
+
+export async function deleteTransfer(id: string): Promise<Result> {
+  try {
+    const db = await getDb();
+    await db.delete(transfers).where(eq(transfers.id, id));
+    revalidatePath("/");
+    return { ok: true };
+  } catch (e) { return fail(e); }
+}
+
+// ── recurring ────────────────────────────────────────────
+const recurringSchema = z.object({
+  type: z.enum(["income", "expense"]),
+  amount: z.coerce.number().positive("Amount must be greater than 0"),
+  note: z.string().trim().max(200).default(""),
+  accountId: z.string().min(1, "Pick an account"),
+  categoryId: z.string().min(1).nullable().optional(),
+  frequency: z.enum(["weekly", "monthly", "yearly"]),
+  nextDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Pick a valid date"),
+});
+
+export async function createRecurring(input: unknown): Promise<Result> {
+  try {
+    const d = recurringSchema.parse(input);
+    const db = await getDb();
+    await db.insert(recurring).values({
+      type: d.type, amount: String(d.amount), note: d.note ?? "",
+      accountId: d.accountId, categoryId: d.categoryId ?? null,
+      frequency: d.frequency, nextDate: d.nextDate,
+    });
+    revalidatePath("/");
+    return { ok: true };
+  } catch (e) { return fail(e); }
+}
+
+export async function deleteRecurring(id: string): Promise<Result> {
+  try {
+    const db = await getDb();
+    await db.delete(recurring).where(eq(recurring.id, id));
     revalidatePath("/");
     return { ok: true };
   } catch (e) { return fail(e); }

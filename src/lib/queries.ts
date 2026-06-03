@@ -1,7 +1,9 @@
 import { and, asc, desc, eq, gte, lt, sql } from "drizzle-orm";
+import { addMonths, addWeeks, addYears, format, parseISO } from "date-fns";
 import { getDb } from "./db";
-import { accounts, appSettings, budgets, categories, transactions } from "./db/schema";
+import { accounts, appSettings, budgets, categories, recurring, transactions, transfers } from "./db/schema";
 import { CURRENCIES, DEFAULT_CURRENCY_CODE, findCurrencyByCode } from "./currencies";
+import { todayISO } from "./dates";
 
 export type AccountDTO = {
   id: string; name: string; type: string; icon: string; color: string;
@@ -40,15 +42,84 @@ export async function getAccountsWithBalances(): Promise<AccountDTO[]> {
     if (!r.accountId) continue;
     (byId[r.accountId] ??= { income: 0, expense: 0 })[r.type] += Number(r.total ?? 0);
   }
+  const xfers = await db.select({ from: transfers.fromAccountId, to: transfers.toAccountId, amount: transfers.amount }).from(transfers);
+  const transferNet: Record<string, number> = {};
+  for (const x of xfers) {
+    const amt = Number(x.amount);
+    transferNet[x.from] = (transferNet[x.from] ?? 0) - amt;
+    transferNet[x.to] = (transferNet[x.to] ?? 0) + amt;
+  }
+
   return accs.map((a) => {
     const m = byId[a.id] ?? { income: 0, expense: 0 };
     const initialBalance = Number(a.initialBalance);
     return {
       id: a.id, name: a.name, type: a.type, icon: a.icon, color: a.color,
       initialBalance, income: m.income, expense: m.expense,
-      balance: initialBalance + m.income - m.expense,
+      balance: initialBalance + m.income - m.expense + (transferNet[a.id] ?? 0),
     };
   });
+}
+
+export type TransferDTO = {
+  id: string; amount: number; date: string; note: string;
+  fromAccountId: string; toAccountId: string;
+};
+
+/** Transfers in a [start, end) range (account names resolved client-side). */
+export async function getTransfersInRange(start: string, end: string): Promise<TransferDTO[]> {
+  const db = await getDb();
+  const rows = await db
+    .select()
+    .from(transfers)
+    .where(and(gte(transfers.date, start), lt(transfers.date, end)))
+    .orderBy(desc(transfers.date), desc(transfers.createdAt));
+  return rows.map((r) => ({
+    id: r.id, amount: Number(r.amount), date: r.date, note: r.note,
+    fromAccountId: r.fromAccountId, toAccountId: r.toAccountId,
+  }));
+}
+
+// ── recurring ────────────────────────────────────────────
+function advanceDate(dateStr: string, freq: string): string {
+  const d = parseISO(dateStr);
+  const next = freq === "weekly" ? addWeeks(d, 1) : freq === "yearly" ? addYears(d, 1) : addMonths(d, 1);
+  return format(next, "yyyy-MM-dd");
+}
+
+/** Materialise any recurring rules that are due (nextDate ≤ today) into transactions. */
+export async function processRecurring(): Promise<void> {
+  const db = await getDb();
+  const rules = await db.select().from(recurring);
+  if (!rules.length) return;
+  const today = todayISO();
+  for (const r of rules) {
+    let next = r.nextDate;
+    const toCreate: (typeof transactions.$inferInsert)[] = [];
+    let guard = 0;
+    while (next <= today && guard++ < 500) {
+      toCreate.push({ type: r.type, amount: r.amount, date: next, note: r.note, accountId: r.accountId, categoryId: r.categoryId });
+      next = advanceDate(next, r.frequency);
+    }
+    if (toCreate.length) {
+      await db.insert(transactions).values(toCreate);
+      await db.update(recurring).set({ nextDate: next }).where(eq(recurring.id, r.id));
+    }
+  }
+}
+
+export type RecurringDTO = {
+  id: string; type: "income" | "expense"; amount: number; note: string;
+  accountId: string | null; categoryId: string | null; frequency: string; nextDate: string;
+};
+
+export async function getRecurring(): Promise<RecurringDTO[]> {
+  const db = await getDb();
+  const rows = await db.select().from(recurring).orderBy(asc(recurring.nextDate));
+  return rows.map((r) => ({
+    id: r.id, type: r.type, amount: Number(r.amount), note: r.note,
+    accountId: r.accountId, categoryId: r.categoryId, frequency: r.frequency, nextDate: r.nextDate,
+  }));
 }
 
 /** All transactions whose date is in [start, end), newest first, with refs joined. */

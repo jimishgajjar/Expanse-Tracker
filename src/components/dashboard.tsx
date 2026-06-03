@@ -1,20 +1,21 @@
 "use client";
 
 import { useState } from "react";
-import { Download, Plus, Settings, Tags } from "lucide-react";
+import { Download, Plus, Repeat, Settings, Tags } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { SettingsProvider } from "@/components/settings-provider";
 import { SettingsDialog } from "@/components/settings-dialog";
 import { CategoryManager } from "@/components/category-manager";
+import { RecurringManager } from "@/components/recurring-manager";
 import { TransactionDialog } from "@/components/transaction-dialog";
 import { PeriodBar } from "@/components/period-bar";
 import { OverviewTab } from "@/components/overview-tab";
 import { TransactionsTab } from "@/components/transactions-tab";
 import { AnalyticsTab, type Comparison } from "@/components/analytics-tab";
 import type { RangeType } from "@/lib/dates";
-import type { AccountDTO, BudgetProgressDTO, CategoryDTO, NetWorthPoint, TransactionDTO } from "@/lib/queries";
+import type { AccountDTO, BudgetProgressDTO, CategoryDTO, NetWorthPoint, RecurringDTO, TransactionDTO, TransferDTO } from "@/lib/queries";
 
 type Tab = "overview" | "transactions" | "analytics";
 
@@ -22,6 +23,7 @@ export function Dashboard({
   accounts,
   categories,
   transactions,
+  transfers,
   rangeType,
   anchor,
   rangeLabel,
@@ -34,12 +36,14 @@ export function Dashboard({
   budgetProgress,
   netWorth,
   comparison,
+  recurring,
   authEnabled,
   initialTab,
 }: {
   accounts: AccountDTO[];
   categories: CategoryDTO[];
   transactions: TransactionDTO[];
+  transfers: TransferDTO[];
   rangeType: RangeType;
   anchor: string;
   rangeLabel: string;
@@ -52,6 +56,7 @@ export function Dashboard({
   budgetProgress: BudgetProgressDTO[];
   netWorth: NetWorthPoint[];
   comparison: Comparison;
+  recurring: RecurringDTO[];
   authEnabled: boolean;
   initialTab: Tab;
 }) {
@@ -79,6 +84,12 @@ export function Dashboard({
           <CategoryManager
             categories={categories}
             trigger={<Button variant="outline" size="sm" aria-label="Categories"><Tags className="size-4" /><span className="hidden sm:inline">Categories</span></Button>}
+          />
+          <RecurringManager
+            recurring={recurring}
+            accounts={accounts}
+            categories={categories}
+            trigger={<Button variant="outline" size="sm" aria-label="Recurring"><Repeat className="size-4" /><span className="hidden sm:inline">Recurring</span></Button>}
           />
           <Button variant="outline" size="sm" aria-label="Export to Excel" onClick={() => window.location.assign("/api/export")}>
             <Download className="size-4" /><span className="hidden sm:inline">Export</span>
@@ -119,7 +130,7 @@ export function Dashboard({
           />
         )}
         {tab === "transactions" && (
-          <TransactionsTab transactions={transactions} accounts={accounts} categories={categories} />
+          <TransactionsTab transactions={transactions} transfers={transfers} accounts={accounts} categories={categories} />
         )}
         {tab === "analytics" && (
           <AnalyticsTab

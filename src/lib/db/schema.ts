@@ -71,8 +71,38 @@ export const budgets = pgTable("budgets", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+// Money moved between two accounts (not income or expense).
+export const transfers = pgTable(
+  "transfers",
+  {
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    fromAccountId: text("from_account_id").notNull().references(() => accounts.id, { onDelete: "cascade" }),
+    toAccountId: text("to_account_id").notNull().references(() => accounts.id, { onDelete: "cascade" }),
+    amount: numeric("amount", { precision: 14, scale: 2 }).notNull(),
+    date: date("date", { mode: "string" }).notNull(),
+    note: text("note").notNull().default(""),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [index("transfer_date_idx").on(t.date)],
+);
+
+// A template that auto-creates transactions on a schedule.
+export const recurring = pgTable("recurring", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  type: txKind("type").notNull(),
+  amount: numeric("amount", { precision: 14, scale: 2 }).notNull(),
+  note: text("note").notNull().default(""),
+  accountId: text("account_id").references(() => accounts.id, { onDelete: "cascade" }),
+  categoryId: text("category_id").references(() => categories.id, { onDelete: "set null" }),
+  frequency: text("frequency").notNull(), // weekly | monthly | yearly
+  nextDate: date("next_date", { mode: "string" }).notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
 export type Account = typeof accounts.$inferSelect;
 export type Category = typeof categories.$inferSelect;
 export type Transaction = typeof transactions.$inferSelect;
 export type AppSettings = typeof appSettings.$inferSelect;
 export type Budget = typeof budgets.$inferSelect;
+export type Transfer = typeof transfers.$inferSelect;
+export type Recurring = typeof recurring.$inferSelect;

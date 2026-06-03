@@ -4,15 +4,15 @@ import { useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { format, parseISO } from "date-fns";
-import { Pencil, Trash2 } from "lucide-react";
+import { ArrowRightLeft, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/icon";
 import { TransactionDialog } from "@/components/transaction-dialog";
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { createTransaction, deleteTransaction } from "@/lib/actions";
+import { createTransaction, deleteTransaction, deleteTransfer } from "@/lib/actions";
 import { useFormat } from "@/components/settings-provider";
 import { cn } from "@/lib/utils";
-import type { AccountDTO, CategoryDTO, TransactionDTO } from "@/lib/queries";
+import type { AccountDTO, CategoryDTO, TransactionDTO, TransferDTO } from "@/lib/queries";
 
 type Props = { transactions: TransactionDTO[]; accounts: AccountDTO[]; categories: CategoryDTO[] };
 
@@ -119,6 +119,69 @@ function Row({
           onConfirm={() => onDelete(t)}
         />
       </div>
+    </div>
+  );
+}
+
+/** Compact list of transfers, grouped by date. */
+export function TransferRows({ transfers, accounts }: { transfers: TransferDTO[]; accounts: AccountDTO[] }) {
+  const router = useRouter();
+  const { money } = useFormat();
+  const nameOf = (id: string) => accounts.find((a) => a.id === id);
+
+  const groups = useMemo(() => {
+    const m = new Map<string, TransferDTO[]>();
+    for (const t of transfers) {
+      const arr = m.get(t.date);
+      if (arr) arr.push(t);
+      else m.set(t.date, [t]);
+    }
+    return [...m.entries()].sort((a, b) => b[0].localeCompare(a[0]));
+  }, [transfers]);
+
+  async function remove(id: string) {
+    const res = await deleteTransfer(id);
+    if (res.ok) { toast.success("Transfer deleted"); router.refresh(); }
+    else toast.error(res.error);
+  }
+
+  if (!transfers.length) {
+    return <p className="py-12 text-center text-sm text-muted-foreground">No transfers in this view.</p>;
+  }
+
+  return (
+    <div className="space-y-4">
+      {groups.map(([date, rows]) => (
+        <div key={date}>
+          <div className="mb-1 px-0.5 text-[11px] font-medium text-muted-foreground">{format(parseISO(date), "EEE, d MMM yyyy")}</div>
+          <div className="divide-y overflow-hidden rounded-lg border">
+            {rows.map((t) => {
+              const from = nameOf(t.fromAccountId);
+              const to = nameOf(t.toAccountId);
+              return (
+                <div key={t.id} className="group flex items-center gap-2.5 px-2.5 py-1.5">
+                  <span className="grid size-7 shrink-0 place-items-center rounded-md bg-muted text-muted-foreground">
+                    <ArrowRightLeft className="size-3.5" />
+                  </span>
+                  <div className="min-w-0 flex-1 leading-tight">
+                    <div className="truncate text-[13px] font-medium">{t.note || "Transfer"}</div>
+                    <div className="truncate text-[11px] text-muted-foreground">{from?.name ?? "—"} → {to?.name ?? "—"}</div>
+                  </div>
+                  <div className="shrink-0 font-mono text-[13px] font-semibold tabular-nums">{money(t.amount)}</div>
+                  <div className="-mr-1 flex shrink-0 opacity-100 transition sm:opacity-0 sm:group-hover:opacity-100">
+                    <ConfirmDialog
+                      trigger={<Button size="icon-xs" variant="ghost" aria-label="Delete transfer"><Trash2 className="size-3" /></Button>}
+                      title="Delete transfer?"
+                      description={`${from?.name ?? ""} → ${to?.name ?? ""} · ${money(t.amount)}`}
+                      onConfirm={() => remove(t.id)}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
