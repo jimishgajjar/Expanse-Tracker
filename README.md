@@ -1,87 +1,102 @@
-# Notion Money Tracker
+# Money Tracker
 
-A self-hosted money tracker that uses **your own Notion databases as the backend**. The Notion key lives only on the server (in an environment variable) — the browser never sees it. Incomes, expenses, accounts and categories are read from and written straight back to Notion.
-
-Runs out of the box: with no configuration it starts in a **browser-local demo mode** so you can try it immediately; add a Notion token to sync real data.
+A personal finance tracker — multiple accounts, richly categorised income & expenses (each with an icon and colour), separate income/expense views, charts, and a flexible **day / week / month / year / multi-year / all** time filter. Built to deploy on **Vercel** with **Neon Postgres**.
 
 ## Stack
 
-| Layer    | Tech |
-|----------|------|
-| Frontend | Vanilla HTML/CSS/JS (ES modules), no build step |
-| Backend  | Node + Express |
-| Database | Notion (via `@notionhq/client` v5) |
+| Layer     | Tech |
+|-----------|------|
+| Framework | Next.js 16 (App Router, React 19, TypeScript) + Server Actions |
+| UI        | Tailwind CSS v4 + shadcn/ui (Base UI) + lucide icons |
+| Charts    | Recharts |
+| Database  | Postgres via Drizzle ORM — **Neon** in production, embedded **PGlite** for zero-setup local dev |
 
-## Quick start
+## Run locally (zero setup)
 
 ```bash
 npm install
-cp .env.example .env      # optional — see below
-npm start                 # → http://localhost:3000
+npm run dev          # → http://localhost:3000
 ```
 
-With no `.env`, the app runs entirely in the browser on `localStorage`, seeded with sample data. Add Notion config to switch to real, synced data.
+With no `DATABASE_URL`, the app spins up an **embedded Postgres (PGlite)** in `./.pglite`, runs migrations, and seeds sample accounts, categories and transactions automatically — so it works immediately. Your data persists in that folder (git-ignored).
 
-## Enabling Notion sync
+## Use a real database (Neon)
 
-The browser can't call Notion directly (CORS + secret safety), so the server holds an **internal integration token**.
+1. Create a free Postgres database at <https://neon.tech> and copy its **pooled** connection string.
+2. Copy the env template and paste it in:
 
-1. Create an integration at <https://www.notion.so/my-integrations> and copy its token (`ntn_…` or `secret_…`).
-2. **Share your databases with it** — the step everyone misses. Open your **💰 Money Trackers** page in Notion → top-right **•••** → **Connections → Add connection →** your integration. Sharing the parent page grants access to the child databases (Incomes, Expenses, Accounts, Categories).
-3. Put the token in `.env`:
-
-   ```ini
-   NOTION_TOKEN=ntn_xxxxxxxx
+   ```bash
+   cp .env.example .env
+   # DATABASE_URL=postgresql://user:pass@ep-xxx-pooler.region.aws.neon.tech/db?sslmode=require
    ```
 
-4. `npm start`. The console prints `Notion: ON`. If a database can't be reached, the app logs why and falls back to local mode.
+3. Apply the schema and (optionally) seed defaults:
 
-The five database IDs and the property names live in [`server/config.js`](server/config.js) (IDs aren't secrets). They default to the bundled template; override any of them with `DB_EXPENSES`, `DB_INCOMES`, `DB_ACCOUNTS`, `DB_EXPENSE_CATEGORIES`, `DB_INCOME_CATEGORIES` env vars if your databases differ.
+   ```bash
+   npm run db:migrate          # create tables in Neon
+   npm run db:seed             # default accounts + categories
+   # npm run db:seed -- --samples   # also add example transactions
+   ```
 
-## Optional: lock the app
+4. `npm run dev`. The same `DATABASE_URL` drives both local dev and production.
 
-For a deployed instance, set `APP_TOKEN` to any long random string:
+## Deploy to Vercel
 
-```bash
-node -e "console.log(require('crypto').randomBytes(24).toString('hex'))"
-```
+1. Push this repo to GitHub and **Import** it at <https://vercel.com/new> (Next.js is auto-detected).
+2. Add an Environment Variable **`DATABASE_URL`** = your Neon pooled connection string. (Optionally `NEXT_PUBLIC_CURRENCY` / `NEXT_PUBLIC_LOCALE`.)
+   - Tip: Vercel's **Neon** integration (Storage tab) can provision the database and set this for you.
+3. Run migrations against the production database once — locally with the prod `DATABASE_URL`, via `npm run db:migrate`. Deploy.
 
-The browser then asks for it once (stored locally) and sends it on every API call; unauthenticated requests get `401`. On localhost you can leave it blank.
+## Features
 
-## What it does
-
-- **Summary** — total balance across accounts, plus income / expenses / net for the selected month.
-- **Account cards** — live balance per account (income in − expenses out).
-- **Add transactions** — expense or income, with categories created on the fly; written to Notion.
-- **Charts** — spending-by-category (or income-by-source) donut with a legend, following the type filter.
-- **History** — transactions grouped by day, filterable by month / type / free-text search, with delete.
-
-> Editing an existing transaction is "delete + add" for now — the Notion relations make in-place edits fiddly. Easy to extend with a `PATCH /api/transactions/:id` route later.
+- **Multiple accounts** — cash, bank, card, wallet, savings, investment; each with an icon, colour, opening balance, and a live computed balance.
+- **Categories with icons** — separate income & expense categories, each with a pickable lucide icon and colour, fully manageable in a side panel.
+- **Add / edit / delete** transactions, accounts and categories — all via Server Actions writing straight to Postgres.
+- **Separate income & expense sections**, plus filters: by category, by account, free-text search, and a time-range selector spanning day → multi-year → all with prev/next navigation.
+- **Tabbed views** — **Overview** (summary, all-accounts balances, charts), **Transactions** (filterable, paginated list), and **Analytics**, sharing one period selector.
+- **Detailed Analytics** — totals, savings rate, averages, biggest expense, the income-vs-expense trend, and full category/account breakdowns with bars.
+- **Pagination** — the transactions list is paginated with a **rows-per-page** selector (10 / 25 / 50 / 100).
+- **Export to Excel** — one click downloads an `.xlsx` of all data (Transactions / Accounts / Categories sheets) via `/api/export`.
+- **Currency setting** — change the display currency in-app (Settings ⚙); stored in the database and applied everywhere.
+- **Fully responsive** — works phone → desktop: collapsing header, touch-friendly actions, stacking dialogs and grids; plus **dark mode**.
 
 ## Scripts
 
-- `npm start` — run the server
-- `npm run dev` — run with `node --watch` (auto-restart on changes)
+| Script | Purpose |
+|--------|---------|
+| `npm run dev` | Start the dev server |
+| `npm run build` / `npm start` | Production build / serve |
+| `npm run db:generate` | Generate a Drizzle migration from the schema |
+| `npm run db:migrate` | Apply migrations to `DATABASE_URL` |
+| `npm run db:push` | Push schema directly (prototyping) |
+| `npm run db:studio` | Open Drizzle Studio |
+| `npm run db:seed` | Seed default accounts + categories (`-- --samples` for demo data) |
 
-## Project layout
+## Project structure
 
 ```
-server/
-  config.js    Notion database IDs + property names (+ colour palette)
-  notion.js    Notion data access (read all, add, archive) via SDK v5 data sources
-  index.js     Express app: API routes + optional auth + static serving
-public/
-  index.html   shell
-  styles.css   styling
-  app.js        data layer (API or local), rendering, charts, add/delete, filters
+src/
+  app/
+    page.tsx            dashboard (server component: reads range from the URL, fetches data)
+    layout.tsx          fonts, theme provider, toaster
+  components/
+    dashboard.tsx       client shell: filter state + composition
+    filter-bar.tsx      range + account/category/search filters
+    summary-cards.tsx   KPI tiles
+    category-donut.tsx  trend-chart.tsx   charts (Recharts)
+    accounts-section.tsx  transactions-list.tsx
+    account-dialog.tsx  transaction-dialog.tsx  category-manager.tsx
+    icon-picker.tsx  color-picker.tsx  confirm-dialog.tsx  icon.tsx
+    ui/                 shadcn/ui components
+  lib/
+    db/                 Drizzle schema, driver switch (Neon ↔ PGlite), seed
+    actions.ts          server actions (CRUD)
+    queries.ts          server-side reads + computed balances
+    dates.ts  buckets.ts  format.ts  icons.ts  colors.ts
+drizzle/                generated SQL migrations (committed)
 ```
 
-## Currency
+## Notes
 
-The display symbol defaults to `₹`. Change the `CURRENCY` constant at the top of [`public/app.js`](public/app.js) to `$`, `€`, `£`, etc.
-
-## Security notes
-
-- The Notion token only ever lives in the **server's** environment — never in the repo or the browser bundle. `.env` is git-ignored.
-- `APP_TOKEN` is a shared password gating the API; fine for a personal app. For multiple users, swap in real auth later.
-- Database IDs are not secret; the integration token is what grants access.
+- The Notion connection from earlier iterations is gone — this version owns its data in Postgres. The previous Express/Notion app is preserved in git history.
+- Database IDs/credentials live only in `DATABASE_URL` (server-side). `.env` is git-ignored.
