@@ -59,7 +59,12 @@ With no `DATABASE_URL`, the app spins up an **embedded Postgres (PGlite)** in `.
 - **Detailed Analytics** — totals, savings rate, averages, biggest expense, **net worth over time**, **period-over-period comparison** (▲/▼ vs last), the income-vs-expense trend, full category/account breakdowns, and **top merchants / largest transactions**.
 - **Budgets** — set a monthly limit per expense category; progress bars warn when you go over.
 - **Password gate (optional)** — set `APP_PASSWORD` to require a password before anyone can see your data.
-- **Undo** — deleting a transaction shows an Undo toast to restore it.
+- **Undo** — deleting a transaction shows an Undo toast to restore it (deletes are optimistic — the row vanishes instantly).
+- **Account transfers** — move money between accounts (a 3rd type in the Add dialog) without affecting income/expense totals.
+- **Recurring transactions** — schedule weekly/monthly/yearly rules that auto-create transactions on load.
+- **CSV / Excel import** — bring data in via Settings → Data (accounts & categories created by name).
+- **Account detail** — click any account card to see its stats and activity.
+- **Tested** — `npm test` runs Vitest unit tests for the date-range, money, and bucketing logic.
 - **Pagination** — the transactions list is paginated with a **rows-per-page** selector (10 / 25 / 50 / 100).
 - **Export to Excel** — one click downloads an `.xlsx` of all data (Transactions / Accounts / Categories sheets) via `/api/export`.
 - **Currency setting** — change the display currency in-app (Settings ⚙); stored in the database and applied everywhere.
