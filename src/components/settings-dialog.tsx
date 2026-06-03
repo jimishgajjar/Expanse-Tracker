@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { updateSettings } from "@/lib/actions";
 import { logout } from "@/lib/auth";
+import { ImportForm } from "@/components/import-form";
 import { CURRENCIES } from "@/lib/currencies";
 
 export function SettingsDialog({
@@ -62,6 +63,14 @@ export function SettingsDialog({
             </SelectContent>
           </Select>
           <p className="text-xs text-muted-foreground">Sets the symbol and number grouping used across the app.</p>
+        </div>
+        <div className="space-y-2 border-t pt-3">
+          <Label>Data</Label>
+          <Button type="button" variant="outline" size="sm" className="w-full" onClick={() => window.location.assign("/api/export")}>
+            Export to Excel
+          </Button>
+          <ImportForm />
+          <p className="text-xs text-muted-foreground">Import expects the same columns as Export (Date, Type, Amount, Category, Account, Note).</p>
         </div>
         {authEnabled && (
           <form action={logout} className="border-t pt-3">
