@@ -44,3 +44,16 @@ dev.log
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# editors / OS junk
+.idea/
+.vscode/
+*.swp
+*~
+Thumbs.db
+Desktop.ini
+
+# personal one-off scripts (local data import + email test — keep out of the repo)
+/scripts/seed-jimish.ts
+/scripts/seed-hani.ts
+/scripts/test-email.ts
