@@ -74,7 +74,7 @@ export async function maybeSeed(db: DB) {
   if (hasUser.length) return;
 
   // Local demo login: demo@demo.com / password
-  const [u] = await db.insert(users).values({ email: "demo@demo.com", name: "Demo", passwordHash: hashPassword("password") }).returning();
+  const [u] = await db.insert(users).values({ email: "demo@demo.com", name: "Demo", passwordHash: hashPassword("password"), emailVerifiedAt: new Date() }).returning();
   const [w] = await db.insert(workspaces).values({ name: "Demo's tracker", ownerId: u.id }).returning();
   await db.insert(workspaceMembers).values({ workspaceId: w.id, userId: u.id, role: "owner" });
   await seed(db, w.id, { samples: true });

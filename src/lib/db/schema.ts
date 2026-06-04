@@ -1,4 +1,4 @@
-import { pgTable, pgEnum, primaryKey, text, numeric, date, timestamp, index } from "drizzle-orm/pg-core";
+import { pgTable, pgEnum, primaryKey, text, numeric, date, timestamp, integer, index } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
 // Shared enum for the two flavours of money movement.
@@ -50,6 +50,7 @@ export const transactions = pgTable(
     note: text("note").notNull().default(""),
     accountId: text("account_id").references(() => accounts.id, { onDelete: "cascade" }),
     categoryId: text("category_id").references(() => categories.id, { onDelete: "set null" }),
+    createdBy: text("created_by").references(() => users.id, { onDelete: "set null" }), // who entered it
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (t) => [index("tx_ws_date_idx").on(t.workspaceId, t.date), index("tx_type_idx").on(t.type)],
@@ -119,6 +120,7 @@ export const users = pgTable("users", {
   email: text("email").notNull().unique(),
   name: text("name").notNull().default(""),
   passwordHash: text("password_hash").notNull(),
+  emailVerifiedAt: timestamp("email_verified_at"), // null until they confirm via email link
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
@@ -152,6 +154,20 @@ export const sessions = pgTable("sessions", {
 export const passwordResets = pgTable("password_resets", {
   id: text("id").primaryKey(),
   userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  expiresAt: timestamp("expires_at").notNull(),
+});
+
+// Single-use tokens emailed to confirm a new account owns its address.
+export const emailVerifications = pgTable("email_verifications", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  expiresAt: timestamp("expires_at").notNull(),
+});
+
+// Fixed-window counters for throttling auth attempts (brute force / spam).
+export const rateLimits = pgTable("rate_limits", {
+  key: text("key").primaryKey(),
+  count: integer("count").notNull().default(0),
   expiresAt: timestamp("expires_at").notNull(),
 });
 

@@ -29,11 +29,14 @@ export async function inviteMember(input: unknown): Promise<Result> {
   if (email === c.me.email.toLowerCase()) return { ok: false, error: "That's your own email." };
 
   const db = await getDb();
-  const [u] = await db.select({ id: users.id }).from(users).where(eq(users.email, email)).limit(1);
-  if (u) {
-    const [m] = await db.select().from(workspaceMembers).where(and(eq(workspaceMembers.workspaceId, c.ws.id), eq(workspaceMembers.userId, u.id))).limit(1);
+  const [u] = await db.select({ id: users.id, verifiedAt: users.emailVerifiedAt }).from(users).where(eq(users.email, email)).limit(1);
+  // Only a verified account is added immediately; otherwise we store a pending
+  // invite that's accepted when they confirm the address (closes the squatting hole).
+  const addedNow = !!(u && u.verifiedAt);
+  if (addedNow) {
+    const [m] = await db.select().from(workspaceMembers).where(and(eq(workspaceMembers.workspaceId, c.ws.id), eq(workspaceMembers.userId, u!.id))).limit(1);
     if (m) return { ok: false, error: "They already have access." };
-    await db.insert(workspaceMembers).values({ workspaceId: c.ws.id, userId: u.id, role: "member" }).onConflictDoNothing();
+    await db.insert(workspaceMembers).values({ workspaceId: c.ws.id, userId: u!.id, role: "member" }).onConflictDoNothing();
   } else {
     await db.insert(invitations).values({ workspaceId: c.ws.id, email }).onConflictDoNothing();
   }
@@ -45,9 +48,9 @@ export async function inviteMember(input: unknown): Promise<Result> {
   await sendEmail(
     email,
     `${c.me.name || c.me.email} shared "${c.ws.name}" with you`,
-    u
+    addedNow
       ? `<p>${c.me.name || c.me.email} shared their Money Tracker ("${c.ws.name}") with you.</p><p><a href="${base}/login">Sign in</a> and switch to it from the account menu.</p>`
-      : `<p>${c.me.name || c.me.email} invited you to their Money Tracker ("${c.ws.name}").</p><p><a href="${base}/signup">Create your account</a> with this email (${email}) to get access.</p>`,
+      : `<p>${c.me.name || c.me.email} invited you to their Money Tracker ("${c.ws.name}").</p><p><a href="${base}/signup">Create your account</a> with this email (${email}) and confirm it — the shared tracker appears once your address is verified.</p>`,
   );
   revalidatePath("/");
   return { ok: true };

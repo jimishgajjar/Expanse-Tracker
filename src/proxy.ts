@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { SESSION_COOKIE } from "@/lib/auth-constants";
 
-const PUBLIC = ["/login", "/signup", "/forgot", "/reset"];
+const PUBLIC = ["/login", "/signup", "/forgot", "/reset", "/verify"];
 
 // Optimistic gate: anything without a session cookie is bounced to /login.
 // The real session check happens in the page (getCurrentUser).

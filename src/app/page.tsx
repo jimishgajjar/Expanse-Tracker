@@ -76,6 +76,7 @@ export default async function Page({
       workspaceName={activeWorkspace?.name ?? "Tracker"}
       isOwner={activeWorkspace?.ownerId === user.id}
       currentUserId={user.id}
+      emailVerified={!!user.emailVerifiedAt}
       initialTab={initialTab}
     />
   );

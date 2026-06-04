@@ -10,10 +10,13 @@ import { passwordResets, users, workspaceMembers, workspaces } from "./db/schema
 import { hashPassword } from "./password";
 import { createSession } from "./session";
 import { sendEmail } from "./email";
+import { rateLimit } from "./rate-limit";
 
 export async function requestPasswordReset(_prev: string | undefined, formData: FormData): Promise<string> {
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   if (email) {
+    const limited = await rateLimit(`reset:${email}`, 5, 15 * 60 * 1000);
+    if (!limited.ok) return "sent"; // silently throttle without revealing anything
     const db = await getDb();
     const [u] = await db.select().from(users).where(eq(users.email, email)).limit(1);
     if (u) {

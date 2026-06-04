@@ -1,13 +1,16 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { z } from "zod";
 import { eq } from "drizzle-orm";
 import { getDb } from "./db";
-import { invitations, users, workspaceMembers, workspaces } from "./db/schema";
+import { users, workspaceMembers, workspaces } from "./db/schema";
 import { hashPassword, verifyPassword } from "./password";
 import { createSession, destroySession, getCurrentUser } from "./session";
 import { seed } from "./db/seed";
+import { sendVerificationEmail } from "./verify";
+import { rateLimit, clientIp, retryMessage } from "./rate-limit";
 
 const emailSchema = z.string().trim().email("Enter a valid email");
 const passwordSchema = z.string().min(8, "Password must be at least 8 characters");
@@ -28,6 +31,9 @@ export async function signup(_prev: string | undefined, formData: FormData): Pro
   const email = emailP.data.toLowerCase();
   const name = String(formData.get("name") ?? "").trim();
 
+  const limited = await rateLimit(`signup:${clientIp(await headers())}`, 10, 60 * 60 * 1000);
+  if (!limited.ok) return retryMessage(limited.retryAfterSec);
+
   const db = await getDb();
   const existing = await db.select({ id: users.id }).from(users).where(eq(users.email, email)).limit(1);
   if (existing.length) return "An account with this email already exists.";
@@ -41,12 +47,9 @@ export async function signup(_prev: string | undefined, formData: FormData): Pro
   await db.insert(workspaceMembers).values({ workspaceId: w.id, userId: u.id, role: "owner" });
   await seed(db, w.id); // default accounts + categories (no sample transactions)
 
-  // Auto-join any workspaces this email was invited to.
-  const invites = await db.select().from(invitations).where(eq(invitations.email, email));
-  for (const inv of invites) {
-    await db.insert(workspaceMembers).values({ workspaceId: inv.workspaceId, userId: u.id, role: "member" }).onConflictDoNothing();
-  }
-  await db.delete(invitations).where(eq(invitations.email, email));
+  // Shared access is gated on email verification: any pending invitations for
+  // this address are accepted only after the link is clicked (see verifyEmailToken).
+  await sendVerificationEmail(u.id, email, name);
 
   await createSession(u.id, w.id);
   redirect("/");
@@ -56,6 +59,9 @@ export async function login(_prev: string | undefined, formData: FormData): Prom
   const emailP = emailSchema.safeParse(formData.get("email"));
   if (!emailP.success) return "Incorrect email or password.";
   const password = String(formData.get("password") ?? "");
+
+  const limited = await rateLimit(`login:${emailP.data.toLowerCase()}`, 8, 10 * 60 * 1000);
+  if (!limited.ok) return retryMessage(limited.retryAfterSec);
 
   const db = await getDb();
   const [u] = await db.select().from(users).where(eq(users.email, emailP.data.toLowerCase())).limit(1);
@@ -80,4 +86,14 @@ export async function changePassword(_prev: string | undefined, formData: FormDa
   const db = await getDb();
   await db.update(users).set({ passwordHash: hashPassword(nextP.data) }).where(eq(users.id, user.id));
   return "ok";
+}
+
+export async function resendVerification(): Promise<{ ok: boolean; error?: string }> {
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, error: "You're not signed in." };
+  if (user.emailVerifiedAt) return { ok: true };
+  const limited = await rateLimit(`resend:${user.id}`, 3, 15 * 60 * 1000);
+  if (!limited.ok) return { ok: false, error: retryMessage(limited.retryAfterSec) };
+  await sendVerificationEmail(user.id, user.email, user.name);
+  return { ok: true };
 }

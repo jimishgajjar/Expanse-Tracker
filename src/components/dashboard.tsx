@@ -11,6 +11,7 @@ import { CategoryManager } from "@/components/category-manager";
 import { RecurringManager } from "@/components/recurring-manager";
 import { MembersManager } from "@/components/members-manager";
 import { WorkspaceSwitcher } from "@/components/workspace-switcher";
+import { VerifyBanner } from "@/components/verify-banner";
 import { TransactionDialog } from "@/components/transaction-dialog";
 import { PeriodBar } from "@/components/period-bar";
 import { OverviewTab } from "@/components/overview-tab";
@@ -48,6 +49,7 @@ export function Dashboard({
   workspaceName,
   isOwner,
   currentUserId,
+  emailVerified,
   initialTab,
 }: {
   accounts: AccountDTO[];
@@ -75,6 +77,7 @@ export function Dashboard({
   workspaceName: string;
   isOwner: boolean;
   currentUserId: string;
+  emailVerified: boolean;
   initialTab: Tab;
 }) {
   const [tab, setTab] = useState<Tab>(initialTab);
@@ -93,6 +96,7 @@ export function Dashboard({
   return (
     <SettingsProvider currency={currency} locale={locale}>
       <div className="mx-auto max-w-6xl space-y-4 px-3 py-5 sm:space-y-5 sm:px-6 sm:py-6">
+        {!emailVerified && <VerifyBanner email={userEmail} />}
         <header className="flex flex-wrap items-center gap-2 sm:gap-3">
           <div className="mr-auto flex items-center gap-2.5">
             <div>
