@@ -110,6 +110,30 @@ export async function processRecurring(): Promise<void> {
   }
 }
 
+/** Materialise every due recurring rule across all workspaces — for the cron job. */
+export async function processAllRecurring(): Promise<number> {
+  const db = await getDb();
+  const rules = await db.select().from(recurring);
+  if (!rules.length) return 0;
+  const today = todayISO();
+  let created = 0;
+  for (const r of rules) {
+    let next = r.nextDate;
+    const toCreate: (typeof transactions.$inferInsert)[] = [];
+    let guard = 0;
+    while (next <= today && guard++ < 500) {
+      toCreate.push({ workspaceId: r.workspaceId, type: r.type, amount: r.amount, date: next, note: r.note, accountId: r.accountId, categoryId: r.categoryId });
+      next = advanceDate(next, r.frequency);
+    }
+    if (toCreate.length) {
+      await db.insert(transactions).values(toCreate);
+      await db.update(recurring).set({ nextDate: next }).where(eq(recurring.id, r.id));
+      created += toCreate.length;
+    }
+  }
+  return created;
+}
+
 export async function getRecurring(): Promise<RecurringDTO[]> {
   const wid = await getActiveWorkspaceId();
   if (!wid) return [];
