@@ -48,9 +48,10 @@ On first load you'll be asked to sign in. A demo account with sample data is see
 ## Deploy to Vercel
 
 1. Push this repo to GitHub and **Import** it at <https://vercel.com/new> (Next.js is auto-detected).
-2. Add an Environment Variable **`DATABASE_URL`** = your Neon pooled connection string. (Optionally `RESEND_API_KEY` to send invite & password-reset emails, and `APP_URL` for the links inside them.)
+2. Add an Environment Variable **`DATABASE_URL`** = your Neon pooled connection string. (Optionally `RESEND_API_KEY` + `APP_URL` to send verification / invite / reset emails, and `CRON_SECRET` to protect the recurring-transactions cron.)
    - Tip: Vercel's **Neon** integration (Storage tab) can provision the database and set this for you.
 3. Run migrations against the production database once — locally with the prod `DATABASE_URL`, via `npm run db:migrate`. Deploy.
+   - The daily recurring-transactions cron in `vercel.json` is picked up automatically.
 
 ## Features
 
@@ -64,11 +65,13 @@ On first load you'll be asked to sign in. A demo account with sample data is see
 - **Personal trackers** — every user gets their own private workspace; accounts, categories, transactions, budgets and settings are fully isolated per tracker.
 - **Undo** — deleting a transaction shows an Undo toast to restore it (deletes are optimistic — the row vanishes instantly).
 - **Account transfers** — move money between accounts (a 3rd type in the Add dialog) without affecting income/expense totals.
-- **Recurring transactions** — schedule weekly/monthly/yearly rules that auto-create transactions on load.
+- **Recurring transactions** — schedule weekly/monthly/yearly rules that auto-create transactions on load, with a daily **Vercel Cron** backstop (`/api/cron/recurring`) so they post even when nobody opens the app.
 - **CSV / Excel import** — bring data in via Settings → Data (accounts & categories created by name).
 - **Account detail** — click any account card to see its stats and activity.
-- **Tested** — `npm test` runs Vitest unit tests for the date-range, money, and bucketing logic.
-- **Accounts & sharing** — email/password signup & login, change password, and forgot-password reset via email (Resend, or logged to the console in dev). **Invite people by email** to share *your* tracker — they sign in, switch to it from the header, and can edit everything. The owner manages members & invites; members can leave. Invite someone who hasn't signed up yet and they're auto-joined when they create their account.
+- **Tested** — `npm test` runs Vitest for the date-range, money and bucketing logic, plus **workspace-isolation** integration tests (no cross-tenant reads/writes; view-only members can't write).
+- **Accounts & sharing** — email/password signup & login, change password, forgot-password reset, and **email verification** (Resend, or logged to the console in dev). **Invite people by email** as **editors or view-only**; they sign in, switch to the shared tracker from the header, and (if editors) can change everything. Owners manage members & invites and can **transfer ownership**; members can leave. Pending invites are accepted only once the invitee **verifies their email**, so nobody claims a shared tracker for an address they don't own.
+- **Security** — scrypt-hashed passwords, httpOnly session cookies, **rate-limited** login / signup / reset, and a **delete-account** option (Settings) that removes your account and personal tracker.
+- **Shared-tracker attribution** — transactions record who created them; the list shows the author when a tracker has more than one member.
 - **Pagination** — the transactions list is paginated with a **rows-per-page** selector (10 / 25 / 50 / 100).
 - **Export to Excel** — one click downloads an `.xlsx` of all data (Transactions / Accounts / Categories sheets) via `/api/export`.
 - **Currency setting** — change the display currency in-app (Settings ⚙); stored in the database and applied everywhere.
