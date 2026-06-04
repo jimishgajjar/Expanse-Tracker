@@ -37,7 +37,7 @@ export function Dashboard({
   netWorth,
   comparison,
   recurring,
-  authEnabled,
+  userEmail,
   initialTab,
 }: {
   accounts: AccountDTO[];
@@ -57,7 +57,7 @@ export function Dashboard({
   netWorth: NetWorthPoint[];
   comparison: Comparison;
   recurring: RecurringDTO[];
-  authEnabled: boolean;
+  userEmail: string;
   initialTab: Tab;
 }) {
   const [tab, setTab] = useState<Tab>(initialTab);
@@ -101,7 +101,7 @@ export function Dashboard({
           />
           <SettingsDialog
             currencyCode={currencyCode}
-            authEnabled={authEnabled}
+            userEmail={userEmail}
             trigger={<Button variant="ghost" size="icon" aria-label="Settings"><Settings className="size-4" /></Button>}
           />
           <ThemeToggle />

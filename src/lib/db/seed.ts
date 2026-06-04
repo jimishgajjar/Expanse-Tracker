@@ -1,6 +1,7 @@
 import type { NeonHttpDatabase } from "drizzle-orm/neon-http";
 import * as schema from "./schema";
-import { accounts, categories, transactions } from "./schema";
+import { accounts, categories, transactions, users } from "./schema";
+import { hashPassword } from "../password";
 
 type DB = NeonHttpDatabase<typeof schema>;
 
@@ -71,4 +72,9 @@ export async function seed(db: DB, opts: { samples?: boolean } = {}) {
 export async function maybeSeed(db: DB) {
   const existing = await db.select({ id: accounts.id }).from(accounts).limit(1);
   if (existing.length === 0) await seed(db, { samples: true });
+  const hasUser = await db.select({ id: users.id }).from(users).limit(1);
+  if (hasUser.length === 0) {
+    // Local demo login: demo@demo.com / password
+    await db.insert(users).values({ email: "demo@demo.com", name: "Demo", passwordHash: hashPassword("password") });
+  }
 }

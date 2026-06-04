@@ -12,16 +12,17 @@ import { Label } from "@/components/ui/label";
 import { updateSettings } from "@/lib/actions";
 import { logout } from "@/lib/auth";
 import { ImportForm } from "@/components/import-form";
+import { ChangePasswordForm } from "@/components/change-password-form";
 import { CURRENCIES } from "@/lib/currencies";
 
 export function SettingsDialog({
   trigger,
   currencyCode,
-  authEnabled,
+  userEmail,
 }: {
   trigger: ReactElement;
   currencyCode: string;
-  authEnabled: boolean;
+  userEmail: string;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -72,11 +73,14 @@ export function SettingsDialog({
           <ImportForm />
           <p className="text-xs text-muted-foreground">Import expects the same columns as Export (Date, Type, Amount, Category, Account, Note).</p>
         </div>
-        {authEnabled && (
-          <form action={logout} className="border-t pt-3">
-            <Button type="submit" variant="outline" size="sm" className="w-full">Sign out</Button>
+        <div className="space-y-2 border-t pt-3">
+          <Label>Account</Label>
+          <p className="text-xs text-muted-foreground">Signed in as <span className="font-medium text-foreground">{userEmail}</span></p>
+          <ChangePasswordForm />
+          <form action={logout}>
+            <Button type="submit" variant="ghost" size="sm" className="w-full text-muted-foreground">Sign out</Button>
           </form>
-        )}
+        </div>
         <DialogFooter className="mt-2">
           <DialogClose render={<Button type="button" variant="outline" />}>Cancel</DialogClose>
           <Button onClick={save} disabled={pending}>{pending ? "Saving…" : "Save"}</Button>

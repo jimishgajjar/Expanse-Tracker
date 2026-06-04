@@ -5,7 +5,8 @@ import {
   getNetWorthSeries, getRangeTotals, getRecurring, getSettings, getTransactionsInRange, getTransfersInRange,
   processRecurring,
 } from "@/lib/queries";
-import { isAuthEnabled } from "@/lib/auth-token";
+import { getCurrentUser } from "@/lib/session";
+import { redirect } from "next/navigation";
 
 // DB-backed dashboard: always render with fresh data (Cache Components is off).
 export const dynamic = "force-dynamic";
@@ -15,6 +16,9 @@ export default async function Page({
 }: {
   searchParams: Promise<{ range?: string; date?: string; tab?: string }>;
 }) {
+  const user = await getCurrentUser();
+  if (!user) redirect("/login");
+
   const sp = await searchParams;
   const rangeType = (RANGE_TYPES.includes(sp.range as RangeType) ? sp.range : "month") as RangeType;
   const anchor = /^\d{4}-\d{2}-\d{2}$/.test(sp.date ?? "") ? sp.date! : todayISO();
@@ -59,7 +63,7 @@ export default async function Page({
       netWorth={netWorth}
       comparison={comparison}
       recurring={recurring}
-      authEnabled={isAuthEnabled()}
+      userEmail={user.email}
       initialTab={initialTab}
     />
   );

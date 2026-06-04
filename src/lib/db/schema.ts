@@ -99,6 +99,28 @@ export const recurring = pgTable("recurring", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+// ── auth (Phase A) ───────────────────────────────────────
+export const users = pgTable("users", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  email: text("email").notNull().unique(),
+  name: text("name").notNull().default(""),
+  passwordHash: text("password_hash").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const sessions = pgTable("sessions", {
+  id: text("id").primaryKey(), // random token
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const passwordResets = pgTable("password_resets", {
+  id: text("id").primaryKey(), // random token
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  expiresAt: timestamp("expires_at").notNull(),
+});
+
 export type Account = typeof accounts.$inferSelect;
 export type Category = typeof categories.$inferSelect;
 export type Transaction = typeof transactions.$inferSelect;
@@ -106,3 +128,4 @@ export type AppSettings = typeof appSettings.$inferSelect;
 export type Budget = typeof budgets.$inferSelect;
 export type Transfer = typeof transfers.$inferSelect;
 export type Recurring = typeof recurring.$inferSelect;
+export type User = typeof users.$inferSelect;

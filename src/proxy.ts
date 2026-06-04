@@ -1,19 +1,18 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { AUTH_COOKIE, authToken } from "@/lib/auth-token";
+import { SESSION_COOKIE } from "@/lib/auth-constants";
 
-// Next.js 16 "Proxy" (formerly Middleware). Gates the whole app behind
-// APP_PASSWORD when set; a no-op when it isn't.
+const PUBLIC = ["/login", "/signup", "/forgot", "/reset"];
+
+// Optimistic gate: anything without a session cookie is bounced to /login.
+// The real session check happens in the page (getCurrentUser).
 export function proxy(req: NextRequest) {
-  const token = authToken();
-  if (!token) return NextResponse.next();
-
   const { pathname } = req.nextUrl;
-  if (pathname.startsWith("/login")) return NextResponse.next();
-  if (req.cookies.get(AUTH_COOKIE)?.value === token) return NextResponse.next();
+  if (PUBLIC.some((p) => pathname.startsWith(p))) return NextResponse.next();
+  if (req.cookies.get(SESSION_COOKIE)?.value) return NextResponse.next();
 
   const url = req.nextUrl.clone();
   url.pathname = "/login";
-  url.searchParams.set("next", pathname);
+  if (pathname !== "/") url.searchParams.set("next", pathname);
   return NextResponse.redirect(url);
 }
 
