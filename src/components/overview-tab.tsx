@@ -22,6 +22,7 @@ export function OverviewTab({
   rangeStart,
   rangeEnd,
   comparison,
+  canEdit = true,
 }: {
   accounts: AccountDTO[];
   transactions: TransactionDTO[];
@@ -33,6 +34,7 @@ export function OverviewTab({
   rangeStart: string;
   rangeEnd: string;
   comparison?: { prevIncome: number; prevExpense: number } | null;
+  canEdit?: boolean;
 }) {
   const income = useMemo(() => transactions.filter((t) => t.type === "income").reduce((s, t) => s + t.amount, 0), [transactions]);
   const expense = useMemo(() => transactions.filter((t) => t.type === "expense").reduce((s, t) => s + t.amount, 0), [transactions]);
@@ -43,7 +45,7 @@ export function OverviewTab({
 
   return (
     <div className="space-y-5">
-      {isFresh && (
+      {isFresh && canEdit && (
         <div className="flex flex-col items-start gap-3 rounded-xl border border-primary/20 bg-primary/5 p-4 sm:flex-row sm:items-center">
           <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary"><Sparkles className="size-5" /></span>
           <div className="min-w-0 flex-1">
@@ -66,7 +68,7 @@ export function OverviewTab({
         accountsCount={accounts.length}
         comparison={comparison}
       />
-      <AccountsSection accounts={accounts} transactions={transactions} transfers={transfers} categories={categories} />
+      <AccountsSection accounts={accounts} transactions={transactions} transfers={transfers} categories={categories} canEdit={canEdit} />
       <div className="grid gap-4 lg:grid-cols-2">
         <CategoryDonut transactions={transactions} />
         <TrendChart transactions={transactions} rangeType={rangeType} start={rangeStart} end={rangeEnd} />

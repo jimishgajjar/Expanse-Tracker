@@ -35,3 +35,8 @@ export const getActiveWorkspace = cache(async (): Promise<WorkspaceSummary | nul
   if (!id) return null;
   return (await getUserWorkspaces()).find((w) => w.id === id) ?? null;
 });
+
+/** The current user's role in the active workspace ("owner" | "member" | "viewer"). */
+export const getActiveRole = cache(async (): Promise<string | null> => {
+  return (await getActiveWorkspace())?.role ?? null;
+});

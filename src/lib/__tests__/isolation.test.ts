@@ -7,19 +7,21 @@ import * as schema from "@/lib/db/schema";
 
 // Shared mutable state the mocks read from (vi.hoisted runs before imports).
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const h = vi.hoisted(() => ({ db: null as any, activeWs: null as string | null }));
+const h = vi.hoisted(() => ({ db: null as any, activeWs: null as string | null, role: "owner" as string }));
 
 vi.mock("@/lib/db", () => ({ getDb: async () => h.db }));
 vi.mock("next/cache", () => ({ revalidatePath: () => {} }));
+vi.mock("@/lib/session", () => ({ getCurrentUser: async () => ({ id: "tester" }) }));
 vi.mock("@/lib/workspace", () => ({
   getActiveWorkspaceId: async () => h.activeWs,
+  getActiveRole: async () => h.role,
   getUserWorkspaces: async () => [],
   getActiveWorkspace: async () => null,
 }));
 
 // Imported under the mocks above.
 import { getAccountsWithBalances, getTransactionsInRange } from "@/lib/queries";
-import { deleteTransaction, updateTransaction } from "@/lib/actions";
+import { createTransaction, deleteTransaction, updateTransaction } from "@/lib/actions";
 
 const ids = { wsA: "", wsB: "", txA: "", txB: "" };
 
@@ -82,7 +84,18 @@ describe("workspace isolation", () => {
 
   it("a delete cannot remove another workspace's row", async () => {
     h.activeWs = ids.wsA;
+    h.role = "owner";
     await deleteTransaction(ids.txB);
     expect(await txAmount(ids.txB)).toBeDefined(); // B's transaction still exists
+  });
+
+  it("a view-only member is blocked from writing (server-side)", async () => {
+    h.activeWs = ids.wsA;
+    const before = (await h.db.select().from(schema.transactions)).length;
+    h.role = "viewer";
+    const res = await createTransaction({ type: "expense", amount: 5, date: "2026-06-02", accountId: "x", note: "nope" });
+    expect(res.ok).toBe(false);
+    expect((await h.db.select().from(schema.transactions)).length).toBe(before); // nothing inserted
+    h.role = "owner";
   });
 });

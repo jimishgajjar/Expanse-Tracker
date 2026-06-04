@@ -3,13 +3,19 @@
 import { useState, useTransition, type ReactElement } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { LogOut, Plus, Trash2, UserRound } from "lucide-react";
+import { Crown, LogOut, Plus, Trash2, UserRound } from "lucide-react";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { inviteMember, leaveWorkspace, removeInvite, removeMember } from "@/lib/sharing";
+import { inviteMember, leaveWorkspace, removeInvite, removeMember, transferOwnership } from "@/lib/sharing";
 import type { MemberDTO } from "@/lib/queries";
+
+function RoleBadge({ role }: { role: string }) {
+  if (role === "owner") return <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Owner</span>;
+  if (role === "viewer") return <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-400">Viewer</span>;
+  return null;
+}
 
 export function MembersManager({
   trigger,
@@ -27,7 +33,6 @@ export function MembersManager({
   isOwner: boolean;
 }) {
   const router = useRouter();
-  // Local copies so the open sheet reflects invites/removals instantly.
   const [members, setMembers] = useState(initialMembers);
   const [invites, setInvites] = useState(initialInvites);
 
@@ -44,6 +49,10 @@ export function MembersManager({
     setInvites((i) => i.filter((x) => x !== email));
     router.refresh();
   }
+  function onTransferred(userId: string) {
+    setMembers((m) => m.map((x) => (x.id === userId ? { ...x, role: "owner" } : x.role === "owner" ? { ...x, role: "member" } : x)));
+    router.refresh();
+  }
 
   return (
     <Sheet>
@@ -53,7 +62,7 @@ export function MembersManager({
           <SheetTitle>Sharing — {workspaceName}</SheetTitle>
           <SheetDescription>
             {isOwner
-              ? "People you add can sign in and access & edit everything in this tracker."
+              ? "Invite people as editors or view-only. Everyone signs in with their own account."
               : "You have shared access to this tracker."}
           </SheetDescription>
         </SheetHeader>
@@ -63,7 +72,7 @@ export function MembersManager({
             <div className="mb-2 text-xs font-medium text-muted-foreground">Members · {members.length}</div>
             <div className="space-y-1.5">
               {members.map((m) => (
-                <MemberRow key={m.id} member={m} isMe={m.email === currentEmail} canRemove={isOwner} onRemoved={onMemberRemoved} />
+                <MemberRow key={m.id} member={m} isMe={m.email === currentEmail} canManage={isOwner} onRemoved={onMemberRemoved} onTransferred={onTransferred} />
               ))}
             </div>
           </div>
@@ -83,11 +92,12 @@ export function MembersManager({
 function InviteForm({ onInvited }: { onInvited: (member: MemberDTO | null, invite: string | null) => void }) {
   const [pending, start] = useTransition();
   const [email, setEmail] = useState("");
+  const [role, setRole] = useState<"member" | "viewer">("member");
   function add(e: React.FormEvent) {
     e.preventDefault();
     if (!email.trim()) return;
     start(async () => {
-      const res = await inviteMember({ email });
+      const res = await inviteMember({ email, role });
       if (res.ok) {
         toast.success(res.member ? "Member added" : "Invitation sent");
         setEmail("");
@@ -96,35 +106,72 @@ function InviteForm({ onInvited }: { onInvited: (member: MemberDTO | null, invit
     });
   }
   return (
-    <form onSubmit={add} className="flex gap-2">
-      <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="person@email.com" />
-      <Button type="submit" disabled={pending}><Plus className="size-4" /> Invite</Button>
+    <form onSubmit={add} className="space-y-2">
+      <div className="flex gap-2">
+        <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="person@email.com" />
+        <Button type="submit" disabled={pending}><Plus className="size-4" /> Invite</Button>
+      </div>
+      <label className="flex items-center gap-2 text-xs text-muted-foreground">
+        Access:
+        <select
+          value={role}
+          onChange={(e) => setRole(e.target.value as "member" | "viewer")}
+          className="rounded-md border border-input bg-background px-2 py-1 text-foreground"
+        >
+          <option value="member">Can edit</option>
+          <option value="viewer">View only</option>
+        </select>
+      </label>
     </form>
   );
 }
 
-function MemberRow({ member, isMe, canRemove, onRemoved }: { member: MemberDTO; isMe: boolean; canRemove: boolean; onRemoved: (id: string) => void }) {
+function MemberRow({
+  member, isMe, canManage, onRemoved, onTransferred,
+}: {
+  member: MemberDTO; isMe: boolean; canManage: boolean;
+  onRemoved: (id: string) => void; onTransferred: (id: string) => void;
+}) {
   async function remove() {
     const res = await removeMember(member.id);
     if (res.ok) { toast.success("Member removed"); onRemoved(member.id); }
+    else toast.error(res.error);
+  }
+  async function makeOwner() {
+    const res = await transferOwnership(member.id);
+    if (res.ok) { toast.success(`${member.name || member.email} is now the owner`); onTransferred(member.id); }
     else toast.error(res.error);
   }
   return (
     <div className="flex items-center gap-2.5 rounded-lg border px-2.5 py-2">
       <span className="grid size-8 shrink-0 place-items-center rounded-full bg-muted"><UserRound className="size-4" /></span>
       <div className="min-w-0 flex-1">
-        <div className="truncate text-sm font-medium">{member.name || member.email}</div>
+        <div className="flex items-center gap-1.5">
+          <span className="truncate text-sm font-medium">{member.name || member.email}</span>
+          <RoleBadge role={member.role} />
+        </div>
         {member.name && <div className="truncate text-xs text-muted-foreground">{member.email}</div>}
       </div>
       {isMe ? (
         <span className="text-xs text-muted-foreground">You</span>
-      ) : canRemove ? (
-        <ConfirmDialog
-          trigger={<Button size="icon-sm" variant="ghost" aria-label="Remove member"><Trash2 className="size-3.5" /></Button>}
-          title={`Remove ${member.email}?`}
-          description="They will lose access to this tracker (their own account is untouched)."
-          onConfirm={remove}
-        />
+      ) : canManage ? (
+        <>
+          {member.role !== "owner" && (
+            <ConfirmDialog
+              trigger={<Button size="icon-sm" variant="ghost" aria-label="Make owner"><Crown className="size-3.5" /></Button>}
+              title={`Make ${member.email} the owner?`}
+              description="They'll get full control of this tracker, and you'll become a regular member. This can't be undone by you."
+              confirmLabel="Transfer ownership"
+              onConfirm={makeOwner}
+            />
+          )}
+          <ConfirmDialog
+            trigger={<Button size="icon-sm" variant="ghost" aria-label="Remove member"><Trash2 className="size-3.5" /></Button>}
+            title={`Remove ${member.email}?`}
+            description="They will lose access to this tracker (their own account is untouched)."
+            onConfirm={remove}
+          />
+        </>
       ) : null}
     </div>
   );

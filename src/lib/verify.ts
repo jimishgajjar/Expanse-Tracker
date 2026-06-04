@@ -40,7 +40,7 @@ export async function acceptPendingInvites(userId: string, email: string): Promi
   const addr = email.toLowerCase();
   const invites = await db.select().from(invitations).where(eq(invitations.email, addr));
   for (const inv of invites) {
-    await db.insert(workspaceMembers).values({ workspaceId: inv.workspaceId, userId, role: "member" }).onConflictDoNothing();
+    await db.insert(workspaceMembers).values({ workspaceId: inv.workspaceId, userId, role: inv.role }).onConflictDoNothing();
   }
   if (invites.length) await db.delete(invitations).where(eq(invitations.email, addr));
   return invites.length;

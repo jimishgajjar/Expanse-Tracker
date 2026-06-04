@@ -50,6 +50,7 @@ export function Dashboard({
   isOwner,
   currentUserId,
   emailVerified,
+  canEdit,
   initialTab,
 }: {
   accounts: AccountDTO[];
@@ -78,9 +79,11 @@ export function Dashboard({
   isOwner: boolean;
   currentUserId: string;
   emailVerified: boolean;
+  canEdit: boolean;
   initialTab: Tab;
 }) {
   const [tab, setTab] = useState<Tab>(initialTab);
+  const showAuthors = members.length > 1;
 
   // Persist the active tab in the URL without a server round-trip.
   function changeTab(t: Tab) {
@@ -106,17 +109,24 @@ export function Dashboard({
             {workspaces.length > 1 && (
               <WorkspaceSwitcher workspaces={workspaces} activeId={activeWorkspaceId} currentUserId={currentUserId} />
             )}
+            {!canEdit && (
+              <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-medium text-amber-600 dark:text-amber-400">View only</span>
+            )}
           </div>
-          <CategoryManager
-            categories={categories}
-            trigger={<Button variant="outline" size="sm" aria-label="Categories"><Tags className="size-4" /><span className="hidden sm:inline">Categories</span></Button>}
-          />
-          <RecurringManager
-            recurring={recurring}
-            accounts={accounts}
-            categories={categories}
-            trigger={<Button variant="outline" size="sm" aria-label="Recurring"><Repeat className="size-4" /><span className="hidden sm:inline">Recurring</span></Button>}
-          />
+          {canEdit && (
+            <CategoryManager
+              categories={categories}
+              trigger={<Button variant="outline" size="sm" aria-label="Categories"><Tags className="size-4" /><span className="hidden sm:inline">Categories</span></Button>}
+            />
+          )}
+          {canEdit && (
+            <RecurringManager
+              recurring={recurring}
+              accounts={accounts}
+              categories={categories}
+              trigger={<Button variant="outline" size="sm" aria-label="Recurring"><Repeat className="size-4" /><span className="hidden sm:inline">Recurring</span></Button>}
+            />
+          )}
           <MembersManager
             members={members}
             invites={invites}
@@ -128,11 +138,13 @@ export function Dashboard({
           <Button variant="outline" size="sm" aria-label="Export to Excel" onClick={() => window.location.assign("/api/export")}>
             <Download className="size-4" /><span className="hidden sm:inline">Export</span>
           </Button>
-          <TransactionDialog
-            accounts={accounts}
-            categories={categories}
-            trigger={<Button size="sm"><Plus className="size-4" /> Add<span className="hidden sm:inline"> transaction</span></Button>}
-          />
+          {canEdit && (
+            <TransactionDialog
+              accounts={accounts}
+              categories={categories}
+              trigger={<Button size="sm"><Plus className="size-4" /> Add<span className="hidden sm:inline"> transaction</span></Button>}
+            />
+          )}
           <SettingsDialog
             currencyCode={currencyCode}
             userEmail={userEmail}
@@ -163,10 +175,11 @@ export function Dashboard({
             rangeStart={rangeStart}
             rangeEnd={rangeEnd}
             comparison={comparison}
+            canEdit={canEdit}
           />
         )}
         {tab === "transactions" && (
-          <TransactionsTab transactions={transactions} transfers={transfers} accounts={accounts} categories={categories} />
+          <TransactionsTab transactions={transactions} transfers={transfers} accounts={accounts} categories={categories} canEdit={canEdit} showAuthors={showAuthors} />
         )}
         {tab === "analytics" && (
           <AnalyticsTab

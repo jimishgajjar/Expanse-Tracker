@@ -19,11 +19,13 @@ export function AccountsSection({
   transactions,
   transfers,
   categories,
+  canEdit = true,
 }: {
   accounts: AccountDTO[];
   transactions: TransactionDTO[];
   transfers: TransferDTO[];
   categories: CategoryDTO[];
+  canEdit?: boolean;
 }) {
   const router = useRouter();
   const { balanceMoney } = useFormat();
@@ -42,7 +44,7 @@ export function AccountsSection({
           All accounts
           <span className="font-mono text-base text-foreground">{balanceMoney(total)}</span>
         </h2>
-        <AccountDialog trigger={<Button variant="outline" size="sm"><Plus className="size-4" /> Add account</Button>} />
+        {canEdit && <AccountDialog trigger={<Button variant="outline" size="sm"><Plus className="size-4" /> Add account</Button>} />}
       </div>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {accounts.map((a) => (
@@ -70,15 +72,17 @@ export function AccountsSection({
                 </button>
               }
             />
-            <div className="absolute top-2 right-2 flex opacity-100 transition sm:opacity-0 sm:group-hover:opacity-100">
-              <AccountDialog account={a} trigger={<Button size="icon-sm" variant="ghost" aria-label="Edit account"><Pencil className="size-3.5" /></Button>} />
-              <ConfirmDialog
-                trigger={<Button size="icon-sm" variant="ghost" aria-label="Delete account"><Trash2 className="size-3.5" /></Button>}
-                title={`Delete "${a.name}"?`}
-                description="Its transactions and transfers will be deleted too. This can't be undone."
-                onConfirm={() => remove(a.id)}
-              />
-            </div>
+            {canEdit && (
+              <div className="absolute top-2 right-2 flex opacity-100 transition sm:opacity-0 sm:group-hover:opacity-100">
+                <AccountDialog account={a} trigger={<Button size="icon-sm" variant="ghost" aria-label="Edit account"><Pencil className="size-3.5" /></Button>} />
+                <ConfirmDialog
+                  trigger={<Button size="icon-sm" variant="ghost" aria-label="Delete account"><Trash2 className="size-3.5" /></Button>}
+                  title={`Delete "${a.name}"?`}
+                  description="Its transactions and transfers will be deleted too. This can't be undone."
+                  onConfirm={() => remove(a.id)}
+                />
+              </div>
+            )}
           </Card>
         ))}
         {accounts.length === 0 && <p className="text-sm text-muted-foreground">No accounts yet — add one to get started.</p>}

@@ -6,7 +6,7 @@ import { and, eq } from "drizzle-orm";
 import { getDb } from "./db";
 import { accounts, appSettings, budgets, categories, recurring, transactions, transfers } from "./db/schema";
 import { findCurrencyByCode } from "./currencies";
-import { getActiveWorkspaceId, getUserWorkspaces } from "./workspace";
+import { getActiveRole, getActiveWorkspaceId, getUserWorkspaces } from "./workspace";
 import { getCurrentUser, setActiveWorkspace } from "./session";
 
 type Result<T = undefined> = { ok: true; data?: T } | { ok: false; error: string };
@@ -16,10 +16,12 @@ function fail(e: unknown): { ok: false; error: string } {
   return { ok: false, error: e instanceof Error ? e.message : "Something went wrong" };
 }
 
-/** Active workspace id, or throw (→ {ok:false}). Every mutation is scoped to it. */
+/** Active workspace id, or throw (→ {ok:false}). Every mutation is scoped to it,
+ *  and view-only members are blocked from writing. */
 async function wid(): Promise<string> {
   const id = await getActiveWorkspaceId();
   if (!id) throw new Error("You're not signed in.");
+  if ((await getActiveRole()) === "viewer") throw new Error("You have view-only access to this tracker.");
   return id;
 }
 
@@ -120,10 +122,12 @@ export async function createTransaction(input: unknown): Promise<Result> {
   try {
     const d = txSchema.parse(input);
     const w = await wid();
+    const me = await getCurrentUser();
     const db = await getDb();
     await db.insert(transactions).values({
       workspaceId: w, type: d.type, amount: String(d.amount), date: d.date,
       note: d.note ?? "", accountId: d.accountId, categoryId: d.categoryId ?? null,
+      createdBy: me?.id ?? null,
     });
     revalidatePath("/");
     return { ok: true };

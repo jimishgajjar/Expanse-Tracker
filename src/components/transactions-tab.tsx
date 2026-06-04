@@ -18,11 +18,15 @@ export function TransactionsTab({
   transfers,
   accounts,
   categories,
+  canEdit = true,
+  showAuthors = false,
 }: {
   transactions: TransactionDTO[];
   transfers: TransferDTO[];
   accounts: AccountDTO[];
   categories: CategoryDTO[];
+  canEdit?: boolean;
+  showAuthors?: boolean;
 }) {
   const [tab, setTab] = useState<Tab>("all");
   const [accountId, setAccountId] = useState("all");
@@ -101,9 +105,9 @@ export function TransactionsTab({
         </div>
 
         {isTransfer ? (
-          <TransferRows transfers={filteredTransfers.slice(start, start + pageSize)} accounts={accounts} />
+          <TransferRows transfers={filteredTransfers.slice(start, start + pageSize)} accounts={accounts} canEdit={canEdit} />
         ) : (
-          <TransactionRows transactions={filteredTx.slice(start, start + pageSize)} accounts={accounts} categories={categories} />
+          <TransactionRows transactions={filteredTx.slice(start, start + pageSize)} accounts={accounts} categories={categories} canEdit={canEdit} showAuthors={showAuthors} />
         )}
 
         {total > 0 && (

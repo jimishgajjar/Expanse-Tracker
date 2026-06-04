@@ -14,10 +14,10 @@ import { useFormat } from "@/components/settings-provider";
 import { cn } from "@/lib/utils";
 import type { AccountDTO, CategoryDTO, TransactionDTO, TransferDTO } from "@/lib/queries";
 
-type Props = { transactions: TransactionDTO[]; accounts: AccountDTO[]; categories: CategoryDTO[] };
+type Props = { transactions: TransactionDTO[]; accounts: AccountDTO[]; categories: CategoryDTO[]; canEdit?: boolean; showAuthors?: boolean };
 
 /** Presentational list: groups the given transactions by date and renders compact rows. */
-export function TransactionRows({ transactions, accounts, categories }: Props) {
+export function TransactionRows({ transactions, accounts, categories, canEdit = true, showAuthors = false }: Props) {
   const router = useRouter();
   const { money } = useFormat();
   const [optimistic, removeOptimistic] = useOptimistic(transactions, (state: TransactionDTO[], id: string) => state.filter((t) => t.id !== id));
@@ -70,7 +70,7 @@ export function TransactionRows({ transactions, accounts, categories }: Props) {
             </div>
             <div className="divide-y overflow-hidden rounded-lg border">
               {rows.map((t) => (
-                <Row key={t.id} t={t} accounts={accounts} categories={categories} onDelete={remove} money={money} />
+                <Row key={t.id} t={t} accounts={accounts} categories={categories} onDelete={remove} money={money} canEdit={canEdit} showAuthors={showAuthors} />
               ))}
             </div>
           </div>
@@ -86,12 +86,16 @@ function Row({
   categories,
   onDelete,
   money,
+  canEdit,
+  showAuthors,
 }: {
   t: TransactionDTO;
   accounts: AccountDTO[];
   categories: CategoryDTO[];
   onDelete: (t: TransactionDTO) => void;
   money: (n: number) => string;
+  canEdit: boolean;
+  showAuthors: boolean;
 }) {
   const isIncome = t.type === "income";
   const color = t.category?.color ?? "#94a3b8";
@@ -104,31 +108,34 @@ function Row({
         <div className="truncate text-[13px] font-medium">{t.note || t.category?.name || "Transaction"}</div>
         <div className="truncate text-[11px] text-muted-foreground">
           {t.category?.name ?? "Uncategorised"} · {t.account?.name ?? "—"}
+          {showAuthors && t.createdByName ? ` · ${t.createdByName}` : ""}
         </div>
       </div>
       <div className={cn("shrink-0 font-mono text-[13px] font-semibold tabular-nums", isIncome ? "text-positive" : "text-negative")}>
         {isIncome ? "+" : "−"}{money(t.amount)}
       </div>
-      <div className="-mr-1 flex shrink-0 opacity-100 transition sm:opacity-0 sm:focus-within:opacity-100 sm:group-hover:opacity-100">
-        <TransactionDialog
-          transaction={t}
-          accounts={accounts}
-          categories={categories}
-          trigger={<Button size="icon-xs" variant="ghost" aria-label="Edit transaction"><Pencil className="size-3" /></Button>}
-        />
-        <ConfirmDialog
-          trigger={<Button size="icon-xs" variant="ghost" aria-label="Delete transaction"><Trash2 className="size-3" /></Button>}
-          title="Delete transaction?"
-          description={`${t.note || t.category?.name || "This transaction"} · ${money(t.amount)}`}
-          onConfirm={() => onDelete(t)}
-        />
-      </div>
+      {canEdit && (
+        <div className="-mr-1 flex shrink-0 opacity-100 transition sm:opacity-0 sm:focus-within:opacity-100 sm:group-hover:opacity-100">
+          <TransactionDialog
+            transaction={t}
+            accounts={accounts}
+            categories={categories}
+            trigger={<Button size="icon-xs" variant="ghost" aria-label="Edit transaction"><Pencil className="size-3" /></Button>}
+          />
+          <ConfirmDialog
+            trigger={<Button size="icon-xs" variant="ghost" aria-label="Delete transaction"><Trash2 className="size-3" /></Button>}
+            title="Delete transaction?"
+            description={`${t.note || t.category?.name || "This transaction"} · ${money(t.amount)}`}
+            onConfirm={() => onDelete(t)}
+          />
+        </div>
+      )}
     </div>
   );
 }
 
 /** Compact list of transfers, grouped by date. */
-export function TransferRows({ transfers, accounts }: { transfers: TransferDTO[]; accounts: AccountDTO[] }) {
+export function TransferRows({ transfers, accounts, canEdit = true }: { transfers: TransferDTO[]; accounts: AccountDTO[]; canEdit?: boolean }) {
   const router = useRouter();
   const { money } = useFormat();
   const nameOf = (id: string) => accounts.find((a) => a.id === id);
@@ -172,14 +179,16 @@ export function TransferRows({ transfers, accounts }: { transfers: TransferDTO[]
                     <div className="truncate text-[11px] text-muted-foreground">{from?.name ?? "—"} → {to?.name ?? "—"}</div>
                   </div>
                   <div className="shrink-0 font-mono text-[13px] font-semibold tabular-nums">{money(t.amount)}</div>
-                  <div className="-mr-1 flex shrink-0 opacity-100 transition sm:opacity-0 sm:group-hover:opacity-100">
-                    <ConfirmDialog
-                      trigger={<Button size="icon-xs" variant="ghost" aria-label="Delete transfer"><Trash2 className="size-3" /></Button>}
-                      title="Delete transfer?"
-                      description={`${from?.name ?? ""} → ${to?.name ?? ""} · ${money(t.amount)}`}
-                      onConfirm={() => remove(t.id)}
-                    />
-                  </div>
+                  {canEdit && (
+                    <div className="-mr-1 flex shrink-0 opacity-100 transition sm:opacity-0 sm:group-hover:opacity-100">
+                      <ConfirmDialog
+                        trigger={<Button size="icon-xs" variant="ghost" aria-label="Delete transfer"><Trash2 className="size-3" /></Button>}
+                        title="Delete transfer?"
+                        description={`${from?.name ?? ""} → ${to?.name ?? ""} · ${money(t.amount)}`}
+                        onConfirm={() => remove(t.id)}
+                      />
+                    </div>
+                  )}
                 </div>
               );
             })}

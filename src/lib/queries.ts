@@ -15,13 +15,14 @@ export type RefDTO = { name: string; icon: string; color: string } | null;
 export type TransactionDTO = {
   id: string; type: "income" | "expense"; amount: number; date: string; note: string;
   accountId: string | null; categoryId: string | null; account: RefDTO; category: RefDTO;
+  createdByName: string | null;
 };
 export type TransferDTO = { id: string; amount: number; date: string; note: string; fromAccountId: string; toAccountId: string };
 export type RecurringDTO = { id: string; type: "income" | "expense"; amount: number; note: string; accountId: string | null; categoryId: string | null; frequency: string; nextDate: string };
 export type SettingsDTO = { currencyCode: string; currency: string; locale: string };
 export type BudgetProgressDTO = { categoryId: string; name: string; icon: string; color: string; budget: number; spent: number };
 export type NetWorthPoint = { key: string; value: number };
-export type MemberDTO = { id: string; email: string; name: string };
+export type MemberDTO = { id: string; email: string; name: string; role: string };
 
 export async function getCategories(): Promise<CategoryDTO[]> {
   const wid = await getActiveWorkspaceId();
@@ -124,13 +125,14 @@ export async function getTransactionsInRange(start: string, end: string): Promis
   const rows = await db.query.transactions.findMany({
     where: and(eq(transactions.workspaceId, wid), gte(transactions.date, start), lt(transactions.date, end)),
     orderBy: [desc(transactions.date), desc(transactions.createdAt)],
-    with: { account: true, category: true },
+    with: { account: true, category: true, creator: true },
   });
   return rows.map((t) => ({
     id: t.id, type: t.type, amount: Number(t.amount), date: t.date, note: t.note,
     accountId: t.accountId, categoryId: t.categoryId,
     account: t.account ? { name: t.account.name, icon: t.account.icon, color: t.account.color } : null,
     category: t.category ? { name: t.category.name, icon: t.category.icon, color: t.category.color } : null,
+    createdByName: t.creator ? (t.creator.name || t.creator.email) : null,
   }));
 }
 
@@ -143,7 +145,7 @@ export async function getMembers(): Promise<MemberDTO[]> {
   if (!wid) return [];
   const db = await getDb();
   return db
-    .select({ id: users.id, email: users.email, name: users.name })
+    .select({ id: users.id, email: users.email, name: users.name, role: workspaceMembers.role })
     .from(workspaceMembers)
     .innerJoin(users, eq(workspaceMembers.userId, users.id))
     .where(eq(workspaceMembers.workspaceId, wid))

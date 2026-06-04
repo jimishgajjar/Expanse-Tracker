@@ -77,6 +77,7 @@ export default async function Page({
       isOwner={activeWorkspace?.ownerId === user.id}
       currentUserId={user.id}
       emailVerified={!!user.emailVerifiedAt}
+      canEdit={activeWorkspace?.role !== "viewer"}
       initialTab={initialTab}
     />
   );

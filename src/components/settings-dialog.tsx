@@ -13,6 +13,7 @@ import { updateSettings } from "@/lib/actions";
 import { logout } from "@/lib/auth";
 import { ImportForm } from "@/components/import-form";
 import { ChangePasswordForm } from "@/components/change-password-form";
+import { DeleteAccountForm } from "@/components/delete-account-form";
 import { CURRENCIES } from "@/lib/currencies";
 
 export function SettingsDialog({
@@ -80,6 +81,7 @@ export function SettingsDialog({
           <form action={logout}>
             <Button type="submit" variant="ghost" size="sm" className="w-full text-muted-foreground">Sign out</Button>
           </form>
+          <DeleteAccountForm />
         </div>
         <DialogFooter className="mt-2">
           <DialogClose render={<Button type="button" variant="outline" />}>Cancel</DialogClose>

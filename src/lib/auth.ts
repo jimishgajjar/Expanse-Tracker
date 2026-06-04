@@ -97,3 +97,17 @@ export async function resendVerification(): Promise<{ ok: boolean; error?: strin
   await sendVerificationEmail(user.id, user.email, user.name);
   return { ok: true };
 }
+
+export async function deleteAccount(_prev: string | undefined, formData: FormData): Promise<string | undefined> {
+  const user = await getCurrentUser();
+  if (!user) return "You're not signed in.";
+  if (!verifyPassword(String(formData.get("password") ?? ""), user.passwordHash)) return "Password is incorrect.";
+
+  // Cascades: owned workspaces (and their data), memberships, and sessions all go.
+  // Transactions this user created in *other* people's trackers keep their data
+  // (created_by is set to null) so shared history isn't lost.
+  const db = await getDb();
+  await db.delete(users).where(eq(users.id, user.id));
+  await destroySession();
+  redirect("/signup");
+}

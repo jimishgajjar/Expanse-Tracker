@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { eq } from "drizzle-orm";
 import { getDb } from "./db";
 import { accounts, categories, transactions } from "./db/schema";
-import { getActiveWorkspaceId } from "./workspace";
+import { getActiveRole, getActiveWorkspaceId } from "./workspace";
 
 type ImportResult = { ok: boolean; message: string };
 
@@ -74,6 +74,7 @@ export async function importTransactions(_prev: ImportResult | undefined, formDa
 
     const w = await getActiveWorkspaceId();
     if (!w) return { ok: false, message: "You're not signed in." };
+    if ((await getActiveRole()) === "viewer") return { ok: false, message: "You have view-only access to this tracker." };
     const db = await getDb();
     const existingAccs = await db.select().from(accounts).where(eq(accounts.workspaceId, w));
     const existingCats = await db.select().from(categories).where(eq(categories.workspaceId, w));

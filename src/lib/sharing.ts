@@ -5,14 +5,14 @@ import { headers } from "next/headers";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { getDb } from "./db";
-import { invitations, users, workspaceMembers } from "./db/schema";
+import { invitations, users, workspaceMembers, workspaces } from "./db/schema";
 import { getCurrentUser } from "./session";
 import { getActiveWorkspace } from "./workspace";
 import { sendEmail } from "./email";
 
 type Result = { ok: true } | { ok: false; error: string };
 type InviteResult =
-  | { ok: true; member?: { id: string; email: string; name: string }; invite?: string }
+  | { ok: true; member?: { id: string; email: string; name: string; role: string }; invite?: string }
   | { ok: false; error: string };
 
 async function ctx() {
@@ -26,9 +26,10 @@ export async function inviteMember(input: unknown): Promise<InviteResult> {
   const c = await ctx();
   if (!c) return { ok: false, error: "Not signed in." };
   if (!c.isOwner) return { ok: false, error: "Only the owner can invite people." };
-  const parsed = z.object({ email: z.string().trim().email() }).safeParse(input);
+  const parsed = z.object({ email: z.string().trim().email(), role: z.enum(["member", "viewer"]).optional() }).safeParse(input);
   if (!parsed.success) return { ok: false, error: "Enter a valid email." };
   const email = parsed.data.email.toLowerCase();
+  const role = parsed.data.role === "viewer" ? "viewer" : "member";
   if (email === c.me.email.toLowerCase()) return { ok: false, error: "That's your own email." };
 
   const db = await getDb();
@@ -39,9 +40,9 @@ export async function inviteMember(input: unknown): Promise<InviteResult> {
   if (addedNow) {
     const [m] = await db.select().from(workspaceMembers).where(and(eq(workspaceMembers.workspaceId, c.ws.id), eq(workspaceMembers.userId, u!.id))).limit(1);
     if (m) return { ok: false, error: "They already have access." };
-    await db.insert(workspaceMembers).values({ workspaceId: c.ws.id, userId: u!.id, role: "member" }).onConflictDoNothing();
+    await db.insert(workspaceMembers).values({ workspaceId: c.ws.id, userId: u!.id, role }).onConflictDoNothing();
   } else {
-    await db.insert(invitations).values({ workspaceId: c.ws.id, email }).onConflictDoNothing();
+    await db.insert(invitations).values({ workspaceId: c.ws.id, email, role }).onConflictDoNothing();
   }
 
   const h = await headers();
@@ -56,7 +57,22 @@ export async function inviteMember(input: unknown): Promise<InviteResult> {
       : `<p>${c.me.name || c.me.email} invited you to their Money Tracker ("${c.ws.name}").</p><p><a href="${base}/signup">Create your account</a> with this email (${email}) and confirm it — the shared tracker appears once your address is verified.</p>`,
   );
   revalidatePath("/");
-  return addedNow ? { ok: true, member: { id: u!.id, email, name: u!.name } } : { ok: true, invite: email };
+  return addedNow ? { ok: true, member: { id: u!.id, email, name: u!.name, role } } : { ok: true, invite: email };
+}
+
+export async function transferOwnership(userId: string): Promise<Result> {
+  const c = await ctx();
+  if (!c) return { ok: false, error: "Not signed in." };
+  if (!c.isOwner) return { ok: false, error: "Only the owner can transfer ownership." };
+  if (userId === c.me.id) return { ok: false, error: "You already own this tracker." };
+  const db = await getDb();
+  const [m] = await db.select().from(workspaceMembers).where(and(eq(workspaceMembers.workspaceId, c.ws.id), eq(workspaceMembers.userId, userId))).limit(1);
+  if (!m) return { ok: false, error: "That person isn't a member." };
+  await db.update(workspaces).set({ ownerId: userId }).where(eq(workspaces.id, c.ws.id));
+  await db.update(workspaceMembers).set({ role: "owner" }).where(and(eq(workspaceMembers.workspaceId, c.ws.id), eq(workspaceMembers.userId, userId)));
+  await db.update(workspaceMembers).set({ role: "member" }).where(and(eq(workspaceMembers.workspaceId, c.ws.id), eq(workspaceMembers.userId, c.me.id)));
+  revalidatePath("/");
+  return { ok: true };
 }
 
 export async function removeInvite(email: string): Promise<Result> {

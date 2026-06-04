@@ -112,6 +112,7 @@ export const appSettings = pgTable("app_settings", {
 export const transactionsRelations = relations(transactions, ({ one }) => ({
   account: one(accounts, { fields: [transactions.accountId], references: [accounts.id] }),
   category: one(categories, { fields: [transactions.categoryId], references: [categories.id] }),
+  creator: one(users, { fields: [transactions.createdBy], references: [users.id] }),
 }));
 
 // ── auth + workspaces ────────────────────────────────────
@@ -177,6 +178,7 @@ export const invitations = pgTable(
   {
     workspaceId: text("workspace_id").notNull().references(() => workspaces.id, { onDelete: "cascade" }),
     email: text("email").notNull(),
+    role: text("role").notNull().default("member"), // member | viewer
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (t) => [primaryKey({ columns: [t.workspaceId, t.email] }), index("invite_email_idx").on(t.email)],
