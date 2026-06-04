@@ -13,8 +13,8 @@ import type { MemberDTO } from "@/lib/queries";
 
 export function MembersManager({
   trigger,
-  members,
-  invites,
+  members: initialMembers,
+  invites: initialInvites,
   currentEmail,
   workspaceName,
   isOwner,
@@ -26,6 +26,25 @@ export function MembersManager({
   workspaceName: string;
   isOwner: boolean;
 }) {
+  const router = useRouter();
+  // Local copies so the open sheet reflects invites/removals instantly.
+  const [members, setMembers] = useState(initialMembers);
+  const [invites, setInvites] = useState(initialInvites);
+
+  function onInvited(member: MemberDTO | null, invite: string | null) {
+    if (member) setMembers((m) => (m.some((x) => x.id === member.id) ? m : [...m, member]));
+    if (invite) setInvites((i) => (i.includes(invite) ? i : [...i, invite]));
+    router.refresh();
+  }
+  function onMemberRemoved(id: string) {
+    setMembers((m) => m.filter((x) => x.id !== id));
+    router.refresh();
+  }
+  function onInviteRemoved(email: string) {
+    setInvites((i) => i.filter((x) => x !== email));
+    router.refresh();
+  }
+
   return (
     <Sheet>
       <SheetTrigger render={trigger} />
@@ -39,17 +58,19 @@ export function MembersManager({
           </SheetDescription>
         </SheetHeader>
         <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
-          {isOwner && <InviteForm />}
+          {isOwner && <InviteForm onInvited={onInvited} />}
           <div>
             <div className="mb-2 text-xs font-medium text-muted-foreground">Members · {members.length}</div>
             <div className="space-y-1.5">
-              {members.map((m) => <MemberRow key={m.id} member={m} isMe={m.email === currentEmail} canRemove={isOwner} />)}
+              {members.map((m) => (
+                <MemberRow key={m.id} member={m} isMe={m.email === currentEmail} canRemove={isOwner} onRemoved={onMemberRemoved} />
+              ))}
             </div>
           </div>
           {isOwner && invites.length > 0 && (
             <div>
               <div className="mb-2 text-xs font-medium text-muted-foreground">Pending invites · {invites.length}</div>
-              <div className="space-y-1.5">{invites.map((e) => <InviteRow key={e} email={e} />)}</div>
+              <div className="space-y-1.5">{invites.map((e) => <InviteRow key={e} email={e} onRemoved={onInviteRemoved} />)}</div>
             </div>
           )}
           {!isOwner && <LeaveButton />}
@@ -59,8 +80,7 @@ export function MembersManager({
   );
 }
 
-function InviteForm() {
-  const router = useRouter();
+function InviteForm({ onInvited }: { onInvited: (member: MemberDTO | null, invite: string | null) => void }) {
   const [pending, start] = useTransition();
   const [email, setEmail] = useState("");
   function add(e: React.FormEvent) {
@@ -68,8 +88,11 @@ function InviteForm() {
     if (!email.trim()) return;
     start(async () => {
       const res = await inviteMember({ email });
-      if (res.ok) { toast.success("Invitation sent"); setEmail(""); router.refresh(); }
-      else toast.error(res.error);
+      if (res.ok) {
+        toast.success(res.member ? "Member added" : "Invitation sent");
+        setEmail("");
+        onInvited(res.member ?? null, res.invite ?? null);
+      } else toast.error(res.error);
     });
   }
   return (
@@ -80,11 +103,10 @@ function InviteForm() {
   );
 }
 
-function MemberRow({ member, isMe, canRemove }: { member: MemberDTO; isMe: boolean; canRemove: boolean }) {
-  const router = useRouter();
+function MemberRow({ member, isMe, canRemove, onRemoved }: { member: MemberDTO; isMe: boolean; canRemove: boolean; onRemoved: (id: string) => void }) {
   async function remove() {
     const res = await removeMember(member.id);
-    if (res.ok) { toast.success("Member removed"); router.refresh(); }
+    if (res.ok) { toast.success("Member removed"); onRemoved(member.id); }
     else toast.error(res.error);
   }
   return (
@@ -108,13 +130,12 @@ function MemberRow({ member, isMe, canRemove }: { member: MemberDTO; isMe: boole
   );
 }
 
-function InviteRow({ email }: { email: string }) {
-  const router = useRouter();
+function InviteRow({ email, onRemoved }: { email: string; onRemoved: (email: string) => void }) {
   const [pending, start] = useTransition();
   function remove() {
     start(async () => {
       const res = await removeInvite(email);
-      if (res.ok) { toast.success("Invite cancelled"); router.refresh(); }
+      if (res.ok) { toast.success("Invite cancelled"); onRemoved(email); }
       else toast.error(res.error);
     });
   }

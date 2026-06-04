@@ -11,6 +11,9 @@ import { getActiveWorkspace } from "./workspace";
 import { sendEmail } from "./email";
 
 type Result = { ok: true } | { ok: false; error: string };
+type InviteResult =
+  | { ok: true; member?: { id: string; email: string; name: string }; invite?: string }
+  | { ok: false; error: string };
 
 async function ctx() {
   const ws = await getActiveWorkspace();
@@ -19,7 +22,7 @@ async function ctx() {
   return { ws, me, isOwner: ws.ownerId === me.id };
 }
 
-export async function inviteMember(input: unknown): Promise<Result> {
+export async function inviteMember(input: unknown): Promise<InviteResult> {
   const c = await ctx();
   if (!c) return { ok: false, error: "Not signed in." };
   if (!c.isOwner) return { ok: false, error: "Only the owner can invite people." };
@@ -29,7 +32,7 @@ export async function inviteMember(input: unknown): Promise<Result> {
   if (email === c.me.email.toLowerCase()) return { ok: false, error: "That's your own email." };
 
   const db = await getDb();
-  const [u] = await db.select({ id: users.id, verifiedAt: users.emailVerifiedAt }).from(users).where(eq(users.email, email)).limit(1);
+  const [u] = await db.select({ id: users.id, name: users.name, verifiedAt: users.emailVerifiedAt }).from(users).where(eq(users.email, email)).limit(1);
   // Only a verified account is added immediately; otherwise we store a pending
   // invite that's accepted when they confirm the address (closes the squatting hole).
   const addedNow = !!(u && u.verifiedAt);
@@ -53,7 +56,7 @@ export async function inviteMember(input: unknown): Promise<Result> {
       : `<p>${c.me.name || c.me.email} invited you to their Money Tracker ("${c.ws.name}").</p><p><a href="${base}/signup">Create your account</a> with this email (${email}) and confirm it — the shared tracker appears once your address is verified.</p>`,
   );
   revalidatePath("/");
-  return { ok: true };
+  return addedNow ? { ok: true, member: { id: u!.id, email, name: u!.name } } : { ok: true, invite: email };
 }
 
 export async function removeInvite(email: string): Promise<Result> {

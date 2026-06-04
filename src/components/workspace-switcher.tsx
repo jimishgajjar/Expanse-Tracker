@@ -26,9 +26,10 @@ export function WorkspaceSwitcher({
 
   function select(id: string) {
     if (id === activeId) return;
+    const name = workspaces.find((w) => w.id === id)?.name ?? "tracker";
     start(async () => {
       const res = await switchWorkspace(id);
-      if (res.ok) router.refresh();
+      if (res.ok) { toast.success(`Switched to ${name}`); router.refresh(); }
       else toast.error(res.error);
     });
   }
