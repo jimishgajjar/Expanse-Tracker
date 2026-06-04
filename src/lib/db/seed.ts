@@ -1,6 +1,6 @@
 import type { NeonHttpDatabase } from "drizzle-orm/neon-http";
 import * as schema from "./schema";
-import { accounts, categories, transactions, users } from "./schema";
+import { accounts, categories, transactions, users, workspaceMembers, workspaces } from "./schema";
 import { hashPassword } from "../password";
 
 type DB = NeonHttpDatabase<typeof schema>;
@@ -29,14 +29,14 @@ const INCOME_CATS = [
   { name: "Gifts", icon: "gift", color: "#f472b6" },
 ];
 
-/** Insert default accounts + categories, and optionally sample transactions. */
-export async function seed(db: DB, opts: { samples?: boolean } = {}) {
-  const accs = await db.insert(accounts).values(ACCOUNTS).returning();
+/** Seed a workspace with default accounts + categories, and optional sample transactions. */
+export async function seed(db: DB, workspaceId: string, opts: { samples?: boolean } = {}) {
+  const accs = await db.insert(accounts).values(ACCOUNTS.map((a) => ({ ...a, workspaceId }))).returning();
   const cats = await db
     .insert(categories)
     .values([
-      ...EXPENSE_CATS.map((c) => ({ ...c, kind: "expense" as const })),
-      ...INCOME_CATS.map((c) => ({ ...c, kind: "income" as const })),
+      ...EXPENSE_CATS.map((c) => ({ ...c, kind: "expense" as const, workspaceId })),
+      ...INCOME_CATS.map((c) => ({ ...c, kind: "income" as const, workspaceId })),
     ])
     .returning();
 
@@ -51,30 +51,31 @@ export async function seed(db: DB, opts: { samples?: boolean } = {}) {
   };
 
   const rows = [
-    { type: "income" as const,  amount: "85000", date: day(-20), note: "Monthly salary",   accountId: acc("Bank"), categoryId: cat("Salary") },
-    { type: "income" as const,  amount: "18000", date: day(-9),  note: "Website project",   accountId: acc("Bank"), categoryId: cat("Freelance") },
-    { type: "income" as const,  amount: "5000",  date: day(-2),  note: "Dividend payout",   accountId: acc("Bank"), categoryId: cat("Investments") },
-    { type: "expense" as const, amount: "22000", date: day(-19), note: "Flat rent",         accountId: acc("Bank"), categoryId: cat("Rent") },
-    { type: "expense" as const, amount: "3200",  date: day(-7),  note: "Big grocery run",   accountId: acc("Card"), categoryId: cat("Groceries") },
-    { type: "expense" as const, amount: "640",   date: day(-6),  note: "Dinner out",        accountId: acc("Card"), categoryId: cat("Food & Drink") },
-    { type: "expense" as const, amount: "300",   date: day(-5),  note: "Cab ride",          accountId: acc("Cash"), categoryId: cat("Transport") },
-    { type: "expense" as const, amount: "1499",  date: day(-4),  note: "New headphones",    accountId: acc("Card"), categoryId: cat("Shopping") },
-    { type: "expense" as const, amount: "899",   date: day(-3),  note: "Electricity bill",  accountId: acc("Bank"), categoryId: cat("Bills") },
-    { type: "expense" as const, amount: "250",   date: day(-1),  note: "Coffee",            accountId: acc("Cash"), categoryId: cat("Food & Drink") },
-    { type: "income" as const,  amount: "85000", date: day(-50), note: "Salary",            accountId: acc("Bank"), categoryId: cat("Salary") },
-    { type: "expense" as const, amount: "1200",  date: day(-40), note: "Dinner",            accountId: acc("Card"), categoryId: cat("Food & Drink") },
+    { workspaceId, type: "income" as const,  amount: "85000", date: day(-20), note: "Monthly salary",  accountId: acc("Bank"), categoryId: cat("Salary") },
+    { workspaceId, type: "income" as const,  amount: "18000", date: day(-9),  note: "Website project",  accountId: acc("Bank"), categoryId: cat("Freelance") },
+    { workspaceId, type: "income" as const,  amount: "5000",  date: day(-2),  note: "Dividend payout",  accountId: acc("Bank"), categoryId: cat("Investments") },
+    { workspaceId, type: "expense" as const, amount: "22000", date: day(-19), note: "Flat rent",        accountId: acc("Bank"), categoryId: cat("Rent") },
+    { workspaceId, type: "expense" as const, amount: "3200",  date: day(-7),  note: "Big grocery run",  accountId: acc("Card"), categoryId: cat("Groceries") },
+    { workspaceId, type: "expense" as const, amount: "640",   date: day(-6),  note: "Dinner out",       accountId: acc("Card"), categoryId: cat("Food & Drink") },
+    { workspaceId, type: "expense" as const, amount: "300",   date: day(-5),  note: "Cab ride",         accountId: acc("Cash"), categoryId: cat("Transport") },
+    { workspaceId, type: "expense" as const, amount: "1499",  date: day(-4),  note: "New headphones",   accountId: acc("Card"), categoryId: cat("Shopping") },
+    { workspaceId, type: "expense" as const, amount: "899",   date: day(-3),  note: "Electricity bill", accountId: acc("Bank"), categoryId: cat("Bills") },
+    { workspaceId, type: "expense" as const, amount: "250",   date: day(-1),  note: "Coffee",           accountId: acc("Cash"), categoryId: cat("Food & Drink") },
+    { workspaceId, type: "income" as const,  amount: "85000", date: day(-50), note: "Salary",           accountId: acc("Bank"), categoryId: cat("Salary") },
+    { workspaceId, type: "expense" as const, amount: "1200",  date: day(-40), note: "Dinner",           accountId: acc("Card"), categoryId: cat("Food & Drink") },
   ];
   await db.insert(transactions).values(rows);
   return { accounts: accs, categories: cats };
 }
 
-/** Seed only when the database is empty (used by the local PGlite fallback). */
+/** On a fresh local DB: create a demo user + their personal workspace + sample data. */
 export async function maybeSeed(db: DB) {
-  const existing = await db.select({ id: accounts.id }).from(accounts).limit(1);
-  if (existing.length === 0) await seed(db, { samples: true });
   const hasUser = await db.select({ id: users.id }).from(users).limit(1);
-  if (hasUser.length === 0) {
-    // Local demo login: demo@demo.com / password
-    await db.insert(users).values({ email: "demo@demo.com", name: "Demo", passwordHash: hashPassword("password") });
-  }
+  if (hasUser.length) return;
+
+  // Local demo login: demo@demo.com / password
+  const [u] = await db.insert(users).values({ email: "demo@demo.com", name: "Demo", passwordHash: hashPassword("password") }).returning();
+  const [w] = await db.insert(workspaces).values({ name: "Demo's tracker", ownerId: u.id }).returning();
+  await db.insert(workspaceMembers).values({ workspaceId: w.id, userId: u.id, role: "owner" });
+  await seed(db, w.id, { samples: true });
 }

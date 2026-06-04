@@ -1,6 +1,6 @@
 # Money Tracker
 
-A personal finance tracker — multiple accounts, richly categorised income & expenses (each with an icon and colour), separate income/expense views, charts, and a flexible **day / week / month / year / multi-year / all** time filter. Built to deploy on **Vercel** with **Neon Postgres**.
+A personal finance tracker — multiple accounts, richly categorised income & expenses (each with an icon and colour), separate income/expense views, charts, and a flexible **day / week / month / year / multi-year / all** time filter. Every person gets their **own private tracker**, can be **invited into others' trackers**, and switches between them from the header. Built to deploy on **Vercel** with **Neon Postgres**.
 
 ## Stack
 
@@ -8,7 +8,7 @@ A personal finance tracker — multiple accounts, richly categorised income & ex
 |-----------|------|
 | Framework | Next.js 16 (App Router, React 19, TypeScript) + Server Actions |
 | UI        | Tailwind CSS v4 + shadcn/ui (Base UI) + lucide icons |
-| Charts    | Recharts |
+| Charts    | Lightweight inline SVG / CSS (no chart library) |
 | Database  | Postgres via Drizzle ORM — **Neon** in production, embedded **PGlite** for zero-setup local dev |
 
 ## Run locally (zero setup)
@@ -20,7 +20,7 @@ npm run dev          # → http://localhost:3000
 
 With no `DATABASE_URL`, the app spins up an **embedded Postgres (PGlite)** in `./.pglite`, runs migrations, and seeds sample accounts, categories and transactions automatically — so it works immediately. Your data persists in that folder (git-ignored).
 
-On first load you'll be asked to sign in. A demo account is seeded locally — **`demo@demo.com` / `password`** — or create your own.
+On first load you'll be asked to sign in. A demo account with sample data is seeded locally — **`demo@demo.com` / `password`** — or **create your own** and get a fresh private tracker (with default accounts & categories, ready to fill in).
 
 > **Local dev speed (Windows):** if compiles feel slow, it's usually antivirus scanning `.next`. Add the project's `.next` folder to Windows Defender's exclusions, or keep the project on a fast local SSD — Vercel builds are unaffected.
 
@@ -34,20 +34,21 @@ On first load you'll be asked to sign in. A demo account is seeded locally — *
    # DATABASE_URL=postgresql://user:pass@ep-xxx-pooler.region.aws.neon.tech/db?sslmode=require
    ```
 
-3. Apply the schema and (optionally) seed defaults:
+3. Apply the schema and (optionally) seed a demo account:
 
    ```bash
    npm run db:migrate          # create tables in Neon
-   npm run db:seed             # default accounts + categories
-   # npm run db:seed -- --samples   # also add example transactions
+   npm run db:seed             # optional: demo@demo.com / password + a sample tracker (only if the DB is empty)
    ```
+
+   Real users don't need the seed — each signup creates its own tracker with default accounts & categories.
 
 4. `npm run dev`. The same `DATABASE_URL` drives both local dev and production.
 
 ## Deploy to Vercel
 
 1. Push this repo to GitHub and **Import** it at <https://vercel.com/new> (Next.js is auto-detected).
-2. Add an Environment Variable **`DATABASE_URL`** = your Neon pooled connection string. (Optionally `APP_PASSWORD` to gate access, and `NEXT_PUBLIC_CURRENCY` / `NEXT_PUBLIC_LOCALE`.)
+2. Add an Environment Variable **`DATABASE_URL`** = your Neon pooled connection string. (Optionally `RESEND_API_KEY` to send invite & password-reset emails, and `APP_URL` for the links inside them.)
    - Tip: Vercel's **Neon** integration (Storage tab) can provision the database and set this for you.
 3. Run migrations against the production database once — locally with the prod `DATABASE_URL`, via `npm run db:migrate`. Deploy.
 
@@ -60,14 +61,14 @@ On first load you'll be asked to sign in. A demo account is seeded locally — *
 - **Tabbed views** — **Overview** (summary, all-accounts balances, charts), **Transactions** (filterable, paginated list), and **Analytics**, sharing one period selector.
 - **Detailed Analytics** — totals, savings rate, averages, biggest expense, **net worth over time**, **period-over-period comparison** (▲/▼ vs last), the income-vs-expense trend, full category/account breakdowns, and **top merchants / largest transactions**.
 - **Budgets** — set a monthly limit per expense category; progress bars warn when you go over.
-- **Password gate (optional)** — set `APP_PASSWORD` to require a password before anyone can see your data.
+- **Personal trackers** — every user gets their own private workspace; accounts, categories, transactions, budgets and settings are fully isolated per tracker.
 - **Undo** — deleting a transaction shows an Undo toast to restore it (deletes are optimistic — the row vanishes instantly).
 - **Account transfers** — move money between accounts (a 3rd type in the Add dialog) without affecting income/expense totals.
 - **Recurring transactions** — schedule weekly/monthly/yearly rules that auto-create transactions on load.
 - **CSV / Excel import** — bring data in via Settings → Data (accounts & categories created by name).
 - **Account detail** — click any account card to see its stats and activity.
 - **Tested** — `npm test` runs Vitest unit tests for the date-range, money, and bucketing logic.
-- **Accounts & sharing** — email/password signup & login, change password, and forgot-password reset via email (Resend, or logged to the console in dev). **Invite people by email** to share access to all the data; the first user is the owner and only invited emails can sign up.
+- **Accounts & sharing** — email/password signup & login, change password, and forgot-password reset via email (Resend, or logged to the console in dev). **Invite people by email** to share *your* tracker — they sign in, switch to it from the header, and can edit everything. The owner manages members & invites; members can leave. Invite someone who hasn't signed up yet and they're auto-joined when they create their account.
 - **Pagination** — the transactions list is paginated with a **rows-per-page** selector (10 / 25 / 50 / 100).
 - **Export to Excel** — one click downloads an `.xlsx` of all data (Transactions / Accounts / Categories sheets) via `/api/export`.
 - **Currency setting** — change the display currency in-app (Settings ⚙); stored in the database and applied everywhere.
@@ -83,7 +84,7 @@ On first load you'll be asked to sign in. A demo account is seeded locally — *
 | `npm run db:migrate` | Apply migrations to `DATABASE_URL` |
 | `npm run db:push` | Push schema directly (prototyping) |
 | `npm run db:studio` | Open Drizzle Studio |
-| `npm run db:seed` | Seed default accounts + categories (`-- --samples` for demo data) |
+| `npm run db:seed` | Seed a demo account (`demo@demo.com` / `password`) + sample tracker, if the DB is empty |
 
 ## Project structure
 

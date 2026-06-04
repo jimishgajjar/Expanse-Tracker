@@ -6,6 +6,7 @@ import {
   getTransactionsInRange, getTransfersInRange, processRecurring,
 } from "@/lib/queries";
 import { getCurrentUser } from "@/lib/session";
+import { getActiveWorkspace, getUserWorkspaces } from "@/lib/workspace";
 import { redirect } from "next/navigation";
 
 // DB-backed dashboard: always render with fresh data (Cache Components is off).
@@ -18,6 +19,8 @@ export default async function Page({
 }) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
+
+  const [workspaces, activeWorkspace] = await Promise.all([getUserWorkspaces(), getActiveWorkspace()]);
 
   const sp = await searchParams;
   const rangeType = (RANGE_TYPES.includes(sp.range as RangeType) ? sp.range : "month") as RangeType;
@@ -68,6 +71,11 @@ export default async function Page({
       members={members}
       invites={invites}
       userEmail={user.email}
+      workspaces={workspaces}
+      activeWorkspaceId={activeWorkspace?.id ?? ""}
+      workspaceName={activeWorkspace?.name ?? "Tracker"}
+      isOwner={activeWorkspace?.ownerId === user.id}
+      currentUserId={user.id}
       initialTab={initialTab}
     />
   );

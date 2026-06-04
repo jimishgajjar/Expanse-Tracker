@@ -2,8 +2,10 @@
 
 import ExcelJS from "exceljs";
 import { revalidatePath } from "next/cache";
+import { eq } from "drizzle-orm";
 import { getDb } from "./db";
 import { accounts, categories, transactions } from "./db/schema";
+import { getActiveWorkspaceId } from "./workspace";
 
 type ImportResult = { ok: boolean; message: string };
 
@@ -70,9 +72,11 @@ export async function importTransactions(_prev: ImportResult | undefined, formDa
     };
     if (idx.date < 0 || idx.amount < 0) return { ok: false, message: "File needs at least 'Date' and 'Amount' columns." };
 
+    const w = await getActiveWorkspaceId();
+    if (!w) return { ok: false, message: "You're not signed in." };
     const db = await getDb();
-    const existingAccs = await db.select().from(accounts);
-    const existingCats = await db.select().from(categories);
+    const existingAccs = await db.select().from(accounts).where(eq(accounts.workspaceId, w));
+    const existingCats = await db.select().from(categories).where(eq(categories.workspaceId, w));
     const accByName = new Map(existingAccs.map((a) => [a.name.toLowerCase(), a.id]));
     const catByKey = new Map(existingCats.map((c) => [`${c.kind}:${c.name.toLowerCase()}`, c.id]));
 
@@ -95,7 +99,7 @@ export async function importTransactions(_prev: ImportResult | undefined, formDa
       if (accName) {
         accountId = accByName.get(accName.toLowerCase()) ?? null;
         if (!accountId) {
-          const [a] = await db.insert(accounts).values({ name: accName }).returning({ id: accounts.id });
+          const [a] = await db.insert(accounts).values({ name: accName, workspaceId: w }).returning({ id: accounts.id });
           accountId = a.id;
           accByName.set(accName.toLowerCase(), a.id);
         }
@@ -108,13 +112,13 @@ export async function importTransactions(_prev: ImportResult | undefined, formDa
         const key = `${type}:${catName.toLowerCase()}`;
         categoryId = catByKey.get(key) ?? null;
         if (!categoryId) {
-          const [c] = await db.insert(categories).values({ name: catName, kind: type }).returning({ id: categories.id });
+          const [c] = await db.insert(categories).values({ name: catName, kind: type, workspaceId: w }).returning({ id: categories.id });
           categoryId = c.id;
           catByKey.set(key, c.id);
         }
       }
 
-      toInsert.push({ type, amount: String(amount), date, note, accountId, categoryId });
+      toInsert.push({ workspaceId: w, type, amount: String(amount), date, note, accountId, categoryId });
       imported++;
     }
 

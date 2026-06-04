@@ -1,33 +1,41 @@
-import { pgTable, pgEnum, text, numeric, date, timestamp, index } from "drizzle-orm/pg-core";
+import { pgTable, pgEnum, primaryKey, text, numeric, date, timestamp, index } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
 // Shared enum for the two flavours of money movement.
 export const txKind = pgEnum("tx_kind", ["income", "expense"]);
 
+const ws = () =>
+  text("workspace_id").notNull().references(() => workspaces.id, { onDelete: "cascade" });
+
 // A place money lives: cash, a bank account, a card, a wallet, savings, etc.
-export const accounts = pgTable("accounts", {
-  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
-  name: text("name").notNull(),
-  type: text("type").notNull().default("bank"), // cash | bank | card | wallet | savings | investment
-  icon: text("icon").notNull().default("wallet"),
-  color: text("color").notNull().default("#6366f1"),
-  // Opening balance so a new account can start with money already in it.
-  initialBalance: numeric("initial_balance", { precision: 14, scale: 2 }).notNull().default("0"),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+export const accounts = pgTable(
+  "accounts",
+  {
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    workspaceId: ws(),
+    name: text("name").notNull(),
+    type: text("type").notNull().default("bank"),
+    icon: text("icon").notNull().default("wallet"),
+    color: text("color").notNull().default("#6366f1"),
+    initialBalance: numeric("initial_balance", { precision: 14, scale: 2 }).notNull().default("0"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [index("acc_ws_idx").on(t.workspaceId)],
+);
 
 // A label for a transaction, scoped to income OR expense, with its own icon+colour.
 export const categories = pgTable(
   "categories",
   {
     id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    workspaceId: ws(),
     name: text("name").notNull(),
     kind: txKind("kind").notNull(),
     icon: text("icon").notNull().default("tag"),
     color: text("color").notNull().default("#64748b"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
-  (t) => [index("cat_kind_idx").on(t.kind)],
+  (t) => [index("cat_ws_idx").on(t.workspaceId)],
 );
 
 // A single income or expense entry.
@@ -35,47 +43,24 @@ export const transactions = pgTable(
   "transactions",
   {
     id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    workspaceId: ws(),
     type: txKind("type").notNull(),
     amount: numeric("amount", { precision: 14, scale: 2 }).notNull(),
-    date: date("date", { mode: "string" }).notNull(), // 'YYYY-MM-DD', timezone-free
+    date: date("date", { mode: "string" }).notNull(),
     note: text("note").notNull().default(""),
     accountId: text("account_id").references(() => accounts.id, { onDelete: "cascade" }),
     categoryId: text("category_id").references(() => categories.id, { onDelete: "set null" }),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
-  (t) => [index("tx_date_idx").on(t.date), index("tx_type_idx").on(t.type)],
+  (t) => [index("tx_ws_date_idx").on(t.workspaceId, t.date), index("tx_type_idx").on(t.type)],
 );
-
-export const accountsRelations = relations(accounts, ({ many }) => ({
-  transactions: many(transactions),
-}));
-export const categoriesRelations = relations(categories, ({ many }) => ({
-  transactions: many(transactions),
-}));
-export const transactionsRelations = relations(transactions, ({ one }) => ({
-  account: one(accounts, { fields: [transactions.accountId], references: [accounts.id] }),
-  category: one(categories, { fields: [transactions.categoryId], references: [categories.id] }),
-}));
-
-// Single-row application settings (currency, etc.).
-export const appSettings = pgTable("app_settings", {
-  id: text("id").primaryKey().default("app"),
-  currencyCode: text("currency_code").notNull().default("INR"),
-});
-
-// Monthly spending budget for an expense category.
-export const budgets = pgTable("budgets", {
-  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
-  categoryId: text("category_id").notNull().unique().references(() => categories.id, { onDelete: "cascade" }),
-  amount: numeric("amount", { precision: 14, scale: 2 }).notNull(),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-});
 
 // Money moved between two accounts (not income or expense).
 export const transfers = pgTable(
   "transfers",
   {
     id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    workspaceId: ws(),
     fromAccountId: text("from_account_id").notNull().references(() => accounts.id, { onDelete: "cascade" }),
     toAccountId: text("to_account_id").notNull().references(() => accounts.id, { onDelete: "cascade" }),
     amount: numeric("amount", { precision: 14, scale: 2 }).notNull(),
@@ -83,23 +68,52 @@ export const transfers = pgTable(
     note: text("note").notNull().default(""),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
-  (t) => [index("transfer_date_idx").on(t.date)],
+  (t) => [index("transfer_ws_date_idx").on(t.workspaceId, t.date)],
+);
+
+// Monthly spending budget for an expense category.
+export const budgets = pgTable(
+  "budgets",
+  {
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    workspaceId: ws(),
+    categoryId: text("category_id").notNull().unique().references(() => categories.id, { onDelete: "cascade" }),
+    amount: numeric("amount", { precision: 14, scale: 2 }).notNull(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [index("budget_ws_idx").on(t.workspaceId)],
 );
 
 // A template that auto-creates transactions on a schedule.
-export const recurring = pgTable("recurring", {
-  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
-  type: txKind("type").notNull(),
-  amount: numeric("amount", { precision: 14, scale: 2 }).notNull(),
-  note: text("note").notNull().default(""),
-  accountId: text("account_id").references(() => accounts.id, { onDelete: "cascade" }),
-  categoryId: text("category_id").references(() => categories.id, { onDelete: "set null" }),
-  frequency: text("frequency").notNull(), // weekly | monthly | yearly
-  nextDate: date("next_date", { mode: "string" }).notNull(),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
+export const recurring = pgTable(
+  "recurring",
+  {
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    workspaceId: ws(),
+    type: txKind("type").notNull(),
+    amount: numeric("amount", { precision: 14, scale: 2 }).notNull(),
+    note: text("note").notNull().default(""),
+    accountId: text("account_id").references(() => accounts.id, { onDelete: "cascade" }),
+    categoryId: text("category_id").references(() => categories.id, { onDelete: "set null" }),
+    frequency: text("frequency").notNull(),
+    nextDate: date("next_date", { mode: "string" }).notNull(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [index("recurring_ws_idx").on(t.workspaceId)],
+);
+
+// Per-workspace settings (currency, etc.).
+export const appSettings = pgTable("app_settings", {
+  workspaceId: text("workspace_id").primaryKey().references(() => workspaces.id, { onDelete: "cascade" }),
+  currencyCode: text("currency_code").notNull().default("INR"),
 });
 
-// ── auth (Phase A) ───────────────────────────────────────
+export const transactionsRelations = relations(transactions, ({ one }) => ({
+  account: one(accounts, { fields: [transactions.accountId], references: [accounts.id] }),
+  category: one(categories, { fields: [transactions.categoryId], references: [categories.id] }),
+}));
+
+// ── auth + workspaces ────────────────────────────────────
 export const users = pgTable("users", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   email: text("email").notNull().unique(),
@@ -108,24 +122,49 @@ export const users = pgTable("users", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+// A "tracker" — a personal one per user, shareable with others.
+export const workspaces = pgTable("workspaces", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  name: text("name").notNull(),
+  ownerId: text("owner_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const workspaceMembers = pgTable(
+  "workspace_members",
+  {
+    workspaceId: text("workspace_id").notNull().references(() => workspaces.id, { onDelete: "cascade" }),
+    userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    role: text("role").notNull().default("member"), // owner | member
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.workspaceId, t.userId] }), index("wm_user_idx").on(t.userId)],
+);
+
 export const sessions = pgTable("sessions", {
-  id: text("id").primaryKey(), // random token
+  id: text("id").primaryKey(),
   userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  workspaceId: text("workspace_id").references(() => workspaces.id, { onDelete: "set null" }), // active workspace
   expiresAt: timestamp("expires_at").notNull(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
 export const passwordResets = pgTable("password_resets", {
-  id: text("id").primaryKey(), // random token
+  id: text("id").primaryKey(),
   userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   expiresAt: timestamp("expires_at").notNull(),
 });
 
-// Emails allowed to sign up (and thus share access to the data).
-export const invitations = pgTable("invitations", {
-  email: text("email").primaryKey(),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+// Pending invites to a specific workspace, keyed by email.
+export const invitations = pgTable(
+  "invitations",
+  {
+    workspaceId: text("workspace_id").notNull().references(() => workspaces.id, { onDelete: "cascade" }),
+    email: text("email").notNull(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.workspaceId, t.email] }), index("invite_email_idx").on(t.email)],
+);
 
 export type Account = typeof accounts.$inferSelect;
 export type Category = typeof categories.$inferSelect;
@@ -135,3 +174,4 @@ export type Budget = typeof budgets.$inferSelect;
 export type Transfer = typeof transfers.$inferSelect;
 export type Recurring = typeof recurring.$inferSelect;
 export type User = typeof users.$inferSelect;
+export type Workspace = typeof workspaces.$inferSelect;

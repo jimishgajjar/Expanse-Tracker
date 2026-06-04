@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { getDb } from "./db";
-import { passwordResets, users } from "./db/schema";
+import { passwordResets, users, workspaceMembers, workspaces } from "./db/schema";
 import { hashPassword } from "./password";
 import { createSession } from "./session";
 import { sendEmail } from "./email";
@@ -51,6 +51,13 @@ export async function resetPassword(_prev: string | undefined, formData: FormDat
 
   await db.update(users).set({ passwordHash: hashPassword(pwP.data) }).where(eq(users.id, row.userId));
   await db.delete(passwordResets).where(eq(passwordResets.id, token));
-  await createSession(row.userId); // sign them in
+
+  const [owned] = await db.select({ id: workspaces.id }).from(workspaces).where(eq(workspaces.ownerId, row.userId)).limit(1);
+  let wid = owned?.id ?? null;
+  if (!wid) {
+    const [m] = await db.select({ id: workspaceMembers.workspaceId }).from(workspaceMembers).where(eq(workspaceMembers.userId, row.userId)).limit(1);
+    wid = m?.id ?? null;
+  }
+  await createSession(row.userId, wid); // sign them in
   redirect("/");
 }

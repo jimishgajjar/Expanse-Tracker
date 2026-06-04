@@ -1,25 +1,24 @@
 import "dotenv/config";
 import { getDb } from "../src/lib/db/index";
-import { seed } from "../src/lib/db/seed";
-import { accounts } from "../src/lib/db/schema";
+import { maybeSeed } from "../src/lib/db/seed";
+import { users } from "../src/lib/db/schema";
 
-// Seed a real (Neon) database with default accounts + categories.
-// Usage: npm run db:seed            (defaults only)
-//        npm run db:seed -- --samples  (also add example transactions)
+// Seed a fresh (Neon) database with a demo user + personal workspace + sample
+// data. Real users get their own workspace (with default categories) on signup.
+// Demo login: demo@demo.com / password
 async function main() {
   if (!process.env.DATABASE_URL) {
     console.error("✗ Set DATABASE_URL (your Neon connection string) before seeding.");
     process.exit(1);
   }
   const db = await getDb();
-  const existing = await db.select({ id: accounts.id }).from(accounts).limit(1);
+  const existing = await db.select({ id: users.id }).from(users).limit(1);
   if (existing.length) {
-    console.log("• Database already has data — skipping seed.");
+    console.log("• Database already has users — skipping seed.");
     return;
   }
-  const samples = process.argv.includes("--samples");
-  await seed(db, { samples });
-  console.log(`✓ Seeded default accounts + categories${samples ? " + sample transactions" : ""}.`);
+  await maybeSeed(db);
+  console.log("✓ Seeded demo@demo.com / password with a sample workspace.");
 }
 
 main().then(() => process.exit(0)).catch((e) => { console.error(e); process.exit(1); });

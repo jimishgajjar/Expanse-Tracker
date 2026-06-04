@@ -1,40 +1,46 @@
 import { and, asc, desc, eq, gte, lt, sql } from "drizzle-orm";
 import { addMonths, addWeeks, addYears, format, parseISO } from "date-fns";
 import { getDb } from "./db";
-import { accounts, appSettings, budgets, categories, invitations, recurring, transactions, transfers, users } from "./db/schema";
+import { accounts, appSettings, budgets, categories, invitations, recurring, transactions, transfers, users, workspaceMembers } from "./db/schema";
 import { CURRENCIES, DEFAULT_CURRENCY_CODE, findCurrencyByCode } from "./currencies";
 import { todayISO } from "./dates";
+import { getActiveWorkspaceId } from "./workspace";
 
 export type AccountDTO = {
   id: string; name: string; type: string; icon: string; color: string;
   initialBalance: number; income: number; expense: number; balance: number;
 };
-export type CategoryDTO = {
-  id: string; name: string; kind: "income" | "expense"; icon: string; color: string;
-};
+export type CategoryDTO = { id: string; name: string; kind: "income" | "expense"; icon: string; color: string };
 export type RefDTO = { name: string; icon: string; color: string } | null;
 export type TransactionDTO = {
   id: string; type: "income" | "expense"; amount: number; date: string; note: string;
   accountId: string | null; categoryId: string | null; account: RefDTO; category: RefDTO;
 };
+export type TransferDTO = { id: string; amount: number; date: string; note: string; fromAccountId: string; toAccountId: string };
+export type RecurringDTO = { id: string; type: "income" | "expense"; amount: number; note: string; accountId: string | null; categoryId: string | null; frequency: string; nextDate: string };
+export type SettingsDTO = { currencyCode: string; currency: string; locale: string };
+export type BudgetProgressDTO = { categoryId: string; name: string; icon: string; color: string; budget: number; spent: number };
+export type NetWorthPoint = { key: string; value: number };
+export type MemberDTO = { id: string; email: string; name: string };
 
 export async function getCategories(): Promise<CategoryDTO[]> {
+  const wid = await getActiveWorkspaceId();
+  if (!wid) return [];
   const db = await getDb();
-  const rows = await db.select().from(categories).orderBy(asc(categories.name));
+  const rows = await db.select().from(categories).where(eq(categories.workspaceId, wid)).orderBy(asc(categories.name));
   return rows.map((c) => ({ id: c.id, name: c.name, kind: c.kind, icon: c.icon, color: c.color }));
 }
 
-/** Accounts with current balance = initial + all income − all expense. */
+/** Accounts with current balance = initial + income − expense + transfers. */
 export async function getAccountsWithBalances(): Promise<AccountDTO[]> {
+  const wid = await getActiveWorkspaceId();
+  if (!wid) return [];
   const db = await getDb();
-  const accs = await db.select().from(accounts).orderBy(asc(accounts.createdAt));
+  const accs = await db.select().from(accounts).where(eq(accounts.workspaceId, wid)).orderBy(asc(accounts.createdAt));
   const agg = await db
-    .select({
-      accountId: transactions.accountId,
-      type: transactions.type,
-      total: sql<string>`coalesce(sum(${transactions.amount}), 0)`,
-    })
+    .select({ accountId: transactions.accountId, type: transactions.type, total: sql<string>`coalesce(sum(${transactions.amount}), 0)` })
     .from(transactions)
+    .where(eq(transactions.workspaceId, wid))
     .groupBy(transactions.accountId, transactions.type);
 
   const byId: Record<string, { income: number; expense: number }> = {};
@@ -42,7 +48,7 @@ export async function getAccountsWithBalances(): Promise<AccountDTO[]> {
     if (!r.accountId) continue;
     (byId[r.accountId] ??= { income: 0, expense: 0 })[r.type] += Number(r.total ?? 0);
   }
-  const xfers = await db.select({ from: transfers.fromAccountId, to: transfers.toAccountId, amount: transfers.amount }).from(transfers);
+  const xfers = await db.select({ from: transfers.fromAccountId, to: transfers.toAccountId, amount: transfers.amount }).from(transfers).where(eq(transfers.workspaceId, wid));
   const transferNet: Record<string, number> = {};
   for (const x of xfers) {
     const amt = Number(x.amount);
@@ -61,23 +67,16 @@ export async function getAccountsWithBalances(): Promise<AccountDTO[]> {
   });
 }
 
-export type TransferDTO = {
-  id: string; amount: number; date: string; note: string;
-  fromAccountId: string; toAccountId: string;
-};
-
-/** Transfers in a [start, end) range (account names resolved client-side). */
 export async function getTransfersInRange(start: string, end: string): Promise<TransferDTO[]> {
+  const wid = await getActiveWorkspaceId();
+  if (!wid) return [];
   const db = await getDb();
   const rows = await db
     .select()
     .from(transfers)
-    .where(and(gte(transfers.date, start), lt(transfers.date, end)))
+    .where(and(eq(transfers.workspaceId, wid), gte(transfers.date, start), lt(transfers.date, end)))
     .orderBy(desc(transfers.date), desc(transfers.createdAt));
-  return rows.map((r) => ({
-    id: r.id, amount: Number(r.amount), date: r.date, note: r.note,
-    fromAccountId: r.fromAccountId, toAccountId: r.toAccountId,
-  }));
+  return rows.map((r) => ({ id: r.id, amount: Number(r.amount), date: r.date, note: r.note, fromAccountId: r.fromAccountId, toAccountId: r.toAccountId }));
 }
 
 // ── recurring ────────────────────────────────────────────
@@ -87,10 +86,12 @@ function advanceDate(dateStr: string, freq: string): string {
   return format(next, "yyyy-MM-dd");
 }
 
-/** Materialise any recurring rules that are due (nextDate ≤ today) into transactions. */
+/** Materialise the active workspace's due recurring rules into transactions. */
 export async function processRecurring(): Promise<void> {
+  const wid = await getActiveWorkspaceId();
+  if (!wid) return;
   const db = await getDb();
-  const rules = await db.select().from(recurring);
+  const rules = await db.select().from(recurring).where(eq(recurring.workspaceId, wid));
   if (!rules.length) return;
   const today = todayISO();
   for (const r of rules) {
@@ -98,7 +99,7 @@ export async function processRecurring(): Promise<void> {
     const toCreate: (typeof transactions.$inferInsert)[] = [];
     let guard = 0;
     while (next <= today && guard++ < 500) {
-      toCreate.push({ type: r.type, amount: r.amount, date: next, note: r.note, accountId: r.accountId, categoryId: r.categoryId });
+      toCreate.push({ workspaceId: wid, type: r.type, amount: r.amount, date: next, note: r.note, accountId: r.accountId, categoryId: r.categoryId });
       next = advanceDate(next, r.frequency);
     }
     if (toCreate.length) {
@@ -108,25 +109,20 @@ export async function processRecurring(): Promise<void> {
   }
 }
 
-export type RecurringDTO = {
-  id: string; type: "income" | "expense"; amount: number; note: string;
-  accountId: string | null; categoryId: string | null; frequency: string; nextDate: string;
-};
-
 export async function getRecurring(): Promise<RecurringDTO[]> {
+  const wid = await getActiveWorkspaceId();
+  if (!wid) return [];
   const db = await getDb();
-  const rows = await db.select().from(recurring).orderBy(asc(recurring.nextDate));
-  return rows.map((r) => ({
-    id: r.id, type: r.type, amount: Number(r.amount), note: r.note,
-    accountId: r.accountId, categoryId: r.categoryId, frequency: r.frequency, nextDate: r.nextDate,
-  }));
+  const rows = await db.select().from(recurring).where(eq(recurring.workspaceId, wid)).orderBy(asc(recurring.nextDate));
+  return rows.map((r) => ({ id: r.id, type: r.type, amount: Number(r.amount), note: r.note, accountId: r.accountId, categoryId: r.categoryId, frequency: r.frequency, nextDate: r.nextDate }));
 }
 
-/** All transactions whose date is in [start, end), newest first, with refs joined. */
 export async function getTransactionsInRange(start: string, end: string): Promise<TransactionDTO[]> {
+  const wid = await getActiveWorkspaceId();
+  if (!wid) return [];
   const db = await getDb();
   const rows = await db.query.transactions.findMany({
-    where: and(gte(transactions.date, start), lt(transactions.date, end)),
+    where: and(eq(transactions.workspaceId, wid), gte(transactions.date, start), lt(transactions.date, end)),
     orderBy: [desc(transactions.date), desc(transactions.createdAt)],
     with: { account: true, category: true },
   });
@@ -138,45 +134,53 @@ export async function getTransactionsInRange(start: string, end: string): Promis
   }));
 }
 
-/** Every transaction (used by the Excel export). */
 export async function getAllTransactions(): Promise<TransactionDTO[]> {
   return getTransactionsInRange("0001-01-01", "9999-12-31");
 }
 
-export type SettingsDTO = { currencyCode: string; currency: string; locale: string };
-
-/** App settings, creating the single row with defaults on first read. */
-export type MemberDTO = { id: string; email: string; name: string };
-
 export async function getMembers(): Promise<MemberDTO[]> {
+  const wid = await getActiveWorkspaceId();
+  if (!wid) return [];
   const db = await getDb();
-  return db.select({ id: users.id, email: users.email, name: users.name }).from(users).orderBy(asc(users.createdAt));
+  return db
+    .select({ id: users.id, email: users.email, name: users.name })
+    .from(workspaceMembers)
+    .innerJoin(users, eq(workspaceMembers.userId, users.id))
+    .where(eq(workspaceMembers.workspaceId, wid))
+    .orderBy(asc(workspaceMembers.createdAt));
 }
 
 export async function getInvites(): Promise<string[]> {
+  const wid = await getActiveWorkspaceId();
+  if (!wid) return [];
   const db = await getDb();
-  const rows = await db.select({ email: invitations.email }).from(invitations).orderBy(asc(invitations.createdAt));
+  const rows = await db.select({ email: invitations.email }).from(invitations).where(eq(invitations.workspaceId, wid)).orderBy(asc(invitations.createdAt));
   return rows.map((r) => r.email);
 }
 
 export async function getSettings(): Promise<SettingsDTO> {
+  const fallback = () => {
+    const c = findCurrencyByCode(DEFAULT_CURRENCY_CODE) ?? CURRENCIES[0];
+    return { currencyCode: c.code, currency: c.symbol, locale: c.locale };
+  };
+  const wid = await getActiveWorkspaceId();
+  if (!wid) return fallback();
   const db = await getDb();
-  let rows = await db.select().from(appSettings).where(eq(appSettings.id, "app"));
-  if (!rows.length) rows = await db.insert(appSettings).values({ id: "app" }).returning();
+  let rows = await db.select().from(appSettings).where(eq(appSettings.workspaceId, wid));
+  if (!rows.length) rows = await db.insert(appSettings).values({ workspaceId: wid }).returning();
   const cur = findCurrencyByCode(rows[0]?.currencyCode ?? DEFAULT_CURRENCY_CODE) ?? CURRENCIES[0];
   return { currencyCode: cur.code, currency: cur.symbol, locale: cur.locale };
 }
 
-// ── budgets ──────────────────────────────────────────────
-export type BudgetProgressDTO = { categoryId: string; name: string; icon: string; color: string; budget: number; spent: number };
-
-/** Budgets (one per expense category) with this calendar month's spend. */
 export async function getBudgetProgress(): Promise<BudgetProgressDTO[]> {
+  const wid = await getActiveWorkspaceId();
+  if (!wid) return [];
   const db = await getDb();
   const rows = await db
     .select({ categoryId: budgets.categoryId, amount: budgets.amount, name: categories.name, icon: categories.icon, color: categories.color })
     .from(budgets)
-    .innerJoin(categories, eq(budgets.categoryId, categories.id));
+    .innerJoin(categories, eq(budgets.categoryId, categories.id))
+    .where(eq(budgets.workspaceId, wid));
   if (!rows.length) return [];
 
   const now = new Date();
@@ -188,7 +192,7 @@ export async function getBudgetProgress(): Promise<BudgetProgressDTO[]> {
   const spendRows = await db
     .select({ categoryId: transactions.categoryId, total: sql<string>`coalesce(sum(${transactions.amount}), 0)` })
     .from(transactions)
-    .where(and(eq(transactions.type, "expense"), gte(transactions.date, start), lt(transactions.date, end)))
+    .where(and(eq(transactions.workspaceId, wid), eq(transactions.type, "expense"), gte(transactions.date, start), lt(transactions.date, end)))
     .groupBy(transactions.categoryId);
   const spent: Record<string, number> = {};
   for (const r of spendRows) if (r.categoryId) spent[r.categoryId] = Number(r.total);
@@ -198,25 +202,25 @@ export async function getBudgetProgress(): Promise<BudgetProgressDTO[]> {
     .sort((a, b) => b.spent / b.budget - a.spent / a.budget);
 }
 
-/** Income + expense totals over a [start, end) range (for period comparison). */
 export async function getRangeTotals(start: string, end: string): Promise<{ income: number; expense: number }> {
+  const wid = await getActiveWorkspaceId();
+  if (!wid) return { income: 0, expense: 0 };
   const db = await getDb();
   const rows = await db
     .select({ type: transactions.type, total: sql<string>`coalesce(sum(${transactions.amount}), 0)` })
     .from(transactions)
-    .where(and(gte(transactions.date, start), lt(transactions.date, end)))
+    .where(and(eq(transactions.workspaceId, wid), gte(transactions.date, start), lt(transactions.date, end)))
     .groupBy(transactions.type);
   let income = 0, expense = 0;
   for (const r of rows) { if (r.type === "income") income = Number(r.total); else expense = Number(r.total); }
   return { income, expense };
 }
 
-export type NetWorthPoint = { key: string; value: number };
-
-/** Cumulative net worth at the end of each month (initial balances + running income−expense). */
 export async function getNetWorthSeries(): Promise<NetWorthPoint[]> {
+  const wid = await getActiveWorkspaceId();
+  if (!wid) return [];
   const db = await getDb();
-  const accs = await db.select({ initial: accounts.initialBalance }).from(accounts);
+  const accs = await db.select({ initial: accounts.initialBalance }).from(accounts).where(eq(accounts.workspaceId, wid));
   const base = accs.reduce((s, a) => s + Number(a.initial), 0);
   const rows = await db
     .select({
@@ -224,6 +228,7 @@ export async function getNetWorthSeries(): Promise<NetWorthPoint[]> {
       delta: sql<string>`coalesce(sum(case when ${transactions.type} = 'income' then ${transactions.amount} else -${transactions.amount} end), 0)`,
     })
     .from(transactions)
+    .where(eq(transactions.workspaceId, wid))
     .groupBy(sql`to_char(${transactions.date}, 'YYYY-MM')`)
     .orderBy(sql`to_char(${transactions.date}, 'YYYY-MM')`);
   let running = base;

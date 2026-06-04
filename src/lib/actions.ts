@@ -2,16 +2,25 @@
 
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { getDb } from "./db";
 import { accounts, appSettings, budgets, categories, recurring, transactions, transfers } from "./db/schema";
 import { findCurrencyByCode } from "./currencies";
+import { getActiveWorkspaceId, getUserWorkspaces } from "./workspace";
+import { getCurrentUser, setActiveWorkspace } from "./session";
 
 type Result<T = undefined> = { ok: true; data?: T } | { ok: false; error: string };
 
 function fail(e: unknown): { ok: false; error: string } {
   if (e instanceof z.ZodError) return { ok: false, error: e.issues[0]?.message ?? "Invalid input" };
   return { ok: false, error: e instanceof Error ? e.message : "Something went wrong" };
+}
+
+/** Active workspace id, or throw (→ {ok:false}). Every mutation is scoped to it. */
+async function wid(): Promise<string> {
+  const id = await getActiveWorkspaceId();
+  if (!id) throw new Error("You're not signed in.");
+  return id;
 }
 
 // ── accounts ─────────────────────────────────────────────
@@ -26,8 +35,9 @@ const accountSchema = z.object({
 export async function createAccount(input: unknown): Promise<Result> {
   try {
     const d = accountSchema.parse(input);
+    const w = await wid();
     const db = await getDb();
-    await db.insert(accounts).values({ ...d, initialBalance: String(d.initialBalance) });
+    await db.insert(accounts).values({ ...d, workspaceId: w, initialBalance: String(d.initialBalance) });
     revalidatePath("/");
     return { ok: true };
   } catch (e) { return fail(e); }
@@ -38,8 +48,9 @@ export async function updateAccount(id: string, input: unknown): Promise<Result>
     const d = accountSchema.partial().parse(input);
     const patch: Record<string, unknown> = { ...d };
     if (d.initialBalance !== undefined) patch.initialBalance = String(d.initialBalance);
+    const w = await wid();
     const db = await getDb();
-    await db.update(accounts).set(patch).where(eq(accounts.id, id));
+    await db.update(accounts).set(patch).where(and(eq(accounts.id, id), eq(accounts.workspaceId, w)));
     revalidatePath("/");
     return { ok: true };
   } catch (e) { return fail(e); }
@@ -47,8 +58,9 @@ export async function updateAccount(id: string, input: unknown): Promise<Result>
 
 export async function deleteAccount(id: string): Promise<Result> {
   try {
+    const w = await wid();
     const db = await getDb();
-    await db.delete(accounts).where(eq(accounts.id, id)); // cascades to its transactions
+    await db.delete(accounts).where(and(eq(accounts.id, id), eq(accounts.workspaceId, w)));
     revalidatePath("/");
     return { ok: true };
   } catch (e) { return fail(e); }
@@ -65,8 +77,9 @@ const categorySchema = z.object({
 export async function createCategory(input: unknown): Promise<Result<{ id: string }>> {
   try {
     const d = categorySchema.parse(input);
+    const w = await wid();
     const db = await getDb();
-    const [row] = await db.insert(categories).values(d).returning({ id: categories.id });
+    const [row] = await db.insert(categories).values({ ...d, workspaceId: w }).returning({ id: categories.id });
     revalidatePath("/");
     return { ok: true, data: { id: row.id } };
   } catch (e) { return fail(e); }
@@ -75,8 +88,9 @@ export async function createCategory(input: unknown): Promise<Result<{ id: strin
 export async function updateCategory(id: string, input: unknown): Promise<Result> {
   try {
     const d = categorySchema.partial().parse(input);
+    const w = await wid();
     const db = await getDb();
-    await db.update(categories).set(d).where(eq(categories.id, id));
+    await db.update(categories).set(d).where(and(eq(categories.id, id), eq(categories.workspaceId, w)));
     revalidatePath("/");
     return { ok: true };
   } catch (e) { return fail(e); }
@@ -84,8 +98,9 @@ export async function updateCategory(id: string, input: unknown): Promise<Result
 
 export async function deleteCategory(id: string): Promise<Result> {
   try {
+    const w = await wid();
     const db = await getDb();
-    await db.delete(categories).where(eq(categories.id, id)); // transactions keep, category → null
+    await db.delete(categories).where(and(eq(categories.id, id), eq(categories.workspaceId, w)));
     revalidatePath("/");
     return { ok: true };
   } catch (e) { return fail(e); }
@@ -104,9 +119,10 @@ const txSchema = z.object({
 export async function createTransaction(input: unknown): Promise<Result> {
   try {
     const d = txSchema.parse(input);
+    const w = await wid();
     const db = await getDb();
     await db.insert(transactions).values({
-      type: d.type, amount: String(d.amount), date: d.date,
+      workspaceId: w, type: d.type, amount: String(d.amount), date: d.date,
       note: d.note ?? "", accountId: d.accountId, categoryId: d.categoryId ?? null,
     });
     revalidatePath("/");
@@ -119,8 +135,9 @@ export async function updateTransaction(id: string, input: unknown): Promise<Res
     const d = txSchema.partial().parse(input);
     const patch: Record<string, unknown> = { ...d };
     if (d.amount !== undefined) patch.amount = String(d.amount);
+    const w = await wid();
     const db = await getDb();
-    await db.update(transactions).set(patch).where(eq(transactions.id, id));
+    await db.update(transactions).set(patch).where(and(eq(transactions.id, id), eq(transactions.workspaceId, w)));
     revalidatePath("/");
     return { ok: true };
   } catch (e) { return fail(e); }
@@ -128,8 +145,9 @@ export async function updateTransaction(id: string, input: unknown): Promise<Res
 
 export async function deleteTransaction(id: string): Promise<Result> {
   try {
+    const w = await wid();
     const db = await getDb();
-    await db.delete(transactions).where(eq(transactions.id, id));
+    await db.delete(transactions).where(and(eq(transactions.id, id), eq(transactions.workspaceId, w)));
     revalidatePath("/");
     return { ok: true };
   } catch (e) { return fail(e); }
@@ -142,11 +160,12 @@ export async function updateSettings(input: unknown): Promise<Result> {
   try {
     const d = settingsSchema.parse(input);
     if (!findCurrencyByCode(d.currencyCode)) throw new Error("Unknown currency");
+    const w = await wid();
     const db = await getDb();
     await db
       .insert(appSettings)
-      .values({ id: "app", currencyCode: d.currencyCode })
-      .onConflictDoUpdate({ target: appSettings.id, set: { currencyCode: d.currencyCode } });
+      .values({ workspaceId: w, currencyCode: d.currencyCode })
+      .onConflictDoUpdate({ target: appSettings.workspaceId, set: { currencyCode: d.currencyCode } });
     revalidatePath("/");
     return { ok: true };
   } catch (e) { return fail(e); }
@@ -161,10 +180,11 @@ const budgetSchema = z.object({
 export async function setBudget(input: unknown): Promise<Result> {
   try {
     const d = budgetSchema.parse(input);
+    const w = await wid();
     const db = await getDb();
     await db
       .insert(budgets)
-      .values({ categoryId: d.categoryId, amount: String(d.amount) })
+      .values({ workspaceId: w, categoryId: d.categoryId, amount: String(d.amount) })
       .onConflictDoUpdate({ target: budgets.categoryId, set: { amount: String(d.amount) } });
     revalidatePath("/");
     return { ok: true };
@@ -173,8 +193,9 @@ export async function setBudget(input: unknown): Promise<Result> {
 
 export async function deleteBudget(categoryId: string): Promise<Result> {
   try {
+    const w = await wid();
     const db = await getDb();
-    await db.delete(budgets).where(eq(budgets.categoryId, categoryId));
+    await db.delete(budgets).where(and(eq(budgets.categoryId, categoryId), eq(budgets.workspaceId, w)));
     revalidatePath("/");
     return { ok: true };
   } catch (e) { return fail(e); }
@@ -194,9 +215,10 @@ const transferSchema = z
 export async function createTransfer(input: unknown): Promise<Result> {
   try {
     const d = transferSchema.parse(input);
+    const w = await wid();
     const db = await getDb();
     await db.insert(transfers).values({
-      amount: String(d.amount), date: d.date, note: d.note ?? "",
+      workspaceId: w, amount: String(d.amount), date: d.date, note: d.note ?? "",
       fromAccountId: d.fromAccountId, toAccountId: d.toAccountId,
     });
     revalidatePath("/");
@@ -206,8 +228,9 @@ export async function createTransfer(input: unknown): Promise<Result> {
 
 export async function deleteTransfer(id: string): Promise<Result> {
   try {
+    const w = await wid();
     const db = await getDb();
-    await db.delete(transfers).where(eq(transfers.id, id));
+    await db.delete(transfers).where(and(eq(transfers.id, id), eq(transfers.workspaceId, w)));
     revalidatePath("/");
     return { ok: true };
   } catch (e) { return fail(e); }
@@ -227,9 +250,10 @@ const recurringSchema = z.object({
 export async function createRecurring(input: unknown): Promise<Result> {
   try {
     const d = recurringSchema.parse(input);
+    const w = await wid();
     const db = await getDb();
     await db.insert(recurring).values({
-      type: d.type, amount: String(d.amount), note: d.note ?? "",
+      workspaceId: w, type: d.type, amount: String(d.amount), note: d.note ?? "",
       accountId: d.accountId, categoryId: d.categoryId ?? null,
       frequency: d.frequency, nextDate: d.nextDate,
     });
@@ -240,8 +264,22 @@ export async function createRecurring(input: unknown): Promise<Result> {
 
 export async function deleteRecurring(id: string): Promise<Result> {
   try {
+    const w = await wid();
     const db = await getDb();
-    await db.delete(recurring).where(eq(recurring.id, id));
+    await db.delete(recurring).where(and(eq(recurring.id, id), eq(recurring.workspaceId, w)));
+    revalidatePath("/");
+    return { ok: true };
+  } catch (e) { return fail(e); }
+}
+
+// ── workspace switching ──────────────────────────────────
+export async function switchWorkspace(workspaceId: string): Promise<Result> {
+  try {
+    const user = await getCurrentUser();
+    if (!user) return { ok: false, error: "Not signed in." };
+    const memberships = await getUserWorkspaces();
+    if (!memberships.some((m) => m.id === workspaceId)) return { ok: false, error: "No access to that account." };
+    await setActiveWorkspace(workspaceId);
     revalidatePath("/");
     return { ok: true };
   } catch (e) { return fail(e); }

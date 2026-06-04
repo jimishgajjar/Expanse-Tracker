@@ -10,6 +10,7 @@ import { SettingsDialog } from "@/components/settings-dialog";
 import { CategoryManager } from "@/components/category-manager";
 import { RecurringManager } from "@/components/recurring-manager";
 import { MembersManager } from "@/components/members-manager";
+import { WorkspaceSwitcher } from "@/components/workspace-switcher";
 import { TransactionDialog } from "@/components/transaction-dialog";
 import { PeriodBar } from "@/components/period-bar";
 import { OverviewTab } from "@/components/overview-tab";
@@ -17,6 +18,7 @@ import { TransactionsTab } from "@/components/transactions-tab";
 import { AnalyticsTab, type Comparison } from "@/components/analytics-tab";
 import type { RangeType } from "@/lib/dates";
 import type { AccountDTO, BudgetProgressDTO, CategoryDTO, MemberDTO, NetWorthPoint, RecurringDTO, TransactionDTO, TransferDTO } from "@/lib/queries";
+import type { WorkspaceSummary } from "@/lib/workspace";
 
 type Tab = "overview" | "transactions" | "analytics";
 
@@ -41,6 +43,11 @@ export function Dashboard({
   members,
   invites,
   userEmail,
+  workspaces,
+  activeWorkspaceId,
+  workspaceName,
+  isOwner,
+  currentUserId,
   initialTab,
 }: {
   accounts: AccountDTO[];
@@ -63,6 +70,11 @@ export function Dashboard({
   members: MemberDTO[];
   invites: string[];
   userEmail: string;
+  workspaces: WorkspaceSummary[];
+  activeWorkspaceId: string;
+  workspaceName: string;
+  isOwner: boolean;
+  currentUserId: string;
   initialTab: Tab;
 }) {
   const [tab, setTab] = useState<Tab>(initialTab);
@@ -82,9 +94,14 @@ export function Dashboard({
     <SettingsProvider currency={currency} locale={locale}>
       <div className="mx-auto max-w-6xl space-y-4 px-3 py-5 sm:space-y-5 sm:px-6 sm:py-6">
         <header className="flex flex-wrap items-center gap-2 sm:gap-3">
-          <div className="mr-auto">
-            <h1 className="text-lg font-semibold tracking-tight sm:text-xl">Money Tracker</h1>
-            <p className="hidden text-sm text-muted-foreground sm:block">Income, expenses, accounts &amp; categories.</p>
+          <div className="mr-auto flex items-center gap-2.5">
+            <div>
+              <h1 className="text-lg font-semibold tracking-tight sm:text-xl">Money Tracker</h1>
+              <p className="hidden text-sm text-muted-foreground sm:block">Income, expenses, accounts &amp; categories.</p>
+            </div>
+            {workspaces.length > 1 && (
+              <WorkspaceSwitcher workspaces={workspaces} activeId={activeWorkspaceId} currentUserId={currentUserId} />
+            )}
           </div>
           <CategoryManager
             categories={categories}
@@ -100,6 +117,8 @@ export function Dashboard({
             members={members}
             invites={invites}
             currentEmail={userEmail}
+            workspaceName={workspaceName}
+            isOwner={isOwner}
             trigger={<Button variant="outline" size="sm" aria-label="Sharing"><Users className="size-4" /><span className="hidden sm:inline">Sharing</span></Button>}
           />
           <Button variant="outline" size="sm" aria-label="Export to Excel" onClick={() => window.location.assign("/api/export")}>

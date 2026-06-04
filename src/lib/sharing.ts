@@ -2,26 +2,41 @@
 
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { getDb } from "./db";
-import { invitations, users } from "./db/schema";
+import { invitations, users, workspaceMembers } from "./db/schema";
 import { getCurrentUser } from "./session";
+import { getActiveWorkspace } from "./workspace";
 import { sendEmail } from "./email";
 
 type Result = { ok: true } | { ok: false; error: string };
 
-export async function inviteMember(input: unknown): Promise<Result> {
+async function ctx() {
+  const ws = await getActiveWorkspace();
   const me = await getCurrentUser();
-  if (!me) return { ok: false, error: "Not signed in." };
+  if (!ws || !me) return null;
+  return { ws, me, isOwner: ws.ownerId === me.id };
+}
+
+export async function inviteMember(input: unknown): Promise<Result> {
+  const c = await ctx();
+  if (!c) return { ok: false, error: "Not signed in." };
+  if (!c.isOwner) return { ok: false, error: "Only the owner can invite people." };
   const parsed = z.object({ email: z.string().trim().email() }).safeParse(input);
   if (!parsed.success) return { ok: false, error: "Enter a valid email." };
   const email = parsed.data.email.toLowerCase();
+  if (email === c.me.email.toLowerCase()) return { ok: false, error: "That's your own email." };
 
   const db = await getDb();
-  const [existingUser] = await db.select({ id: users.id }).from(users).where(eq(users.email, email)).limit(1);
-  if (existingUser) return { ok: false, error: "That person already has access." };
-  await db.insert(invitations).values({ email }).onConflictDoNothing();
+  const [u] = await db.select({ id: users.id }).from(users).where(eq(users.email, email)).limit(1);
+  if (u) {
+    const [m] = await db.select().from(workspaceMembers).where(and(eq(workspaceMembers.workspaceId, c.ws.id), eq(workspaceMembers.userId, u.id))).limit(1);
+    if (m) return { ok: false, error: "They already have access." };
+    await db.insert(workspaceMembers).values({ workspaceId: c.ws.id, userId: u.id, role: "member" }).onConflictDoNothing();
+  } else {
+    await db.insert(invitations).values({ workspaceId: c.ws.id, email }).onConflictDoNothing();
+  }
 
   const h = await headers();
   const host = h.get("host") ?? "localhost:3000";
@@ -29,29 +44,41 @@ export async function inviteMember(input: unknown): Promise<Result> {
   const base = process.env.APP_URL || `${proto}://${host}`;
   await sendEmail(
     email,
-    `${me.name || me.email} shared their Money Tracker with you`,
-    `<p>${me.name || me.email} has invited you to their Money Tracker.</p>
-     <p><a href="${base}/signup">Create your account</a> using this email address (${email}) to get access.</p>`,
+    `${c.me.name || c.me.email} shared "${c.ws.name}" with you`,
+    u
+      ? `<p>${c.me.name || c.me.email} shared their Money Tracker ("${c.ws.name}") with you.</p><p><a href="${base}/login">Sign in</a> and switch to it from the account menu.</p>`
+      : `<p>${c.me.name || c.me.email} invited you to their Money Tracker ("${c.ws.name}").</p><p><a href="${base}/signup">Create your account</a> with this email (${email}) to get access.</p>`,
   );
   revalidatePath("/");
   return { ok: true };
 }
 
 export async function removeInvite(email: string): Promise<Result> {
-  const me = await getCurrentUser();
-  if (!me) return { ok: false, error: "Not signed in." };
+  const c = await ctx();
+  if (!c || !c.isOwner) return { ok: false, error: "Only the owner can manage invites." };
   const db = await getDb();
-  await db.delete(invitations).where(eq(invitations.email, email.toLowerCase()));
+  await db.delete(invitations).where(and(eq(invitations.workspaceId, c.ws.id), eq(invitations.email, email.toLowerCase())));
   revalidatePath("/");
   return { ok: true };
 }
 
 export async function removeMember(userId: string): Promise<Result> {
-  const me = await getCurrentUser();
-  if (!me) return { ok: false, error: "Not signed in." };
-  if (userId === me.id) return { ok: false, error: "You can't remove yourself." };
+  const c = await ctx();
+  if (!c) return { ok: false, error: "Not signed in." };
+  if (!c.isOwner) return { ok: false, error: "Only the owner can remove members." };
+  if (userId === c.me.id) return { ok: false, error: "You're the owner — you can't remove yourself." };
   const db = await getDb();
-  await db.delete(users).where(eq(users.id, userId)); // cascades sessions
+  await db.delete(workspaceMembers).where(and(eq(workspaceMembers.workspaceId, c.ws.id), eq(workspaceMembers.userId, userId)));
+  revalidatePath("/");
+  return { ok: true };
+}
+
+export async function leaveWorkspace(): Promise<Result> {
+  const c = await ctx();
+  if (!c) return { ok: false, error: "Not signed in." };
+  if (c.isOwner) return { ok: false, error: "Owners can't leave their own tracker." };
+  const db = await getDb();
+  await db.delete(workspaceMembers).where(and(eq(workspaceMembers.workspaceId, c.ws.id), eq(workspaceMembers.userId, c.me.id)));
   revalidatePath("/");
   return { ok: true };
 }

@@ -5,43 +5,8 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1780466451169,
-      "tag": "0000_robust_slayback",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1780470928711,
-      "tag": "0001_shiny_pestilence",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1780513185707,
-      "tag": "0002_curly_morph",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "7",
-      "when": 1780514560974,
-      "tag": "0003_cuddly_wendell_vaughn",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "7",
-      "when": 1780558065401,
-      "tag": "0004_married_talon",
-      "breakpoints": true
-    },
-    {
-      "idx": 5,
-      "version": "7",
-      "when": 1780558789160,
-      "tag": "0005_curly_odin",
+      "when": 1780560265557,
+      "tag": "0000_round_swordsman",
       "breakpoints": true
     }
   ]
