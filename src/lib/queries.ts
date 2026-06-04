@@ -1,7 +1,7 @@
 import { and, asc, desc, eq, gte, lt, sql } from "drizzle-orm";
 import { addMonths, addWeeks, addYears, format, parseISO } from "date-fns";
 import { getDb } from "./db";
-import { accounts, appSettings, budgets, categories, recurring, transactions, transfers } from "./db/schema";
+import { accounts, appSettings, budgets, categories, invitations, recurring, transactions, transfers, users } from "./db/schema";
 import { CURRENCIES, DEFAULT_CURRENCY_CODE, findCurrencyByCode } from "./currencies";
 import { todayISO } from "./dates";
 
@@ -146,6 +146,19 @@ export async function getAllTransactions(): Promise<TransactionDTO[]> {
 export type SettingsDTO = { currencyCode: string; currency: string; locale: string };
 
 /** App settings, creating the single row with defaults on first read. */
+export type MemberDTO = { id: string; email: string; name: string };
+
+export async function getMembers(): Promise<MemberDTO[]> {
+  const db = await getDb();
+  return db.select({ id: users.id, email: users.email, name: users.name }).from(users).orderBy(asc(users.createdAt));
+}
+
+export async function getInvites(): Promise<string[]> {
+  const db = await getDb();
+  const rows = await db.select({ email: invitations.email }).from(invitations).orderBy(asc(invitations.createdAt));
+  return rows.map((r) => r.email);
+}
+
 export async function getSettings(): Promise<SettingsDTO> {
   const db = await getDb();
   let rows = await db.select().from(appSettings).where(eq(appSettings.id, "app"));

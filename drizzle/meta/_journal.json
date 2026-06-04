@@ -36,6 +36,13 @@
       "when": 1780558065401,
       "tag": "0004_married_talon",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1780558789160,
+      "tag": "0005_curly_odin",
+      "breakpoints": true
     }
   ]
 }

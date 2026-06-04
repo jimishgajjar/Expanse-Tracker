@@ -2,8 +2,8 @@ import { Dashboard } from "@/components/dashboard";
 import { getRange, RANGE_TYPES, shiftAnchor, todayISO, type RangeType } from "@/lib/dates";
 import {
   getAccountsWithBalances, getBudgetProgress, getCategories,
-  getNetWorthSeries, getRangeTotals, getRecurring, getSettings, getTransactionsInRange, getTransfersInRange,
-  processRecurring,
+  getInvites, getMembers, getNetWorthSeries, getRangeTotals, getRecurring, getSettings,
+  getTransactionsInRange, getTransfersInRange, processRecurring,
 } from "@/lib/queries";
 import { getCurrentUser } from "@/lib/session";
 import { redirect } from "next/navigation";
@@ -28,7 +28,7 @@ export default async function Page({
   // Materialise any due recurring rules before reading data.
   await processRecurring();
 
-  const [accounts, categories, transactions, transfers, settings, budgetProgress, netWorth, recurring, prevTotals] = await Promise.all([
+  const [accounts, categories, transactions, transfers, settings, budgetProgress, netWorth, recurring, members, invites, prevTotals] = await Promise.all([
     getAccountsWithBalances(),
     getCategories(),
     getTransactionsInRange(range.start, range.end),
@@ -37,6 +37,8 @@ export default async function Page({
     getBudgetProgress(),
     getNetWorthSeries(),
     getRecurring(),
+    getMembers(),
+    getInvites(),
     prevRange ? getRangeTotals(prevRange.start, prevRange.end) : Promise.resolve(null),
   ]);
 
@@ -63,6 +65,8 @@ export default async function Page({
       netWorth={netWorth}
       comparison={comparison}
       recurring={recurring}
+      members={members}
+      invites={invites}
       userEmail={user.email}
       initialTab={initialTab}
     />

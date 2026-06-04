@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Download, Plus, Repeat, Settings, Tags } from "lucide-react";
+import { Download, Plus, Repeat, Settings, Tags, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -9,13 +9,14 @@ import { SettingsProvider } from "@/components/settings-provider";
 import { SettingsDialog } from "@/components/settings-dialog";
 import { CategoryManager } from "@/components/category-manager";
 import { RecurringManager } from "@/components/recurring-manager";
+import { MembersManager } from "@/components/members-manager";
 import { TransactionDialog } from "@/components/transaction-dialog";
 import { PeriodBar } from "@/components/period-bar";
 import { OverviewTab } from "@/components/overview-tab";
 import { TransactionsTab } from "@/components/transactions-tab";
 import { AnalyticsTab, type Comparison } from "@/components/analytics-tab";
 import type { RangeType } from "@/lib/dates";
-import type { AccountDTO, BudgetProgressDTO, CategoryDTO, NetWorthPoint, RecurringDTO, TransactionDTO, TransferDTO } from "@/lib/queries";
+import type { AccountDTO, BudgetProgressDTO, CategoryDTO, MemberDTO, NetWorthPoint, RecurringDTO, TransactionDTO, TransferDTO } from "@/lib/queries";
 
 type Tab = "overview" | "transactions" | "analytics";
 
@@ -37,6 +38,8 @@ export function Dashboard({
   netWorth,
   comparison,
   recurring,
+  members,
+  invites,
   userEmail,
   initialTab,
 }: {
@@ -57,6 +60,8 @@ export function Dashboard({
   netWorth: NetWorthPoint[];
   comparison: Comparison;
   recurring: RecurringDTO[];
+  members: MemberDTO[];
+  invites: string[];
   userEmail: string;
   initialTab: Tab;
 }) {
@@ -90,6 +95,12 @@ export function Dashboard({
             accounts={accounts}
             categories={categories}
             trigger={<Button variant="outline" size="sm" aria-label="Recurring"><Repeat className="size-4" /><span className="hidden sm:inline">Recurring</span></Button>}
+          />
+          <MembersManager
+            members={members}
+            invites={invites}
+            currentEmail={userEmail}
+            trigger={<Button variant="outline" size="sm" aria-label="Sharing"><Users className="size-4" /><span className="hidden sm:inline">Sharing</span></Button>}
           />
           <Button variant="outline" size="sm" aria-label="Export to Excel" onClick={() => window.location.assign("/api/export")}>
             <Download className="size-4" /><span className="hidden sm:inline">Export</span>

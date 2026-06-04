@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { eq } from "drizzle-orm";
 import { getDb } from "./db";
-import { users } from "./db/schema";
+import { invitations, users } from "./db/schema";
 import { hashPassword, verifyPassword } from "./password";
 import { createSession, destroySession, getCurrentUser } from "./session";
 
@@ -22,7 +22,16 @@ export async function signup(_prev: string | undefined, formData: FormData): Pro
   const db = await getDb();
   const existing = await db.select({ id: users.id }).from(users).where(eq(users.email, email)).limit(1);
   if (existing.length) return "An account with this email already exists.";
+
+  // First user becomes the owner; everyone else must have been invited.
+  const anyUser = await db.select({ id: users.id }).from(users).limit(1);
+  if (anyUser.length > 0) {
+    const [invite] = await db.select().from(invitations).where(eq(invitations.email, email)).limit(1);
+    if (!invite) return "You need an invitation to sign up. Ask the account owner to add your email.";
+  }
+
   const [u] = await db.insert(users).values({ email, name, passwordHash: hashPassword(pwP.data) }).returning();
+  await db.delete(invitations).where(eq(invitations.email, email)); // consume the invite
   await createSession(u.id);
   redirect("/");
 }

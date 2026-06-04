@@ -121,6 +121,12 @@ export const passwordResets = pgTable("password_resets", {
   expiresAt: timestamp("expires_at").notNull(),
 });
 
+// Emails allowed to sign up (and thus share access to the data).
+export const invitations = pgTable("invitations", {
+  email: text("email").primaryKey(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
 export type Account = typeof accounts.$inferSelect;
 export type Category = typeof categories.$inferSelect;
 export type Transaction = typeof transactions.$inferSelect;
