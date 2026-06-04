@@ -20,6 +20,8 @@ npm run dev          # → http://localhost:3000
 
 With no `DATABASE_URL`, the app spins up an **embedded Postgres (PGlite)** in `./.pglite`, runs migrations, and seeds sample accounts, categories and transactions automatically — so it works immediately. Your data persists in that folder (git-ignored).
 
+On first load you'll be asked to sign in. A demo account is seeded locally — **`demo@demo.com` / `password`** — or create your own.
+
 > **Local dev speed (Windows):** if compiles feel slow, it's usually antivirus scanning `.next`. Add the project's `.next` folder to Windows Defender's exclusions, or keep the project on a fast local SSD — Vercel builds are unaffected.
 
 ## Use a real database (Neon)
@@ -65,6 +67,7 @@ With no `DATABASE_URL`, the app spins up an **embedded Postgres (PGlite)** in `.
 - **CSV / Excel import** — bring data in via Settings → Data (accounts & categories created by name).
 - **Account detail** — click any account card to see its stats and activity.
 - **Tested** — `npm test` runs Vitest unit tests for the date-range, money, and bucketing logic.
+- **Accounts & sharing** — email/password signup & login, change password, and forgot-password reset via email (Resend, or logged to the console in dev). **Invite people by email** to share access to all the data; the first user is the owner and only invited emails can sign up.
 - **Pagination** — the transactions list is paginated with a **rows-per-page** selector (10 / 25 / 50 / 100).
 - **Export to Excel** — one click downloads an `.xlsx` of all data (Transactions / Accounts / Categories sheets) via `/api/export`.
 - **Currency setting** — change the display currency in-app (Settings ⚙); stored in the database and applied everywhere.
