@@ -241,6 +241,7 @@ export async function deleteTransfer(id: string): Promise<Result> {
 }
 
 // ── recurring ────────────────────────────────────────────
+const dateStr = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Pick a valid date");
 const recurringSchema = z.object({
   type: z.enum(["income", "expense"]),
   amount: z.coerce.number().positive("Amount must be greater than 0"),
@@ -248,8 +249,12 @@ const recurringSchema = z.object({
   accountId: z.string().min(1, "Pick an account"),
   categoryId: z.string().min(1).nullable().optional(),
   frequency: z.enum(["weekly", "monthly", "yearly"]),
-  nextDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Pick a valid date"),
-});
+  nextDate: dateStr,
+  endDate: dateStr.nullable().optional(),
+  maxOccurrences: z.coerce.number().int().positive().nullable().optional(),
+  alertsEnabled: z.coerce.boolean().optional(),
+  remindDaysBefore: z.coerce.number().int().min(0).max(30).optional(),
+}).refine((d) => !d.endDate || d.endDate >= d.nextDate, { message: "End date must be after the start date", path: ["endDate"] });
 
 export async function createRecurring(input: unknown): Promise<Result> {
   try {
@@ -260,6 +265,8 @@ export async function createRecurring(input: unknown): Promise<Result> {
       workspaceId: w, type: d.type, amount: String(d.amount), note: d.note ?? "",
       accountId: d.accountId, categoryId: d.categoryId ?? null,
       frequency: d.frequency, nextDate: d.nextDate,
+      endDate: d.endDate ?? null, maxOccurrences: d.maxOccurrences ?? null,
+      alertsEnabled: d.alertsEnabled ?? false, remindDaysBefore: d.remindDaysBefore ?? 1,
     });
     revalidatePath("/");
     return { ok: true };

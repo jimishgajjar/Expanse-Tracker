@@ -1,4 +1,4 @@
-import { pgTable, pgEnum, primaryKey, text, numeric, date, timestamp, integer, index } from "drizzle-orm/pg-core";
+import { pgTable, pgEnum, primaryKey, text, numeric, date, timestamp, integer, boolean, index } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
 // Shared enum for the two flavours of money movement.
@@ -98,6 +98,12 @@ export const recurring = pgTable(
     categoryId: text("category_id").references(() => categories.id, { onDelete: "set null" }),
     frequency: text("frequency").notNull(),
     nextDate: date("next_date", { mode: "string" }).notNull(),
+    endDate: date("end_date", { mode: "string" }), // stop generating after this date
+    maxOccurrences: integer("max_occurrences"), // …or after this many have been created
+    occurrenceCount: integer("occurrence_count").notNull().default(0),
+    alertsEnabled: boolean("alerts_enabled").notNull().default(false),
+    remindDaysBefore: integer("remind_days_before").notNull().default(1), // reminder lead time
+    lastRemindedFor: date("last_reminded_for", { mode: "string" }), // dedups "upcoming" reminders
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (t) => [index("recurring_ws_idx").on(t.workspaceId)],
@@ -172,6 +178,20 @@ export const rateLimits = pgTable("rate_limits", {
   expiresAt: timestamp("expires_at").notNull(),
 });
 
+// Web Push (browser/phone notification) subscriptions, one row per device/browser.
+export const pushSubscriptions = pgTable(
+  "push_subscriptions",
+  {
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    endpoint: text("endpoint").notNull().unique(),
+    p256dh: text("p256dh").notNull(),
+    auth: text("auth").notNull(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [index("push_user_idx").on(t.userId)],
+);
+
 // Pending invites to a specific workspace, keyed by email.
 export const invitations = pgTable(
   "invitations",
@@ -193,3 +213,4 @@ export type Transfer = typeof transfers.$inferSelect;
 export type Recurring = typeof recurring.$inferSelect;
 export type User = typeof users.$inferSelect;
 export type Workspace = typeof workspaces.$inferSelect;
+export type PushSubscription = typeof pushSubscriptions.$inferSelect;

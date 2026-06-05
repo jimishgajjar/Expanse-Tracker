@@ -1,10 +1,11 @@
 import { and, asc, desc, eq, gte, lt, sql } from "drizzle-orm";
-import { addMonths, addWeeks, addYears, format, parseISO } from "date-fns";
+import { addMonths, addWeeks, addYears, differenceInCalendarDays, format, parseISO } from "date-fns";
 import { getDb } from "./db";
 import { accounts, appSettings, budgets, categories, invitations, recurring, transactions, transfers, users, workspaceMembers } from "./db/schema";
 import { CURRENCIES, DEFAULT_CURRENCY_CODE, findCurrencyByCode } from "./currencies";
 import { todayISO } from "./dates";
 import { getActiveWorkspaceId } from "./workspace";
+import { notifyWorkspace } from "./notify";
 
 export type AccountDTO = {
   id: string; name: string; type: string; icon: string; color: string;
@@ -18,7 +19,12 @@ export type TransactionDTO = {
   createdByName: string | null;
 };
 export type TransferDTO = { id: string; amount: number; date: string; note: string; fromAccountId: string; toAccountId: string };
-export type RecurringDTO = { id: string; type: "income" | "expense"; amount: number; note: string; accountId: string | null; categoryId: string | null; frequency: string; nextDate: string };
+export type RecurringDTO = {
+  id: string; type: "income" | "expense"; amount: number; note: string;
+  accountId: string | null; categoryId: string | null; frequency: string; nextDate: string;
+  endDate: string | null; maxOccurrences: number | null; occurrenceCount: number;
+  alertsEnabled: boolean; remindDaysBefore: number;
+};
 export type SettingsDTO = { currencyCode: string; currency: string; locale: string };
 export type BudgetProgressDTO = { categoryId: string; name: string; icon: string; color: string; budget: number; spent: number };
 export type NetWorthPoint = { key: string; value: number };
@@ -87,51 +93,89 @@ function advanceDate(dateStr: string, freq: string): string {
   return format(next, "yyyy-MM-dd");
 }
 
-/** Materialise the active workspace's due recurring rules into transactions. */
-export async function processRecurring(): Promise<void> {
-  const wid = await getActiveWorkspaceId();
-  if (!wid) return;
+type RecurringRow = typeof recurring.$inferSelect;
+
+async function workspaceSymbol(db: Awaited<ReturnType<typeof getDb>>, cache: Map<string, string>, wsId: string): Promise<string> {
+  const hit = cache.get(wsId);
+  if (hit) return hit;
+  const [s] = await db.select({ code: appSettings.currencyCode }).from(appSettings).where(eq(appSettings.workspaceId, wsId)).limit(1);
+  const sym = (findCurrencyByCode(s?.code ?? DEFAULT_CURRENCY_CODE) ?? CURRENCIES[0]).symbol;
+  cache.set(wsId, sym);
+  return sym;
+}
+
+/** Post any due occurrences of these rules (respecting end date + repeat count),
+ *  send a confirmation alert when one posts, and fire an "upcoming" reminder ahead
+ *  of the next due date. Shared by the on-load and cron entry points. */
+async function materialize(rules: RecurringRow[]): Promise<number> {
+  if (!rules.length) return 0;
   const db = await getDb();
-  const rules = await db.select().from(recurring).where(eq(recurring.workspaceId, wid));
-  if (!rules.length) return;
   const today = todayISO();
+  const symCache = new Map<string, string>();
+  let created = 0;
+
   for (const r of rules) {
+    // 1) Catch up on everything due, stopping at the end date or max repetitions.
     let next = r.nextDate;
+    let count = r.occurrenceCount;
     const toCreate: (typeof transactions.$inferInsert)[] = [];
     let guard = 0;
-    while (next <= today && guard++ < 500) {
-      toCreate.push({ workspaceId: wid, type: r.type, amount: r.amount, date: next, note: r.note, accountId: r.accountId, categoryId: r.categoryId });
+    while (next <= today && guard++ < 1000) {
+      if (r.endDate && next > r.endDate) break;
+      if (r.maxOccurrences != null && count >= r.maxOccurrences) break;
+      toCreate.push({ workspaceId: r.workspaceId, type: r.type, amount: r.amount, date: next, note: r.note, accountId: r.accountId, categoryId: r.categoryId });
+      count++;
       next = advanceDate(next, r.frequency);
     }
     if (toCreate.length) {
       await db.insert(transactions).values(toCreate);
-      await db.update(recurring).set({ nextDate: next }).where(eq(recurring.id, r.id));
+      await db.update(recurring).set({ nextDate: next, occurrenceCount: count }).where(eq(recurring.id, r.id));
+      created += toCreate.length;
+      if (r.alertsEnabled) {
+        const sym = await workspaceSymbol(db, symCache, r.workspaceId);
+        const label = r.note || (r.type === "income" ? "Recurring income" : "Recurring payment");
+        await notifyWorkspace(r.workspaceId, {
+          title: `${r.type === "income" ? "Income added" : "Payment added"}: ${sym}${Number(r.amount).toFixed(2)}`,
+          body: toCreate.length > 1 ? `${label} — ${toCreate.length} entries were added.` : `${label} was added to your tracker.`,
+          url: "/?tab=transactions",
+          tag: `posted-${r.id}`,
+        });
+      }
+    }
+
+    // 2) Remind ahead of the next due date — once per date (deduped via lastRemindedFor).
+    const ended = (!!r.endDate && next > r.endDate) || (r.maxOccurrences != null && count >= r.maxOccurrences);
+    if (r.alertsEnabled && !ended && r.lastRemindedFor !== next) {
+      const daysUntil = differenceInCalendarDays(parseISO(next), parseISO(today));
+      if (daysUntil >= 0 && daysUntil <= r.remindDaysBefore) {
+        await db.update(recurring).set({ lastRemindedFor: next }).where(eq(recurring.id, r.id));
+        const sym = await workspaceSymbol(db, symCache, r.workspaceId);
+        const when = daysUntil === 0 ? "today" : daysUntil === 1 ? "tomorrow" : `in ${daysUntil} days`;
+        const label = r.note || (r.type === "income" ? "income" : "payment");
+        await notifyWorkspace(r.workspaceId, {
+          title: `Upcoming ${r.type}: ${sym}${Number(r.amount).toFixed(2)}`,
+          body: `${label} is scheduled for ${next} (${when}).`,
+          url: "/",
+          tag: `remind-${r.id}`,
+        });
+      }
     }
   }
+  return created;
+}
+
+/** Materialise the active workspace's due recurring rules (called on dashboard load). */
+export async function processRecurring(): Promise<void> {
+  const wid = await getActiveWorkspaceId();
+  if (!wid) return;
+  const db = await getDb();
+  await materialize(await db.select().from(recurring).where(eq(recurring.workspaceId, wid)));
 }
 
 /** Materialise every due recurring rule across all workspaces — for the cron job. */
 export async function processAllRecurring(): Promise<number> {
   const db = await getDb();
-  const rules = await db.select().from(recurring);
-  if (!rules.length) return 0;
-  const today = todayISO();
-  let created = 0;
-  for (const r of rules) {
-    let next = r.nextDate;
-    const toCreate: (typeof transactions.$inferInsert)[] = [];
-    let guard = 0;
-    while (next <= today && guard++ < 500) {
-      toCreate.push({ workspaceId: r.workspaceId, type: r.type, amount: r.amount, date: next, note: r.note, accountId: r.accountId, categoryId: r.categoryId });
-      next = advanceDate(next, r.frequency);
-    }
-    if (toCreate.length) {
-      await db.insert(transactions).values(toCreate);
-      await db.update(recurring).set({ nextDate: next }).where(eq(recurring.id, r.id));
-      created += toCreate.length;
-    }
-  }
-  return created;
+  return materialize(await db.select().from(recurring));
 }
 
 export async function getRecurring(): Promise<RecurringDTO[]> {
@@ -139,7 +183,12 @@ export async function getRecurring(): Promise<RecurringDTO[]> {
   if (!wid) return [];
   const db = await getDb();
   const rows = await db.select().from(recurring).where(eq(recurring.workspaceId, wid)).orderBy(asc(recurring.nextDate));
-  return rows.map((r) => ({ id: r.id, type: r.type, amount: Number(r.amount), note: r.note, accountId: r.accountId, categoryId: r.categoryId, frequency: r.frequency, nextDate: r.nextDate }));
+  return rows.map((r) => ({
+    id: r.id, type: r.type, amount: Number(r.amount), note: r.note,
+    accountId: r.accountId, categoryId: r.categoryId, frequency: r.frequency, nextDate: r.nextDate,
+    endDate: r.endDate, maxOccurrences: r.maxOccurrences, occurrenceCount: r.occurrenceCount,
+    alertsEnabled: r.alertsEnabled, remindDaysBefore: r.remindDaysBefore,
+  }));
 }
 
 export async function getTransactionsInRange(start: string, end: string): Promise<TransactionDTO[]> {

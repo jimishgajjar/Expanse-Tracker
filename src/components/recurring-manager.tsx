@@ -3,7 +3,7 @@
 import { useState, useTransition, type ReactElement } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Plus, Trash2 } from "lucide-react";
+import { Bell, Plus, Trash2 } from "lucide-react";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
@@ -40,17 +40,26 @@ export function RecurringManager({
       <SheetContent className="flex w-full flex-col gap-0 p-0 sm:max-w-md">
         <SheetHeader className="border-b p-4">
           <SheetTitle>Recurring</SheetTitle>
-          <SheetDescription>Auto-create transactions on a schedule. Due ones are added whenever you open the app.</SheetDescription>
+          <SheetDescription>Auto-create transactions on a schedule, with an optional end, a repeat limit, and email + device alerts.</SheetDescription>
         </SheetHeader>
         <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
           <AddForm accounts={accounts} categories={categories} />
           <div className="space-y-1.5">
-            {recurring.map((r) => <RuleRow key={r.id} rule={r} accounts={accounts} categories={categories} />)}
+            {recurring.map((r) => <RuleRow key={r.id} rule={r} categories={categories} />)}
             {recurring.length === 0 && <p className="py-4 text-center text-sm text-muted-foreground">No recurring rules yet.</p>}
           </div>
         </div>
       </SheetContent>
     </Sheet>
+  );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <label className="grid gap-1">
+      <span className="text-[11px] font-medium text-muted-foreground">{label}</span>
+      {children}
+    </label>
   );
 }
 
@@ -64,14 +73,29 @@ function AddForm({ accounts, categories }: { accounts: AccountDTO[]; categories:
   const [frequency, setFrequency] = useState("monthly");
   const [note, setNote] = useState("");
   const [nextDate, setNextDate] = useState(todayISO());
+  const [endDate, setEndDate] = useState("");
+  const [maxOccurrences, setMaxOccurrences] = useState("");
+  const [alertsEnabled, setAlertsEnabled] = useState(false);
+  const [remindDaysBefore, setRemindDaysBefore] = useState("1");
   const cats = categories.filter((c) => c.kind === type);
 
   function add(e: React.FormEvent) {
     e.preventDefault();
     start(async () => {
-      const res = await createRecurring({ type, amount: Number(amount), note, accountId, categoryId: categoryId === NONE ? null : categoryId, frequency, nextDate });
-      if (res.ok) { toast.success("Recurring rule added"); setAmount(""); setNote(""); router.refresh(); }
-      else toast.error(res.error);
+      const res = await createRecurring({
+        type, amount: Number(amount), note, accountId,
+        categoryId: categoryId === NONE ? null : categoryId,
+        frequency, nextDate,
+        endDate: endDate || null,
+        maxOccurrences: maxOccurrences ? Number(maxOccurrences) : null,
+        alertsEnabled,
+        remindDaysBefore: Number(remindDaysBefore) || 0,
+      });
+      if (res.ok) {
+        toast.success("Recurring rule added");
+        setAmount(""); setNote(""); setEndDate(""); setMaxOccurrences("");
+        router.refresh();
+      } else toast.error(res.error);
     });
   }
 
@@ -103,16 +127,33 @@ function AddForm({ accounts, categories }: { accounts: AccountDTO[]; categories:
           <SelectContent><SelectItem value={NONE}>No category</SelectItem>{cats.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
         </Select>
       </div>
+      <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Note (e.g. Rent)" />
       <div className="grid grid-cols-2 gap-2">
-        <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Note (optional)" />
-        <Input type="date" value={nextDate} onChange={(e) => setNextDate(e.target.value)} required />
+        <Field label="Starts"><Input type="date" value={nextDate} onChange={(e) => setNextDate(e.target.value)} required /></Field>
+        <Field label="Ends (optional)"><Input type="date" value={endDate} min={nextDate} onChange={(e) => setEndDate(e.target.value)} /></Field>
+      </div>
+      <Field label="Stop after N times (optional)">
+        <Input type="number" inputMode="numeric" min="1" value={maxOccurrences} onChange={(e) => setMaxOccurrences(e.target.value)} placeholder="e.g. 12" />
+      </Field>
+      <div className="rounded-md border p-2">
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={alertsEnabled} onChange={(e) => setAlertsEnabled(e.target.checked)} className="size-4 accent-primary" />
+          <Bell className="size-3.5 text-muted-foreground" /> Email + device alerts
+        </label>
+        {alertsEnabled && (
+          <label className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
+            Remind me
+            <Input type="number" inputMode="numeric" min="0" max="30" value={remindDaysBefore} onChange={(e) => setRemindDaysBefore(e.target.value)} className="h-7 w-16" />
+            day(s) before, and confirm when it posts.
+          </label>
+        )}
       </div>
       <Button type="submit" size="sm" className="w-full" disabled={pending}><Plus className="size-4" /> Add recurring</Button>
     </form>
   );
 }
 
-function RuleRow({ rule, accounts, categories }: { rule: RecurringDTO; accounts: AccountDTO[]; categories: CategoryDTO[] }) {
+function RuleRow({ rule, categories }: { rule: RecurringDTO; categories: CategoryDTO[] }) {
   const router = useRouter();
   const { money } = useFormat();
   const cat = categories.find((c) => c.id === rule.categoryId);
@@ -124,16 +165,21 @@ function RuleRow({ rule, accounts, categories }: { rule: RecurringDTO; accounts:
     else toast.error(res.error);
   }
 
+  const meta = [`every ${rule.frequency.replace("ly", "")}`, `next ${rule.nextDate}`];
+  if (rule.endDate) meta.push(`until ${rule.endDate}`);
+  if (rule.maxOccurrences != null) meta.push(`${rule.occurrenceCount}/${rule.maxOccurrences}`);
+
   return (
     <div className="flex items-center gap-2.5 rounded-lg border px-2.5 py-2">
       <span className="grid size-8 shrink-0 place-items-center rounded-md" style={{ backgroundColor: `${color}22`, color }}>
         <Icon name={cat?.icon ?? "tag"} size={15} />
       </span>
       <div className="min-w-0 flex-1">
-        <div className="truncate text-sm font-medium">{rule.note || cat?.name || "Recurring"}</div>
-        <div className="truncate text-xs text-muted-foreground">
-          every {rule.frequency.replace("ly", "")} · next {rule.nextDate}
+        <div className="flex items-center gap-1.5">
+          <span className="truncate text-sm font-medium">{rule.note || cat?.name || "Recurring"}</span>
+          {rule.alertsEnabled && <Bell className="size-3 shrink-0 text-amber-500" aria-label="Alerts on" />}
         </div>
+        <div className="truncate text-xs text-muted-foreground">{meta.join(" · ")}</div>
       </div>
       <span className={cn("shrink-0 font-mono text-sm font-semibold", rule.type === "income" ? "text-positive" : "text-negative")}>
         {rule.type === "income" ? "+" : "−"}{money(rule.amount)}

@@ -14,6 +14,7 @@ import { logout } from "@/lib/auth";
 import { ImportForm } from "@/components/import-form";
 import { ChangePasswordForm } from "@/components/change-password-form";
 import { DeleteAccountForm } from "@/components/delete-account-form";
+import { NotificationsToggle } from "@/components/notifications-toggle";
 import { CURRENCIES } from "@/lib/currencies";
 
 export function SettingsDialog({
@@ -73,6 +74,11 @@ export function SettingsDialog({
           </Button>
           <ImportForm />
           <p className="text-xs text-muted-foreground">Import expects the same columns as Export (Date, Type, Amount, Category, Account, Note).</p>
+        </div>
+        <div className="space-y-2 border-t pt-3">
+          <Label>Notifications</Label>
+          <NotificationsToggle />
+          <p className="text-xs text-muted-foreground">Get a reminder before a recurring payment posts, and a confirmation when it does — by email and on this device. Turn alerts on per rule in the Recurring panel.</p>
         </div>
         <div className="space-y-2 border-t pt-3">
           <Label>Account</Label>
