@@ -127,7 +127,7 @@ export function Dashboard({
               recurring={recurring}
               accounts={accounts}
               categories={categories}
-              trigger={<Button variant="outline" size="sm" aria-label="Recurring"><Repeat className="size-4" /><span className="hidden sm:inline">Recurring</span></Button>}
+              trigger={<Button variant="outline" size="sm" aria-label="Subscriptions"><Repeat className="size-4" /><span className="hidden sm:inline">Subscriptions</span></Button>}
             />
           )}
           <MembersManager

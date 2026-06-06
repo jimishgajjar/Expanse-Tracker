@@ -24,6 +24,7 @@ export type RecurringDTO = {
   accountId: string | null; categoryId: string | null; frequency: string; nextDate: string;
   endDate: string | null; maxOccurrences: number | null; occurrenceCount: number;
   alertsEnabled: boolean; remindDaysBefore: number;
+  commitmentType: string; autoPost: boolean; totalAmount: number | null;
 };
 export type SettingsDTO = { currencyCode: string; currency: string; locale: string };
 export type BudgetProgressDTO = { categoryId: string; name: string; icon: string; color: string; budget: number; spent: number };
@@ -131,19 +132,22 @@ async function materialize(rules: RecurringRow[]): Promise<number> {
     let next = r.nextDate;
     let count = r.occurrenceCount;
     const toCreate: (typeof transactions.$inferInsert)[] = [];
+    let advanced = false;
     let guard = 0;
     while (next <= today && guard++ < 1000) {
       if (r.endDate && next > r.endDate) break;
       if (r.maxOccurrences != null && count >= r.maxOccurrences) break;
-      toCreate.push({ workspaceId: r.workspaceId, type: r.type, amount: r.amount, date: next, note: r.note, accountId: r.accountId, categoryId: r.categoryId });
+      // Variable bills (autoPost = false) advance the schedule but don't post a guessed amount.
+      if (r.autoPost) toCreate.push({ workspaceId: r.workspaceId, type: r.type, amount: r.amount, date: next, note: r.note, accountId: r.accountId, categoryId: r.categoryId });
       count++;
+      advanced = true;
       next = advanceDate(next, r.frequency);
     }
-    if (toCreate.length) {
-      await db.insert(transactions).values(toCreate);
+    if (advanced) {
+      if (toCreate.length) await db.insert(transactions).values(toCreate);
       await db.update(recurring).set({ nextDate: next, occurrenceCount: count }).where(eq(recurring.id, r.id));
       created += toCreate.length;
-      if (r.alertsEnabled) {
+      if (r.alertsEnabled && toCreate.length) {
         const sym = await workspaceSymbol(db, symCache, r.workspaceId);
         const label = r.note || (r.type === "income" ? "Recurring income" : "Recurring payment");
         const accName = await lookupName(db, nameCache, r.accountId, "account");
@@ -187,13 +191,16 @@ async function materialize(rules: RecurringRow[]): Promise<number> {
         const catName = await lookupName(db, nameCache, r.categoryId, "category");
         const amountStr = `${sym}${Number(r.amount).toFixed(2)}`;
         const prettyNext = format(parseISO(next), "MMM d, yyyy");
+        const remindOnly = !r.autoPost;
         await notifyWorkspace(r.workspaceId, {
-          title: `Upcoming ${r.type}: ${amountStr}`,
-          body: `${label} is scheduled for ${prettyNext} (${when}).`,
-          heading: r.type === "income" ? "Upcoming income" : "Upcoming payment",
-          intro: `Heads up — this is scheduled to post ${when} (${prettyNext}).`,
+          title: remindOnly ? `Bill due: ${label}` : `Upcoming ${r.type}: ${amountStr}`,
+          body: remindOnly ? `${label} is due ${prettyNext} (${when}) — log the amount you paid.` : `${label} is scheduled for ${prettyNext} (${when}).`,
+          heading: remindOnly ? "Bill due — log it" : r.type === "income" ? "Upcoming income" : "Upcoming payment",
+          intro: remindOnly
+            ? `This bill is due ${when} (${prettyNext}). Log the actual amount once you've paid it.`
+            : `Heads up — this is scheduled to post ${when} (${prettyNext}).`,
           detail: {
-            amount: `${r.type === "expense" ? "−" : "+"}${amountStr}`,
+            amount: `${r.type === "expense" ? "−" : "+"}${amountStr}${remindOnly ? " est." : ""}`,
             tone: r.type,
             rows: [
               { label: "Item", value: label },
@@ -202,8 +209,8 @@ async function materialize(rules: RecurringRow[]): Promise<number> {
               { label: "When", value: `${when[0].toUpperCase()}${when.slice(1)} · ${prettyNext}` },
             ],
           },
-          ctaLabel: "Review in app",
-          url: "/",
+          ctaLabel: remindOnly ? "Log payment" : "Review in app",
+          url: remindOnly ? "/?tab=transactions" : "/",
           tag: `remind-${r.id}`,
         });
       }
@@ -236,6 +243,7 @@ export async function getRecurring(): Promise<RecurringDTO[]> {
     accountId: r.accountId, categoryId: r.categoryId, frequency: r.frequency, nextDate: r.nextDate,
     endDate: r.endDate, maxOccurrences: r.maxOccurrences, occurrenceCount: r.occurrenceCount,
     alertsEnabled: r.alertsEnabled, remindDaysBefore: r.remindDaysBefore,
+    commitmentType: r.commitmentType, autoPost: r.autoPost, totalAmount: r.totalAmount != null ? Number(r.totalAmount) : null,
   }));
 }
 

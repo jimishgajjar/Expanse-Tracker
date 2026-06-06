@@ -254,6 +254,9 @@ const recurringSchema = z.object({
   maxOccurrences: z.coerce.number().int().positive().nullable().optional(),
   alertsEnabled: z.coerce.boolean().optional(),
   remindDaysBefore: z.coerce.number().int().min(0).max(30).optional(),
+  commitmentType: z.enum(["subscription", "bill", "emi", "other"]).optional(),
+  autoPost: z.coerce.boolean().optional(),
+  totalAmount: z.coerce.number().positive().nullable().optional(),
 }).refine((d) => !d.endDate || d.endDate >= d.nextDate, { message: "End date must be after the start date", path: ["endDate"] });
 
 export async function createRecurring(input: unknown): Promise<Result> {
@@ -267,6 +270,8 @@ export async function createRecurring(input: unknown): Promise<Result> {
       frequency: d.frequency, nextDate: d.nextDate,
       endDate: d.endDate ?? null, maxOccurrences: d.maxOccurrences ?? null,
       alertsEnabled: d.alertsEnabled ?? false, remindDaysBefore: d.remindDaysBefore ?? 1,
+      commitmentType: d.commitmentType ?? "other", autoPost: d.autoPost ?? true,
+      totalAmount: d.totalAmount != null ? String(d.totalAmount) : null,
     });
     revalidatePath("/");
     return { ok: true };

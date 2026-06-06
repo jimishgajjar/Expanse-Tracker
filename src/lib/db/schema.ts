@@ -104,6 +104,9 @@ export const recurring = pgTable(
     alertsEnabled: boolean("alerts_enabled").notNull().default(false),
     remindDaysBefore: integer("remind_days_before").notNull().default(1), // reminder lead time
     lastRemindedFor: date("last_reminded_for", { mode: "string" }), // dedups "upcoming" reminders
+    commitmentType: text("commitment_type").notNull().default("other"), // subscription | bill | emi | other
+    autoPost: boolean("auto_post").notNull().default(true), // false = remind to log (variable bills)
+    totalAmount: numeric("total_amount", { precision: 14, scale: 2 }), // optional EMI total
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (t) => [index("recurring_ws_idx").on(t.workspaceId)],
