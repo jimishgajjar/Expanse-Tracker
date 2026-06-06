@@ -11,7 +11,7 @@ import { notifyWorkspace } from "./notify";
 
 export type AccountDTO = {
   id: string; name: string; type: string; icon: string; color: string;
-  initialBalance: number; income: number; expense: number; balance: number;
+  initialBalance: number; income: number; expense: number; balance: number; archived: boolean;
 };
 export type CategoryDTO = { id: string; name: string; kind: "income" | "expense"; icon: string; color: string };
 export type RefDTO = { name: string; icon: string; color: string } | null;
@@ -74,6 +74,7 @@ export async function getAccountsWithBalances(): Promise<AccountDTO[]> {
       id: a.id, name: a.name, type: a.type, icon: a.icon, color: a.color,
       initialBalance, income: m.income, expense: m.expense,
       balance: initialBalance + m.income - m.expense + (transferNet[a.id] ?? 0),
+      archived: a.archived,
     };
   });
 }

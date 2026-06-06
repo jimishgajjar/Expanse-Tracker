@@ -68,6 +68,17 @@ export async function deleteAccount(id: string): Promise<Result> {
   } catch (e) { return fail(e); }
 }
 
+// Hide an account from the active dashboard without deleting anything — reversible.
+export async function setAccountArchived(id: string, archived: boolean): Promise<Result> {
+  try {
+    const w = await wid();
+    const db = await getDb();
+    await db.update(accounts).set({ archived }).where(and(eq(accounts.id, id), eq(accounts.workspaceId, w)));
+    revalidatePath("/");
+    return { ok: true };
+  } catch (e) { return fail(e); }
+}
+
 // ── categories ───────────────────────────────────────────
 const categorySchema = z.object({
   name: z.string().trim().min(1, "Name is required").max(60),

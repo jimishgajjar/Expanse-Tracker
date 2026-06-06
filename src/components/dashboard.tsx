@@ -131,7 +131,7 @@ export function Dashboard({
           {canEdit && (
             <RecurringManager
               recurring={recurring}
-              accounts={accounts}
+              accounts={accounts.filter((a) => !a.archived)}
               categories={categories}
               trigger={<Button variant="outline" size="sm" aria-label="Subscriptions"><Repeat className="size-4" /><span className="hidden sm:inline">Subscriptions</span></Button>}
             />
@@ -157,7 +157,7 @@ export function Dashboard({
           </Button>
           {canEdit && (
             <TransactionDialog
-              accounts={accounts}
+              accounts={accounts.filter((a) => !a.archived)}
               categories={categories}
               trigger={<Button size="sm"><Plus className="size-4" /> Add<span className="hidden sm:inline"> transaction</span></Button>}
             />

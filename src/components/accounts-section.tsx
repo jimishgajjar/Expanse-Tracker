@@ -1,6 +1,7 @@
 "use client";
 
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { useState } from "react";
+import { Archive, ArchiveRestore, ChevronDown, Pencil, Plus, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Card } from "@/components/ui/card";
@@ -9,7 +10,7 @@ import { Icon } from "@/components/icon";
 import { AccountDialog } from "@/components/account-dialog";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { AccountDetailSheet } from "@/components/account-detail-sheet";
-import { deleteAccount } from "@/lib/actions";
+import { deleteAccount, setAccountArchived } from "@/lib/actions";
 import { useFormat } from "@/components/settings-provider";
 import { cn } from "@/lib/utils";
 import type { AccountDTO, CategoryDTO, TransactionDTO, TransferDTO } from "@/lib/queries";
@@ -29,13 +30,25 @@ export function AccountsSection({
 }) {
   const router = useRouter();
   const { balanceMoney } = useFormat();
+  const [showArchived, setShowArchived] = useState(false);
+
   const total = accounts.reduce((s, a) => s + a.balance, 0);
+  const active = accounts.filter((a) => !a.archived);
+  const archived = accounts.filter((a) => a.archived);
+  const archivedTotal = archived.reduce((s, a) => s + a.balance, 0);
 
   async function remove(id: string) {
     const res = await deleteAccount(id);
     if (res.ok) { toast.success("Account deleted"); router.refresh(); }
     else toast.error(res.error);
   }
+  async function setArchived(id: string, value: boolean) {
+    const res = await setAccountArchived(id, value);
+    if (res.ok) { toast.success(value ? "Account archived" : "Account restored"); router.refresh(); }
+    else toast.error(res.error);
+  }
+
+  const shared = { transactions, transfers, categories, accounts, canEdit, balanceMoney, onRemove: remove, onArchive: setArchived };
 
   return (
     <section className="space-y-3">
@@ -46,47 +59,97 @@ export function AccountsSection({
         </h2>
         {canEdit && <AccountDialog trigger={<Button variant="outline" size="sm"><Plus className="size-4" /> Add account</Button>} />}
       </div>
+
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {accounts.map((a) => (
-          <Card key={a.id} className="group relative gap-0 overflow-hidden p-0 transition-[transform,box-shadow] duration-200 ease-out-quart hover:-translate-y-0.5 hover:ring-foreground/20">
-            <AccountDetailSheet
-              account={a}
-              transactions={transactions}
-              transfers={transfers}
-              categories={categories}
-              accounts={accounts}
-              trigger={
-                <button type="button" className="flex w-full flex-col items-start p-4 text-left transition-colors hover:bg-muted/40">
-                  <div className="flex w-full items-center gap-2.5">
-                    <span className="grid size-9 shrink-0 place-items-center rounded-lg" style={{ backgroundColor: `${a.color}22`, color: a.color }}>
-                      <Icon name={a.icon} size={18} />
-                    </span>
-                    <div className="min-w-0">
-                      <div className="truncate font-medium">{a.name}</div>
-                      <div className="text-xs text-muted-foreground capitalize">{a.type}</div>
-                    </div>
-                  </div>
-                  <div className={cn("amount mt-3 text-xl font-semibold", a.balance < 0 && "text-negative")}>
-                    {balanceMoney(a.balance)}
-                  </div>
-                </button>
-              }
-            />
-            {canEdit && (
-              <div className="absolute top-2 right-2 flex opacity-100 transition sm:opacity-0 sm:group-hover:opacity-100">
-                <AccountDialog account={a} trigger={<Button size="icon-sm" variant="ghost" aria-label="Edit account"><Pencil className="size-3.5" /></Button>} />
-                <ConfirmDialog
-                  trigger={<Button size="icon-sm" variant="ghost" aria-label="Delete account"><Trash2 className="size-3.5" /></Button>}
-                  title={`Delete "${a.name}"?`}
-                  description="Its transactions and transfers will be deleted too. This can't be undone."
-                  onConfirm={() => remove(a.id)}
-                />
-              </div>
-            )}
-          </Card>
-        ))}
+        {active.map((a) => <AccountCard key={a.id} account={a} {...shared} />)}
         {accounts.length === 0 && <p className="text-sm text-muted-foreground">No accounts yet — add one to get started.</p>}
       </div>
+
+      {archived.length > 0 && (
+        <div className="space-y-3 pt-1">
+          <button
+            type="button"
+            onClick={() => setShowArchived((v) => !v)}
+            className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <ChevronDown className={cn("size-3.5 transition-transform", showArchived ? "" : "-rotate-90")} />
+            Archived · {archived.length}
+            <span className="amount text-foreground/70">{balanceMoney(archivedTotal)}</span>
+          </button>
+          {showArchived && (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {archived.map((a) => <AccountCard key={a.id} account={a} {...shared} />)}
+            </div>
+          )}
+        </div>
+      )}
     </section>
+  );
+}
+
+function AccountCard({
+  account: a, transactions, transfers, categories, accounts, canEdit, balanceMoney, onRemove, onArchive,
+}: {
+  account: AccountDTO;
+  transactions: TransactionDTO[];
+  transfers: TransferDTO[];
+  categories: CategoryDTO[];
+  accounts: AccountDTO[];
+  canEdit: boolean;
+  balanceMoney: (n: number) => string;
+  onRemove: (id: string) => void;
+  onArchive: (id: string, value: boolean) => void;
+}) {
+  return (
+    <Card className={cn("group relative gap-0 overflow-hidden p-0 transition-[transform,box-shadow] duration-200 ease-out-quart hover:-translate-y-0.5 hover:ring-foreground/20", a.archived && "opacity-65 hover:opacity-100")}>
+      <AccountDetailSheet
+        account={a}
+        transactions={transactions}
+        transfers={transfers}
+        categories={categories}
+        accounts={accounts}
+        trigger={
+          <button type="button" className="flex w-full flex-col items-start p-4 text-left transition-colors hover:bg-muted/40">
+            <div className="flex w-full items-center gap-2.5">
+              <span className="grid size-9 shrink-0 place-items-center rounded-lg" style={{ backgroundColor: `${a.color}22`, color: a.color }}>
+                <Icon name={a.icon} size={18} />
+              </span>
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <span className="truncate font-medium">{a.name}</span>
+                  {a.archived && <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">Archived</span>}
+                </div>
+                <div className="text-xs text-muted-foreground capitalize">{a.type}</div>
+              </div>
+            </div>
+            <div className={cn("amount mt-3 text-xl font-semibold", a.balance < 0 && "text-negative")}>
+              {balanceMoney(a.balance)}
+            </div>
+          </button>
+        }
+      />
+      {canEdit && (
+        <div className="absolute top-2 right-2 flex opacity-100 transition sm:opacity-0 sm:group-hover:opacity-100">
+          {a.archived ? (
+            <Button size="icon-sm" variant="ghost" aria-label="Restore account" title="Restore" onClick={() => onArchive(a.id, false)}>
+              <ArchiveRestore className="size-3.5" />
+            </Button>
+          ) : (
+            <>
+              <AccountDialog account={a} trigger={<Button size="icon-sm" variant="ghost" aria-label="Edit account"><Pencil className="size-3.5" /></Button>} />
+              <Button size="icon-sm" variant="ghost" aria-label="Archive account" title="Archive (hide, keep history)" onClick={() => onArchive(a.id, true)}>
+                <Archive className="size-3.5" />
+              </Button>
+            </>
+          )}
+          <ConfirmDialog
+            trigger={<Button size="icon-sm" variant="ghost" aria-label="Delete account"><Trash2 className="size-3.5" /></Button>}
+            title={`Delete "${a.name}"?`}
+            description="Its transactions and transfers will be deleted too. This can't be undone. (Tip: Archive instead to keep the history.)"
+            onConfirm={() => onRemove(a.id)}
+          />
+        </div>
+      )}
+    </Card>
   );
 }

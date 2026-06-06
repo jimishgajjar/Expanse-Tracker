@@ -18,6 +18,7 @@ export const accounts = pgTable(
     icon: text("icon").notNull().default("wallet"),
     color: text("color").notNull().default("#6366f1"),
     initialBalance: numeric("initial_balance", { precision: 14, scale: 2 }).notNull().default("0"),
+    archived: boolean("archived").notNull().default(false),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (t) => [index("acc_ws_idx").on(t.workspaceId)],
