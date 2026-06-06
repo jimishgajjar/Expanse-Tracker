@@ -1,10 +1,12 @@
-import { and, asc, desc, eq, gte, lt, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, isNull, lt, sql } from "drizzle-orm";
 import { addMonths, addWeeks, addYears, differenceInCalendarDays, format, parseISO } from "date-fns";
 import { getDb } from "./db";
-import { accounts, appSettings, budgets, categories, goals, invitations, recurring, transactions, transfers, users, workspaceMembers } from "./db/schema";
+import { accounts, appSettings, budgets, categories, goals, invitations, recurring, splits, transactions, transfers, users, workspaceMembers } from "./db/schema";
 import { CURRENCIES, DEFAULT_CURRENCY_CODE, findCurrencyByCode } from "./currencies";
 import { todayISO } from "./dates";
 import { getActiveWorkspaceId } from "./workspace";
+import { getCurrentUser } from "./session";
+import { computeBalances } from "./split-math";
 import { notifyWorkspace } from "./notify";
 
 export type AccountDTO = {
@@ -246,6 +248,27 @@ export async function getRecurring(): Promise<RecurringDTO[]> {
     alertsEnabled: r.alertsEnabled, remindDaysBefore: r.remindDaysBefore,
     commitmentType: r.commitmentType, autoPost: r.autoPost, totalAmount: r.totalAmount != null ? Number(r.totalAmount) : null,
   }));
+}
+
+export type SplitBalanceDTO = { userId: string; name: string; net: number };
+export type SplitDTO = { id: string; note: string; creditorId: string; debtorId: string; amount: number };
+export type SplitData = { meId: string; otherMembers: { id: string; name: string }[]; balances: SplitBalanceDTO[]; splits: SplitDTO[] };
+
+export async function getSplitData(): Promise<SplitData> {
+  const wid = await getActiveWorkspaceId();
+  const me = await getCurrentUser();
+  if (!wid || !me) return { meId: "", otherMembers: [], balances: [], splits: [] };
+  const db = await getDb();
+  const rows = await db.select().from(splits).where(and(eq(splits.workspaceId, wid), isNull(splits.settledAt))).orderBy(desc(splits.createdAt));
+  const members = await db.select({ id: users.id, name: users.name, email: users.email }).from(workspaceMembers).innerJoin(users, eq(workspaceMembers.userId, users.id)).where(eq(workspaceMembers.workspaceId, wid));
+  const nameOf = (id: string) => { const m = members.find((x) => x.id === id); return m?.name || m?.email || "Member"; };
+  const net = computeBalances(me.id, rows.map((r) => ({ creditorId: r.creditorId, debtorId: r.debtorId, amount: Number(r.amount) })));
+  return {
+    meId: me.id,
+    otherMembers: members.filter((m) => m.id !== me.id).map((m) => ({ id: m.id, name: m.name || m.email })),
+    balances: [...net.entries()].filter(([, v]) => Math.abs(v) > 0.005).map(([uid, v]) => ({ userId: uid, name: nameOf(uid), net: v })),
+    splits: rows.map((r) => ({ id: r.id, note: r.note, creditorId: r.creditorId, debtorId: r.debtorId, amount: Number(r.amount) })),
+  };
 }
 
 export async function getGoals(): Promise<GoalDTO[]> {

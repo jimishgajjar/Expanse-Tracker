@@ -36,7 +36,7 @@ export async function sendMonthlyDigests(now = new Date()): Promise<number> {
 
   for (const ws of await db.select().from(workspaces)) {
     const [setting] = await db.select().from(appSettings).where(eq(appSettings.workspaceId, ws.id)).limit(1);
-    if (setting?.lastDigestMonth === period) continue;
+    if (setting?.lastDigestMonth === period || setting?.digestEnabled === false) continue;
     // Record immediately so an empty/failed month isn't retried forever.
     await db.insert(appSettings).values({ workspaceId: ws.id, lastDigestMonth: period })
       .onConflictDoUpdate({ target: appSettings.workspaceId, set: { lastDigestMonth: period } });

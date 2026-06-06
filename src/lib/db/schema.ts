@@ -117,7 +117,24 @@ export const appSettings = pgTable("app_settings", {
   workspaceId: text("workspace_id").primaryKey().references(() => workspaces.id, { onDelete: "cascade" }),
   currencyCode: text("currency_code").notNull().default("INR"),
   lastDigestMonth: text("last_digest_month"), // YYYY-MM of the last monthly digest sent
+  digestEnabled: boolean("digest_enabled").notNull().default(true),
 });
+
+// A shared-expense IOU between two members: debtor owes creditor `amount`.
+export const splits = pgTable(
+  "splits",
+  {
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    workspaceId: ws(),
+    note: text("note").notNull().default(""),
+    creditorId: text("creditor_id").notNull().references(() => users.id, { onDelete: "cascade" }), // is owed
+    debtorId: text("debtor_id").notNull().references(() => users.id, { onDelete: "cascade" }), // owes
+    amount: numeric("amount", { precision: 14, scale: 2 }).notNull(),
+    settledAt: timestamp("settled_at"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [index("split_ws_idx").on(t.workspaceId)],
+);
 
 // A savings target with progress.
 export const goals = pgTable(
@@ -245,6 +262,7 @@ export type Budget = typeof budgets.$inferSelect;
 export type Transfer = typeof transfers.$inferSelect;
 export type Recurring = typeof recurring.$inferSelect;
 export type Goal = typeof goals.$inferSelect;
+export type Split = typeof splits.$inferSelect;
 export type User = typeof users.$inferSelect;
 export type Workspace = typeof workspaces.$inferSelect;
 export type PushSubscription = typeof pushSubscriptions.$inferSelect;

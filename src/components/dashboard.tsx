@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Download, Plus, Repeat, Settings, Tags, Target, Users, Wallet } from "lucide-react";
+import { Download, Handshake, Plus, Repeat, Settings, Tags, Target, Users, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -10,6 +10,7 @@ import { SettingsDialog } from "@/components/settings-dialog";
 import { CategoryManager } from "@/components/category-manager";
 import { RecurringManager } from "@/components/recurring-manager";
 import { GoalsManager } from "@/components/goals-manager";
+import { SplitManager } from "@/components/split-manager";
 import { MembersManager } from "@/components/members-manager";
 import { WorkspaceSwitcher } from "@/components/workspace-switcher";
 import { VerifyBanner } from "@/components/verify-banner";
@@ -19,7 +20,7 @@ import { OverviewTab } from "@/components/overview-tab";
 import { TransactionsTab } from "@/components/transactions-tab";
 import { AnalyticsTab, type Comparison } from "@/components/analytics-tab";
 import type { RangeType } from "@/lib/dates";
-import type { AccountDTO, BudgetProgressDTO, CategoryDTO, GoalDTO, MemberDTO, NetWorthPoint, RecurringDTO, TransactionDTO, TransferDTO } from "@/lib/queries";
+import type { AccountDTO, BudgetProgressDTO, CategoryDTO, GoalDTO, MemberDTO, NetWorthPoint, RecurringDTO, SplitData, TransactionDTO, TransferDTO } from "@/lib/queries";
 import type { WorkspaceSummary } from "@/lib/workspace";
 
 type Tab = "overview" | "transactions" | "analytics";
@@ -43,6 +44,7 @@ export function Dashboard({
   comparison,
   recurring,
   goals,
+  split,
   members,
   invites,
   userEmail,
@@ -73,6 +75,7 @@ export function Dashboard({
   comparison: Comparison;
   recurring: RecurringDTO[];
   goals: GoalDTO[];
+  split: SplitData;
   members: MemberDTO[];
   invites: string[];
   userEmail: string;
@@ -136,6 +139,10 @@ export function Dashboard({
           <GoalsManager
             goals={goals}
             trigger={<Button variant="outline" size="sm" aria-label="Goals"><Target className="size-4" /><span className="hidden sm:inline">Goals</span></Button>}
+          />
+          <SplitManager
+            data={split}
+            trigger={<Button variant="outline" size="sm" aria-label="Shared expenses"><Handshake className="size-4" /><span className="hidden sm:inline">Split</span></Button>}
           />
           <MembersManager
             members={members}

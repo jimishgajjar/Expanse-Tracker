@@ -66,6 +66,11 @@ On first load you'll be asked to sign in. A demo account with sample data is see
 - **Undo** — deleting a transaction shows an Undo toast to restore it (deletes are optimistic — the row vanishes instantly).
 - **Account transfers** — move money between accounts (a 3rd type in the Add dialog) without affecting income/expense totals.
 - **Recurring transactions** — schedule weekly/monthly/yearly rules that auto-create transactions on load, with a daily **Vercel Cron** backstop (`/api/cron/recurring`) so they post even when nobody opens the app.
+- **Subscriptions & bills** — track subscriptions, **EMIs / installments** (with paid/remaining progress bars), and **variable bills** (remind-to-log instead of posting a guessed amount), with a monthly-commitment total. Built on the recurring engine.
+- **Savings goals** — set a target, contribute toward it, and watch a progress bar fill.
+- **Shared expenses** — split costs between members, track a running **who-owes-whom** balance, and **settle up** in one tap.
+- **Notifications** — email **and** Web Push (phone/desktop) for recurring reminders, posted confirmations, and **budget alerts** at 80% / 100%, plus a monthly **“your month in money”** digest. Every email uses a branded HTML template with deep-link action buttons.
+- **Installable PWA** — add it to your home screen for an app icon; on iPhone this is also what unlocks Web Push notifications.
 - **CSV / Excel import** — bring data in via Settings → Data (accounts & categories created by name).
 - **Account detail** — click any account card to see its stats and activity.
 - **Tested** — `npm test` runs Vitest for the date-range, money and bucketing logic, plus **workspace-isolation** integration tests (no cross-tenant reads/writes; view-only members can't write).

@@ -43,6 +43,13 @@
       "when": 1780722904068,
       "tag": "0005_lying_grandmaster",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1780724822051,
+      "tag": "0006_aspiring_tiger_shark",
+      "breakpoints": true
     }
   ]
 }

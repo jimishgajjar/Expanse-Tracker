@@ -2,9 +2,9 @@
 
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, isNull, or, sql } from "drizzle-orm";
 import { getDb } from "./db";
-import { accounts, appSettings, budgets, categories, goals, recurring, transactions, transfers } from "./db/schema";
+import { accounts, appSettings, budgets, categories, goals, recurring, splits, transactions, transfers, workspaceMembers } from "./db/schema";
 import { findCurrencyByCode } from "./currencies";
 import { getActiveRole, getActiveWorkspaceId, getUserWorkspaces } from "./workspace";
 import { getCurrentUser, setActiveWorkspace } from "./session";
@@ -341,6 +341,57 @@ export async function deleteGoal(id: string): Promise<Result> {
     const w = await wid();
     const db = await getDb();
     await db.delete(goals).where(and(eq(goals.id, id), eq(goals.workspaceId, w)));
+    revalidatePath("/");
+    return { ok: true };
+  } catch (e) { return fail(e); }
+}
+
+// ── shared expenses (splits / IOUs) ──────────────────────────
+const splitSchema = z.object({
+  note: z.string().trim().max(200).default(""),
+  amount: z.coerce.number().positive("Amount must be greater than 0"),
+  creditorId: z.string().min(1),
+  debtorId: z.string().min(1),
+});
+
+export async function createSplit(input: unknown): Promise<Result> {
+  try {
+    const d = splitSchema.parse(input);
+    if (d.debtorId === d.creditorId) return { ok: false, error: "Pick two different people." };
+    const w = await wid();
+    const db = await getDb();
+    const mem = await db.select({ userId: workspaceMembers.userId }).from(workspaceMembers).where(eq(workspaceMembers.workspaceId, w));
+    const ids = new Set(mem.map((m) => m.userId));
+    if (!ids.has(d.debtorId) || !ids.has(d.creditorId)) return { ok: false, error: "Both people must be members of this tracker." };
+    await db.insert(splits).values({ workspaceId: w, note: d.note ?? "", creditorId: d.creditorId, debtorId: d.debtorId, amount: String(d.amount) });
+    revalidatePath("/");
+    return { ok: true };
+  } catch (e) { return fail(e); }
+}
+
+export async function settleUp(otherUserId: string): Promise<Result> {
+  try {
+    const me = await getCurrentUser();
+    if (!me) return { ok: false, error: "Not signed in." };
+    const w = await wid();
+    const db = await getDb();
+    await db.update(splits).set({ settledAt: new Date() }).where(and(
+      eq(splits.workspaceId, w), isNull(splits.settledAt),
+      or(
+        and(eq(splits.creditorId, me.id), eq(splits.debtorId, otherUserId)),
+        and(eq(splits.creditorId, otherUserId), eq(splits.debtorId, me.id)),
+      ),
+    ));
+    revalidatePath("/");
+    return { ok: true };
+  } catch (e) { return fail(e); }
+}
+
+export async function deleteSplit(id: string): Promise<Result> {
+  try {
+    const w = await wid();
+    const db = await getDb();
+    await db.delete(splits).where(and(eq(splits.id, id), eq(splits.workspaceId, w)));
     revalidatePath("/");
     return { ok: true };
   } catch (e) { return fail(e); }
