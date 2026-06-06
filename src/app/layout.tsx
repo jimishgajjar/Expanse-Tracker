@@ -8,8 +8,8 @@ const geistSans = Geist({ variable: "--font-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Money Tracker",
-  description: "Track income, expenses, accounts and categories — backed by your own Postgres database.",
+  title: "Expense Tracker",
+  description: "Track income, expenses, accounts and categories across personal and shared trackers.",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

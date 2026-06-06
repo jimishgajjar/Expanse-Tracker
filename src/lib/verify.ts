@@ -21,7 +21,7 @@ export async function sendVerificationEmail(userId: string, email: string, name:
   const link = `${await baseUrl()}/verify?token=${token}`;
   await sendEmail(
     email,
-    "Confirm your Money Tracker email",
+    "Confirm your Expense Tracker email",
     `<p>Hi ${name || "there"},</p>
      <p>Confirm your email address to finish setting up your account and unlock shared trackers.</p>
      <p><a href="${link}">Verify email</a></p>

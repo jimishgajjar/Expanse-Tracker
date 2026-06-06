@@ -42,13 +42,13 @@ export function AccountsSection({
       <div className="flex items-center justify-between">
         <h2 className="flex items-baseline gap-2 text-sm font-semibold text-muted-foreground">
           All accounts
-          <span className="font-mono text-base text-foreground">{balanceMoney(total)}</span>
+          <span className="amount text-base font-semibold text-foreground">{balanceMoney(total)}</span>
         </h2>
         {canEdit && <AccountDialog trigger={<Button variant="outline" size="sm"><Plus className="size-4" /> Add account</Button>} />}
       </div>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {accounts.map((a) => (
-          <Card key={a.id} className="group relative gap-0 overflow-hidden p-0">
+          <Card key={a.id} className="group relative gap-0 overflow-hidden p-0 transition-[transform,box-shadow] duration-200 ease-out-quart hover:-translate-y-0.5 hover:ring-foreground/20">
             <AccountDetailSheet
               account={a}
               transactions={transactions}
@@ -66,7 +66,7 @@ export function AccountsSection({
                       <div className="text-xs text-muted-foreground capitalize">{a.type}</div>
                     </div>
                   </div>
-                  <div className={cn("mt-3 font-mono text-xl font-semibold tracking-tight", a.balance < 0 && "text-negative")}>
+                  <div className={cn("amount mt-3 text-xl font-semibold", a.balance < 0 && "text-negative")}>
                     {balanceMoney(a.balance)}
                   </div>
                 </button>

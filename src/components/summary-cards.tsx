@@ -29,10 +29,10 @@ export function SummaryCards({
   const netDelta = comparison ? pct(net, comparison.prevIncome - comparison.prevExpense) : null;
 
   const tiles = [
-    { k: "Total balance", v: balanceMoney(totalBalance), sub: `across ${accountsCount} account${accountsCount === 1 ? "" : "s"}`, Icon: Wallet, tone: "", vClass: totalBalance < 0 ? "text-negative" : "", delta: null as number | null, good: true },
-    { k: "Income", v: money(income), sub: rangeLabel, Icon: TrendingUp, tone: "text-positive", vClass: "text-positive", delta: incDelta, good: (incDelta ?? 0) >= 0 },
-    { k: "Expenses", v: money(expense), sub: rangeLabel, Icon: TrendingDown, tone: "text-negative", vClass: "text-negative", delta: expDelta, good: (expDelta ?? 0) <= 0 },
-    { k: "Net", v: signedMoney(net), sub: income ? `${Math.round((net / income) * 100)}% saved` : rangeLabel, Icon: Scale, tone: net < 0 ? "text-negative" : "text-positive", vClass: net < 0 ? "text-negative" : "text-positive", delta: netDelta, good: (netDelta ?? 0) >= 0 },
+    { k: "Total balance", v: balanceMoney(totalBalance), sub: `across ${accountsCount} account${accountsCount === 1 ? "" : "s"}`, Icon: Wallet, chip: "bg-brand/10 text-brand", vClass: totalBalance < 0 ? "text-negative" : "", delta: null as number | null, good: true },
+    { k: "Income", v: money(income), sub: rangeLabel, Icon: TrendingUp, chip: "bg-positive/10 text-positive", vClass: "text-positive", delta: incDelta, good: (incDelta ?? 0) >= 0 },
+    { k: "Expenses", v: money(expense), sub: rangeLabel, Icon: TrendingDown, chip: "bg-negative/10 text-negative", vClass: "text-negative", delta: expDelta, good: (expDelta ?? 0) <= 0 },
+    { k: "Net", v: signedMoney(net), sub: income ? `${Math.round((net / income) * 100)}% saved` : rangeLabel, Icon: Scale, chip: net < 0 ? "bg-negative/10 text-negative" : "bg-positive/10 text-positive", vClass: net < 0 ? "text-negative" : "text-positive", delta: netDelta, good: (netDelta ?? 0) >= 0 },
   ];
 
   return (
@@ -41,10 +41,10 @@ export function SummaryCards({
         <Card key={t.k} className="gap-0 p-4">
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-muted-foreground">{t.k}</span>
-            <t.Icon className={cn("size-4 text-muted-foreground", t.tone)} />
+            <span className={cn("grid size-7 place-items-center rounded-lg", t.chip)}><t.Icon className="size-4" /></span>
           </div>
-          <div className={cn("mt-2 font-mono text-xl font-semibold tracking-tight sm:text-2xl", t.vClass)}>{t.v}</div>
-          <div className="mt-1 flex items-center gap-1.5 truncate text-xs text-muted-foreground">
+          <div className={cn("amount mt-3 text-2xl font-semibold sm:text-[1.7rem]", t.vClass)}>{t.v}</div>
+          <div className="mt-1.5 flex items-center gap-1.5 truncate text-xs text-muted-foreground">
             {t.delta != null && (
               <span className={cn("font-medium", t.good ? "text-positive" : "text-negative")}>
                 {t.delta >= 0 ? "▲" : "▼"}{Math.abs(t.delta)}%

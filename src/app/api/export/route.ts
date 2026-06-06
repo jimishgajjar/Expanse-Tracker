@@ -13,7 +13,7 @@ export async function GET() {
   ]);
 
   const wb = new ExcelJS.Workbook();
-  wb.creator = "Money Tracker";
+  wb.creator = "Expense Tracker";
   const numFmt = "#,##0.00";
 
   const txWs = wb.addWorksheet("Transactions");

@@ -1,7 +1,7 @@
 // Resend's SMTP password is the same `re_…` API key the HTTP API uses, so we
 // accept either RESEND_API_KEY or the SMTP_PASS people paste from the dashboard.
 const RESEND_API_KEY = process.env.RESEND_API_KEY || process.env.SMTP_PASS;
-const FROM = process.env.EMAIL_FROM || process.env.SMTP_FROM || "Money Tracker <onboarding@resend.dev>";
+const FROM = process.env.EMAIL_FROM || process.env.SMTP_FROM || "Expense Tracker <onboarding@resend.dev>";
 
 /** Send an email via Resend. With no RESEND_API_KEY, logs to the server console
  *  (so password-reset links are still discoverable in local dev). */

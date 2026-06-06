@@ -57,3 +57,9 @@ Desktop.ini
 /scripts/seed-jimish.ts
 /scripts/seed-hani.ts
 /scripts/test-email.ts
+
+# agent design skills (local tooling — reinstall via `npx skills` / `npx impeccable`)
+/.agents/
+/.claude/skills/
+/.impeccable/
+/skills-lock.json

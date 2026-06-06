@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Download, Plus, Repeat, Settings, Tags, Users } from "lucide-react";
+import { Download, Plus, Repeat, Settings, Tags, Users, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -102,9 +102,12 @@ export function Dashboard({
         {!emailVerified && <VerifyBanner email={userEmail} />}
         <header className="flex flex-wrap items-center gap-2 sm:gap-3">
           <div className="mr-auto flex items-center gap-2.5">
+            <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-brand text-brand-foreground shadow-sm shadow-brand/25">
+              <Wallet className="size-5" />
+            </span>
             <div>
-              <h1 className="text-lg font-semibold tracking-tight sm:text-xl">Money Tracker</h1>
-              <p className="hidden text-sm text-muted-foreground sm:block">Income, expenses, accounts &amp; categories.</p>
+              <h1 className="text-lg font-semibold tracking-tight sm:text-xl">Expense Tracker</h1>
+              <p className="hidden text-xs text-muted-foreground sm:block">Your money, clearly accounted for.</p>
             </div>
             {workspaces.length > 1 && (
               <WorkspaceSwitcher workspaces={workspaces} activeId={activeWorkspaceId} currentUserId={currentUserId} />

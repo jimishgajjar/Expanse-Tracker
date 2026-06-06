@@ -53,8 +53,8 @@ export async function inviteMember(input: unknown): Promise<InviteResult> {
     email,
     `${c.me.name || c.me.email} shared "${c.ws.name}" with you`,
     addedNow
-      ? `<p>${c.me.name || c.me.email} shared their Money Tracker ("${c.ws.name}") with you.</p><p><a href="${base}/login">Sign in</a> and switch to it from the account menu.</p>`
-      : `<p>${c.me.name || c.me.email} invited you to their Money Tracker ("${c.ws.name}").</p><p><a href="${base}/signup">Create your account</a> with this email (${email}) and confirm it — the shared tracker appears once your address is verified.</p>`,
+      ? `<p>${c.me.name || c.me.email} shared their Expense Tracker ("${c.ws.name}") with you.</p><p><a href="${base}/login">Sign in</a> and switch to it from the account menu.</p>`
+      : `<p>${c.me.name || c.me.email} invited you to their Expense Tracker ("${c.ws.name}").</p><p><a href="${base}/signup">Create your account</a> with this email (${email}) and confirm it — the shared tracker appears once your address is verified.</p>`,
   );
   revalidatePath("/");
   return addedNow ? { ok: true, member: { id: u!.id, email, name: u!.name, role } } : { ok: true, invite: email };

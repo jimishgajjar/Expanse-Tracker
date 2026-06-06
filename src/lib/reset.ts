@@ -31,7 +31,7 @@ export async function requestPasswordReset(_prev: string | undefined, formData: 
       const link = `${base}/reset?token=${token}`;
       await sendEmail(
         email,
-        "Reset your Money Tracker password",
+        "Reset your Expense Tracker password",
         `<p>We received a request to reset your password.</p>
          <p><a href="${link}">Reset your password</a></p>
          <p>Or paste this link into your browser:<br>${link}</p>

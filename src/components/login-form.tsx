@@ -18,7 +18,7 @@ export function LoginForm({ next }: { next: string }) {
           <Wallet className="size-5" />
         </div>
         <CardTitle className="mt-1 text-lg">Welcome back</CardTitle>
-        <p className="text-sm text-muted-foreground">Sign in to your Money Tracker.</p>
+        <p className="text-sm text-muted-foreground">Sign in to your Expense Tracker.</p>
       </CardHeader>
       <CardContent>
         <form action={action} className="grid gap-3">
