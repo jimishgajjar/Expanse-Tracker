@@ -56,6 +56,7 @@ Desktop.ini
 # personal one-off scripts (local data import + email test — keep out of the repo)
 /scripts/seed-jimish.ts
 /scripts/seed-hani.ts
+/scripts/seed-notion.ts
 /scripts/test-email.ts
 
 # agent design skills (local tooling — reinstall via `npx skills` / `npx impeccable`)
