@@ -2,9 +2,15 @@ import { eq, inArray } from "drizzle-orm";
 import { getDb } from "./db";
 import { pushSubscriptions, users, workspaceMembers } from "./db/schema";
 import { sendEmail } from "./email";
+import { renderEmail, type EmailDetail } from "./email-template";
 import { pushConfigured, sendPushToSub, type PushPayload } from "./push";
 
-export type Notice = { title: string; body: string; url?: string; tag?: string; emailHtml?: string };
+export type Notice = {
+  title: string; body: string; url?: string; tag?: string;
+  // Rich email fields — when `heading` is set the branded template is used.
+  heading?: string; intro?: string; detail?: EmailDetail; ctaLabel?: string;
+  emailHtml?: string;
+};
 
 /** Notify every member of a workspace via email + web push. Best-effort; never throws. */
 export async function notifyWorkspace(workspaceId: string, n: Notice): Promise<void> {
@@ -21,7 +27,16 @@ export async function notifyWorkspace(workspaceId: string, n: Notice): Promise<v
     const link = n.url ? `${base}${n.url}` : base || undefined;
     const html =
       n.emailHtml ??
-      `<p>${n.body}</p>${link ? `<p><a href="${link}">Open Expense Tracker</a></p>` : ""}`;
+      (n.heading
+        ? renderEmail({
+            preheader: n.body,
+            heading: n.heading,
+            intro: n.intro ?? n.body,
+            detail: n.detail,
+            cta: link ? { label: n.ctaLabel ?? "Open Expense Tracker", url: link } : undefined,
+            footnote: "You're receiving this because alerts are on for this recurring item — manage them anytime in the app.",
+          })
+        : `<p>${n.body}</p>${link ? `<p><a href="${link}">Open Expense Tracker</a></p>` : ""}`);
     await Promise.allSettled(members.map((m) => sendEmail(m.email, n.title, html)));
 
     if (pushConfigured()) {

@@ -4,6 +4,7 @@ import { eq } from "drizzle-orm";
 import { getDb } from "./db";
 import { emailVerifications, invitations, users, workspaceMembers } from "./db/schema";
 import { sendEmail } from "./email";
+import { renderEmail, escapeHtml } from "./email-template";
 
 async function baseUrl() {
   const h = await headers();
@@ -22,11 +23,12 @@ export async function sendVerificationEmail(userId: string, email: string, name:
   await sendEmail(
     email,
     "Confirm your Expense Tracker email",
-    `<p>Hi ${name || "there"},</p>
-     <p>Confirm your email address to finish setting up your account and unlock shared trackers.</p>
-     <p><a href="${link}">Verify email</a></p>
-     <p>Or paste this link into your browser:<br>${link}</p>
-     <p>This link expires in 24 hours.</p>`,
+    renderEmail({
+      heading: "Confirm your email",
+      intro: `Hi ${escapeHtml(name || "there")}, confirm your email address to finish setting up your account and unlock shared trackers.`,
+      cta: { label: "Verify email", url: link },
+      footnote: "This link expires in 24 hours. If you didn't create an Expense Tracker account, you can ignore this email.",
+    }),
   );
 }
 

@@ -9,6 +9,7 @@ import { invitations, users, workspaceMembers, workspaces } from "./db/schema";
 import { getCurrentUser } from "./session";
 import { getActiveWorkspace } from "./workspace";
 import { sendEmail } from "./email";
+import { renderEmail, escapeHtml } from "./email-template";
 
 type Result = { ok: true } | { ok: false; error: string };
 type InviteResult =
@@ -49,12 +50,26 @@ export async function inviteMember(input: unknown): Promise<InviteResult> {
   const host = h.get("host") ?? "localhost:3000";
   const proto = h.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
   const base = process.env.APP_URL || `${proto}://${host}`;
+  const inviter = c.me.name || c.me.email;
+  const access = role === "viewer" ? "View only" : "Can edit";
   await sendEmail(
     email,
-    `${c.me.name || c.me.email} shared "${c.ws.name}" with you`,
+    `${inviter} shared "${c.ws.name}" with you`,
     addedNow
-      ? `<p>${c.me.name || c.me.email} shared their Expense Tracker ("${c.ws.name}") with you.</p><p><a href="${base}/login">Sign in</a> and switch to it from the account menu.</p>`
-      : `<p>${c.me.name || c.me.email} invited you to their Expense Tracker ("${c.ws.name}").</p><p><a href="${base}/signup">Create your account</a> with this email (${email}) and confirm it — the shared tracker appears once your address is verified.</p>`,
+      ? renderEmail({
+          heading: `${inviter} shared a tracker with you`,
+          intro: `You now have ${role === "viewer" ? "view-only" : "full editing"} access to “${escapeHtml(c.ws.name)}” on Expense Tracker. Sign in and switch to it from the tracker menu.`,
+          detail: { rows: [{ label: "Tracker", value: c.ws.name }, { label: "Your access", value: access }] },
+          cta: { label: "Sign in", url: `${base}/login` },
+          footnote: "If you weren't expecting this, you can ignore this email.",
+        })
+      : renderEmail({
+          heading: `${inviter} invited you to a tracker`,
+          intro: `${escapeHtml(inviter)} invited you to “${escapeHtml(c.ws.name)}” on Expense Tracker. Create your account with this email and confirm it — the shared tracker appears once your address is verified.`,
+          detail: { rows: [{ label: "Tracker", value: c.ws.name }, { label: "Invited email", value: email }, { label: "Your access", value: access }] },
+          cta: { label: "Create your account", url: `${base}/signup` },
+          footnote: "If you weren't expecting this, you can ignore this email.",
+        }),
   );
   revalidatePath("/");
   return addedNow ? { ok: true, member: { id: u!.id, email, name: u!.name, role } } : { ok: true, invite: email };

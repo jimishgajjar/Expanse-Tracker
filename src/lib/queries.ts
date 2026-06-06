@@ -104,6 +104,17 @@ async function workspaceSymbol(db: Awaited<ReturnType<typeof getDb>>, cache: Map
   return sym;
 }
 
+/** Resolve an account/category name by id, cached, for alert email details. */
+async function lookupName(db: Awaited<ReturnType<typeof getDb>>, cache: Map<string, string>, id: string | null, kind: "account" | "category"): Promise<string | null> {
+  if (!id) return null;
+  const key = `${kind}:${id}`;
+  if (cache.has(key)) return cache.get(key) || null;
+  const t = kind === "account" ? accounts : categories;
+  const [row] = await db.select({ name: t.name }).from(t).where(eq(t.id, id)).limit(1);
+  cache.set(key, row?.name ?? "");
+  return row?.name ?? null;
+}
+
 /** Post any due occurrences of these rules (respecting end date + repeat count),
  *  send a confirmation alert when one posts, and fire an "upcoming" reminder ahead
  *  of the next due date. Shared by the on-load and cron entry points. */
@@ -112,6 +123,7 @@ async function materialize(rules: RecurringRow[]): Promise<number> {
   const db = await getDb();
   const today = todayISO();
   const symCache = new Map<string, string>();
+  const nameCache = new Map<string, string>();
   let created = 0;
 
   for (const r of rules) {
@@ -134,9 +146,28 @@ async function materialize(rules: RecurringRow[]): Promise<number> {
       if (r.alertsEnabled) {
         const sym = await workspaceSymbol(db, symCache, r.workspaceId);
         const label = r.note || (r.type === "income" ? "Recurring income" : "Recurring payment");
+        const accName = await lookupName(db, nameCache, r.accountId, "account");
+        const catName = await lookupName(db, nameCache, r.categoryId, "category");
+        const amountStr = `${sym}${Number(r.amount).toFixed(2)}`;
+        const lastDate = format(parseISO(toCreate[toCreate.length - 1].date as string), "MMM d, yyyy");
         await notifyWorkspace(r.workspaceId, {
-          title: `${r.type === "income" ? "Income added" : "Payment added"}: ${sym}${Number(r.amount).toFixed(2)}`,
+          title: `${r.type === "income" ? "Income added" : "Payment added"}: ${amountStr}`,
           body: toCreate.length > 1 ? `${label} — ${toCreate.length} entries were added.` : `${label} was added to your tracker.`,
+          heading: r.type === "income" ? "Income added" : "Payment added",
+          intro: toCreate.length > 1
+            ? `${toCreate.length} recurring entries just posted to your tracker.`
+            : `This recurring ${r.type} just posted to your tracker.`,
+          detail: {
+            amount: `${r.type === "expense" ? "−" : "+"}${amountStr}`,
+            tone: r.type,
+            rows: [
+              { label: "Item", value: label },
+              ...(catName ? [{ label: "Category", value: catName }] : []),
+              ...(accName ? [{ label: "Account", value: accName }] : []),
+              { label: toCreate.length > 1 ? "Latest date" : "Date", value: lastDate },
+            ],
+          },
+          ctaLabel: "View transaction",
           url: "/?tab=transactions",
           tag: `posted-${r.id}`,
         });
@@ -151,10 +182,27 @@ async function materialize(rules: RecurringRow[]): Promise<number> {
         await db.update(recurring).set({ lastRemindedFor: next }).where(eq(recurring.id, r.id));
         const sym = await workspaceSymbol(db, symCache, r.workspaceId);
         const when = daysUntil === 0 ? "today" : daysUntil === 1 ? "tomorrow" : `in ${daysUntil} days`;
-        const label = r.note || (r.type === "income" ? "income" : "payment");
+        const label = r.note || (r.type === "income" ? "Recurring income" : "Recurring payment");
+        const accName = await lookupName(db, nameCache, r.accountId, "account");
+        const catName = await lookupName(db, nameCache, r.categoryId, "category");
+        const amountStr = `${sym}${Number(r.amount).toFixed(2)}`;
+        const prettyNext = format(parseISO(next), "MMM d, yyyy");
         await notifyWorkspace(r.workspaceId, {
-          title: `Upcoming ${r.type}: ${sym}${Number(r.amount).toFixed(2)}`,
-          body: `${label} is scheduled for ${next} (${when}).`,
+          title: `Upcoming ${r.type}: ${amountStr}`,
+          body: `${label} is scheduled for ${prettyNext} (${when}).`,
+          heading: r.type === "income" ? "Upcoming income" : "Upcoming payment",
+          intro: `Heads up — this is scheduled to post ${when} (${prettyNext}).`,
+          detail: {
+            amount: `${r.type === "expense" ? "−" : "+"}${amountStr}`,
+            tone: r.type,
+            rows: [
+              { label: "Item", value: label },
+              ...(catName ? [{ label: "Category", value: catName }] : []),
+              ...(accName ? [{ label: "Account", value: accName }] : []),
+              { label: "When", value: `${when[0].toUpperCase()}${when.slice(1)} · ${prettyNext}` },
+            ],
+          },
+          ctaLabel: "Review in app",
           url: "/",
           tag: `remind-${r.id}`,
         });

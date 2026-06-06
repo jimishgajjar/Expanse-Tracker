@@ -10,6 +10,7 @@ import { passwordResets, users, workspaceMembers, workspaces } from "./db/schema
 import { hashPassword } from "./password";
 import { createSession } from "./session";
 import { sendEmail } from "./email";
+import { renderEmail } from "./email-template";
 import { rateLimit } from "./rate-limit";
 
 export async function requestPasswordReset(_prev: string | undefined, formData: FormData): Promise<string> {
@@ -32,10 +33,12 @@ export async function requestPasswordReset(_prev: string | undefined, formData: 
       await sendEmail(
         email,
         "Reset your Expense Tracker password",
-        `<p>We received a request to reset your password.</p>
-         <p><a href="${link}">Reset your password</a></p>
-         <p>Or paste this link into your browser:<br>${link}</p>
-         <p>This link expires in 1 hour. If you didn't request it, you can ignore this email.</p>`,
+        renderEmail({
+          heading: "Reset your password",
+          intro: "We received a request to reset your Expense Tracker password. Choose a new one with the button below.",
+          cta: { label: "Reset password", url: link },
+          footnote: "This link expires in 1 hour. If you didn't request it, you can safely ignore this email.",
+        }),
       );
     }
   }
