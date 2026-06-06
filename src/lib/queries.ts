@@ -1,7 +1,7 @@
 import { and, asc, desc, eq, gte, lt, sql } from "drizzle-orm";
 import { addMonths, addWeeks, addYears, differenceInCalendarDays, format, parseISO } from "date-fns";
 import { getDb } from "./db";
-import { accounts, appSettings, budgets, categories, invitations, recurring, transactions, transfers, users, workspaceMembers } from "./db/schema";
+import { accounts, appSettings, budgets, categories, goals, invitations, recurring, transactions, transfers, users, workspaceMembers } from "./db/schema";
 import { CURRENCIES, DEFAULT_CURRENCY_CODE, findCurrencyByCode } from "./currencies";
 import { todayISO } from "./dates";
 import { getActiveWorkspaceId } from "./workspace";
@@ -30,6 +30,7 @@ export type SettingsDTO = { currencyCode: string; currency: string; locale: stri
 export type BudgetProgressDTO = { categoryId: string; name: string; icon: string; color: string; budget: number; spent: number };
 export type NetWorthPoint = { key: string; value: number };
 export type MemberDTO = { id: string; email: string; name: string; role: string };
+export type GoalDTO = { id: string; name: string; targetAmount: number; savedAmount: number; deadline: string | null; color: string };
 
 export async function getCategories(): Promise<CategoryDTO[]> {
   const wid = await getActiveWorkspaceId();
@@ -245,6 +246,14 @@ export async function getRecurring(): Promise<RecurringDTO[]> {
     alertsEnabled: r.alertsEnabled, remindDaysBefore: r.remindDaysBefore,
     commitmentType: r.commitmentType, autoPost: r.autoPost, totalAmount: r.totalAmount != null ? Number(r.totalAmount) : null,
   }));
+}
+
+export async function getGoals(): Promise<GoalDTO[]> {
+  const wid = await getActiveWorkspaceId();
+  if (!wid) return [];
+  const db = await getDb();
+  const rows = await db.select().from(goals).where(eq(goals.workspaceId, wid)).orderBy(asc(goals.createdAt));
+  return rows.map((g) => ({ id: g.id, name: g.name, targetAmount: Number(g.targetAmount), savedAmount: Number(g.savedAmount), deadline: g.deadline, color: g.color }));
 }
 
 export async function getTransactionsInRange(start: string, end: string): Promise<TransactionDTO[]> {

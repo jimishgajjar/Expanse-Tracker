@@ -36,6 +36,13 @@
       "when": 1780721623290,
       "tag": "0004_magical_fat_cobra",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1780722904068,
+      "tag": "0005_lying_grandmaster",
+      "breakpoints": true
     }
   ]
 }

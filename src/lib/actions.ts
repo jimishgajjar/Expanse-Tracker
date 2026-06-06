@@ -2,9 +2,9 @@
 
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { getDb } from "./db";
-import { accounts, appSettings, budgets, categories, recurring, transactions, transfers } from "./db/schema";
+import { accounts, appSettings, budgets, categories, goals, recurring, transactions, transfers } from "./db/schema";
 import { findCurrencyByCode } from "./currencies";
 import { getActiveRole, getActiveWorkspaceId, getUserWorkspaces } from "./workspace";
 import { getCurrentUser, setActiveWorkspace } from "./session";
@@ -296,6 +296,51 @@ export async function switchWorkspace(workspaceId: string): Promise<Result> {
     const memberships = await getUserWorkspaces();
     if (!memberships.some((m) => m.id === workspaceId)) return { ok: false, error: "No access to that account." };
     await setActiveWorkspace(workspaceId);
+    revalidatePath("/");
+    return { ok: true };
+  } catch (e) { return fail(e); }
+}
+
+// ── savings goals ──────────────────────────────────
+const goalSchema = z.object({
+  name: z.string().trim().min(1, "Name your goal").max(80),
+  targetAmount: z.coerce.number().positive("Target must be greater than 0"),
+  savedAmount: z.coerce.number().min(0).optional(),
+  deadline: dateStr.nullable().optional(),
+  color: z.string().optional(),
+});
+
+export async function createGoal(input: unknown): Promise<Result> {
+  try {
+    const d = goalSchema.parse(input);
+    const w = await wid();
+    const db = await getDb();
+    await db.insert(goals).values({
+      workspaceId: w, name: d.name, targetAmount: String(d.targetAmount),
+      savedAmount: String(d.savedAmount ?? 0), deadline: d.deadline ?? null, color: d.color || "#047857",
+    });
+    revalidatePath("/");
+    return { ok: true };
+  } catch (e) { return fail(e); }
+}
+
+export async function contributeGoal(id: string, amount: number): Promise<Result> {
+  try {
+    if (!Number.isFinite(amount) || amount === 0) return { ok: false, error: "Enter an amount." };
+    const w = await wid();
+    const db = await getDb();
+    await db.update(goals).set({ savedAmount: sql`greatest(0, ${goals.savedAmount} + ${amount})` })
+      .where(and(eq(goals.id, id), eq(goals.workspaceId, w)));
+    revalidatePath("/");
+    return { ok: true };
+  } catch (e) { return fail(e); }
+}
+
+export async function deleteGoal(id: string): Promise<Result> {
+  try {
+    const w = await wid();
+    const db = await getDb();
+    await db.delete(goals).where(and(eq(goals.id, id), eq(goals.workspaceId, w)));
     revalidatePath("/");
     return { ok: true };
   } catch (e) { return fail(e); }

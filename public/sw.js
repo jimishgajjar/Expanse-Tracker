@@ -12,8 +12,8 @@ self.addEventListener("push", (event) => {
     body: data.body || "",
     tag: data.tag || undefined,
     data: { url: data.url || "/" },
-    icon: "/icon.svg",
-    badge: "/icon.svg",
+    icon: "/icon-192.png",
+    badge: "/icon-192.png",
     requireInteraction: false,
   };
   event.waitUntil(self.registration.showNotification(title, options));
@@ -34,3 +34,6 @@ self.addEventListener("notificationclick", (event) => {
     }),
   );
 });
+
+// A fetch handler (network passthrough) qualifies this as an installable PWA.
+self.addEventListener("fetch", () => {});

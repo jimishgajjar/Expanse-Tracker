@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Download, Plus, Repeat, Settings, Tags, Users, Wallet } from "lucide-react";
+import { Download, Plus, Repeat, Settings, Tags, Target, Users, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -9,6 +9,7 @@ import { SettingsProvider } from "@/components/settings-provider";
 import { SettingsDialog } from "@/components/settings-dialog";
 import { CategoryManager } from "@/components/category-manager";
 import { RecurringManager } from "@/components/recurring-manager";
+import { GoalsManager } from "@/components/goals-manager";
 import { MembersManager } from "@/components/members-manager";
 import { WorkspaceSwitcher } from "@/components/workspace-switcher";
 import { VerifyBanner } from "@/components/verify-banner";
@@ -18,7 +19,7 @@ import { OverviewTab } from "@/components/overview-tab";
 import { TransactionsTab } from "@/components/transactions-tab";
 import { AnalyticsTab, type Comparison } from "@/components/analytics-tab";
 import type { RangeType } from "@/lib/dates";
-import type { AccountDTO, BudgetProgressDTO, CategoryDTO, MemberDTO, NetWorthPoint, RecurringDTO, TransactionDTO, TransferDTO } from "@/lib/queries";
+import type { AccountDTO, BudgetProgressDTO, CategoryDTO, GoalDTO, MemberDTO, NetWorthPoint, RecurringDTO, TransactionDTO, TransferDTO } from "@/lib/queries";
 import type { WorkspaceSummary } from "@/lib/workspace";
 
 type Tab = "overview" | "transactions" | "analytics";
@@ -41,6 +42,7 @@ export function Dashboard({
   netWorth,
   comparison,
   recurring,
+  goals,
   members,
   invites,
   userEmail,
@@ -70,6 +72,7 @@ export function Dashboard({
   netWorth: NetWorthPoint[];
   comparison: Comparison;
   recurring: RecurringDTO[];
+  goals: GoalDTO[];
   members: MemberDTO[];
   invites: string[];
   userEmail: string;
@@ -130,6 +133,10 @@ export function Dashboard({
               trigger={<Button variant="outline" size="sm" aria-label="Subscriptions"><Repeat className="size-4" /><span className="hidden sm:inline">Subscriptions</span></Button>}
             />
           )}
+          <GoalsManager
+            goals={goals}
+            trigger={<Button variant="outline" size="sm" aria-label="Goals"><Target className="size-4" /><span className="hidden sm:inline">Goals</span></Button>}
+          />
           <MembersManager
             members={members}
             invites={invites}

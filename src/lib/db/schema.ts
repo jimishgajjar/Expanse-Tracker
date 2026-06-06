@@ -116,7 +116,37 @@ export const recurring = pgTable(
 export const appSettings = pgTable("app_settings", {
   workspaceId: text("workspace_id").primaryKey().references(() => workspaces.id, { onDelete: "cascade" }),
   currencyCode: text("currency_code").notNull().default("INR"),
+  lastDigestMonth: text("last_digest_month"), // YYYY-MM of the last monthly digest sent
 });
+
+// A savings target with progress.
+export const goals = pgTable(
+  "goals",
+  {
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    workspaceId: ws(),
+    name: text("name").notNull(),
+    targetAmount: numeric("target_amount", { precision: 14, scale: 2 }).notNull(),
+    savedAmount: numeric("saved_amount", { precision: 14, scale: 2 }).notNull().default("0"),
+    color: text("color").notNull().default("#047857"),
+    deadline: date("deadline", { mode: "string" }),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [index("goal_ws_idx").on(t.workspaceId)],
+);
+
+// Dedup store so a budget threshold (80%/100%) only alerts once per category per month.
+export const budgetAlerts = pgTable(
+  "budget_alerts",
+  {
+    workspaceId: ws(),
+    categoryId: text("category_id").notNull().references(() => categories.id, { onDelete: "cascade" }),
+    period: text("period").notNull(), // YYYY-MM
+    threshold: integer("threshold").notNull(), // 80 | 100
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.workspaceId, t.categoryId, t.period, t.threshold] })],
+);
 
 export const transactionsRelations = relations(transactions, ({ one }) => ({
   account: one(accounts, { fields: [transactions.accountId], references: [accounts.id] }),
@@ -214,6 +244,7 @@ export type AppSettings = typeof appSettings.$inferSelect;
 export type Budget = typeof budgets.$inferSelect;
 export type Transfer = typeof transfers.$inferSelect;
 export type Recurring = typeof recurring.$inferSelect;
+export type Goal = typeof goals.$inferSelect;
 export type User = typeof users.$inferSelect;
 export type Workspace = typeof workspaces.$inferSelect;
 export type PushSubscription = typeof pushSubscriptions.$inferSelect;
