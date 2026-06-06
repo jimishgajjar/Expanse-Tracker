@@ -32,7 +32,7 @@ export function AccountDetailSheet({
       <SheetTrigger render={trigger} />
       <SheetContent className="flex w-full flex-col gap-0 p-0 sm:max-w-md">
         <SheetHeader className="border-b p-4">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 pr-9">
             <span className="grid size-10 shrink-0 place-items-center rounded-lg" style={{ backgroundColor: `${account.color}22`, color: account.color }}>
               <Icon name={account.icon} size={20} />
             </span>
@@ -52,7 +52,7 @@ export function AccountDetailSheet({
         </SheetHeader>
         <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4">
           <div className="text-xs font-medium text-muted-foreground">Transactions in this period</div>
-          <TransactionRows transactions={txns} accounts={accounts} categories={categories} />
+          <TransactionRows transactions={txns} accounts={accounts} categories={categories} emptyMessage="No transactions in this period — switch the date range up top to see more." />
           {xfers.length > 0 && (
             <>
               <div className="pt-2 text-xs font-medium text-muted-foreground">Transfers</div>

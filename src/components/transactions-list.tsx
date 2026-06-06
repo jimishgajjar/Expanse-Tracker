@@ -14,10 +14,10 @@ import { useFormat } from "@/components/settings-provider";
 import { cn } from "@/lib/utils";
 import type { AccountDTO, CategoryDTO, TransactionDTO, TransferDTO } from "@/lib/queries";
 
-type Props = { transactions: TransactionDTO[]; accounts: AccountDTO[]; categories: CategoryDTO[]; canEdit?: boolean; showAuthors?: boolean };
+type Props = { transactions: TransactionDTO[]; accounts: AccountDTO[]; categories: CategoryDTO[]; canEdit?: boolean; showAuthors?: boolean; emptyMessage?: string };
 
 /** Presentational list: groups the given transactions by date and renders compact rows. */
-export function TransactionRows({ transactions, accounts, categories, canEdit = true, showAuthors = false }: Props) {
+export function TransactionRows({ transactions, accounts, categories, canEdit = true, showAuthors = false, emptyMessage = "No transactions match these filters." }: Props) {
   const router = useRouter();
   const { money } = useFormat();
   const [optimistic, removeOptimistic] = useOptimistic(transactions, (state: TransactionDTO[], id: string) => state.filter((t) => t.id !== id));
@@ -55,7 +55,7 @@ export function TransactionRows({ transactions, accounts, categories, canEdit = 
   }
 
   if (!optimistic.length) {
-    return <p className="py-12 text-center text-sm text-muted-foreground">No transactions match these filters.</p>;
+    return <p className="py-12 text-center text-sm text-muted-foreground">{emptyMessage}</p>;
   }
 
   return (
