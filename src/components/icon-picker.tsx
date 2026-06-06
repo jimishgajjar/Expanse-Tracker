@@ -26,13 +26,13 @@ export function IconPicker({
         <Icon name={value} color={color} size={18} />
         <ChevronDown className="size-3 opacity-50" />
       </PopoverTrigger>
-      <PopoverContent className="w-64 p-0" align="start">
+      <PopoverContent className="w-72 p-0" align="start">
         <Command>
           <CommandInput placeholder="Search icons…" />
           <CommandList>
             <CommandEmpty>No icon found.</CommandEmpty>
             <CommandGroup>
-              <div className="grid grid-cols-6 gap-1">
+              <div className="grid grid-cols-6 gap-1.5">
                 {ICON_NAMES.map((name) => (
                   <CommandItem
                     key={name}

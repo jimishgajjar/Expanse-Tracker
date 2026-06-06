@@ -92,9 +92,9 @@ export function TransactionDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogTrigger render={trigger} />
-      <DialogContent>
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader><DialogTitle>{title}</DialogTitle></DialogHeader>
-        <form onSubmit={submit} className="grid gap-3">
+        <form onSubmit={submit} className="grid gap-3.5">
           <div className={cn("grid gap-2 rounded-lg bg-muted p-1", types.length === 3 ? "grid-cols-3" : "grid-cols-2")}>
             {types.map((t) => (
               <button
