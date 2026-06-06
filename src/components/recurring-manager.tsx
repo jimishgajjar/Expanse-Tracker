@@ -44,16 +44,19 @@ export function RecurringManager({
   categories: CategoryDTO[];
 }) {
   const { money } = useFormat();
-  const expenses = recurring.filter((r) => r.type === "expense");
+  const [items, setItems] = useState(recurring);
+  const onAdded = (r: RecurringDTO) => setItems((x) => [...x, r]);
+  const onRemoved = (id: string) => setItems((x) => x.filter((r) => r.id !== id));
+  const expenses = items.filter((r) => r.type === "expense");
   const monthly = expenses.reduce((s, r) => s + perMonth(r.amount, r.frequency), 0);
 
   const known = ["subscription", "bill", "emi"];
   const groups = [
-    { key: "subscription", label: "Subscriptions", rules: recurring.filter((r) => r.type === "expense" && r.commitmentType === "subscription") },
-    { key: "bill", label: "Bills", rules: recurring.filter((r) => r.type === "expense" && r.commitmentType === "bill") },
-    { key: "emi", label: "EMIs & installments", rules: recurring.filter((r) => r.type === "expense" && r.commitmentType === "emi") },
-    { key: "other", label: "Other recurring", rules: recurring.filter((r) => r.type === "expense" && !known.includes(r.commitmentType)) },
-    { key: "income", label: "Income", rules: recurring.filter((r) => r.type === "income") },
+    { key: "subscription", label: "Subscriptions", rules: items.filter((r) => r.type === "expense" && r.commitmentType === "subscription") },
+    { key: "bill", label: "Bills", rules: items.filter((r) => r.type === "expense" && r.commitmentType === "bill") },
+    { key: "emi", label: "EMIs & installments", rules: items.filter((r) => r.type === "expense" && r.commitmentType === "emi") },
+    { key: "other", label: "Other recurring", rules: items.filter((r) => r.type === "expense" && !known.includes(r.commitmentType)) },
+    { key: "income", label: "Income", rules: items.filter((r) => r.type === "income") },
   ].filter((g) => g.rules.length > 0);
 
   return (
@@ -73,7 +76,7 @@ export function RecurringManager({
             <div className="mt-0.5 text-xs text-muted-foreground">{money(monthly * 12)} / year · {expenses.length} active</div>
           </div>
 
-          <AddForm accounts={accounts} categories={categories} />
+          <AddForm accounts={accounts} categories={categories} onAdded={onAdded} />
 
           {groups.map((g) => (
             <div key={g.key} className="space-y-1.5">
@@ -83,10 +86,10 @@ export function RecurringManager({
                   <span className="amount text-xs text-muted-foreground">{money(g.rules.reduce((s, r) => s + perMonth(r.amount, r.frequency), 0))}/mo</span>
                 )}
               </div>
-              {g.rules.map((r) => <RuleRow key={r.id} rule={r} categories={categories} />)}
+              {g.rules.map((r) => <RuleRow key={r.id} rule={r} categories={categories} onRemoved={onRemoved} />)}
             </div>
           ))}
-          {recurring.length === 0 && (
+          {items.length === 0 && (
             <p className="py-4 text-center text-sm text-muted-foreground">Nothing recurring yet — add your first subscription or bill above.</p>
           )}
         </div>
@@ -104,7 +107,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-function AddForm({ accounts, categories }: { accounts: AccountDTO[]; categories: CategoryDTO[] }) {
+function AddForm({ accounts, categories, onAdded }: { accounts: AccountDTO[]; categories: CategoryDTO[]; onAdded: (r: RecurringDTO) => void }) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [type, setType] = useState<"income" | "expense">("expense");
@@ -141,6 +144,14 @@ function AddForm({ accounts, categories }: { accounts: AccountDTO[]; categories:
       });
       if (res.ok) {
         toast.success("Added");
+        onAdded({
+          id: crypto.randomUUID(), type, amount: Number(amount), note,
+          accountId, categoryId: categoryId === NONE ? null : categoryId, frequency, nextDate,
+          endDate: endDate || null, maxOccurrences: maxOccurrences ? Number(maxOccurrences) : null,
+          occurrenceCount: 0, alertsEnabled, remindDaysBefore: Number(remindDaysBefore) || 0,
+          commitmentType: type === "income" ? "other" : kind, autoPost: type === "income" ? true : autoPost,
+          totalAmount: totalAmount ? Number(totalAmount) : null,
+        });
         setAmount(""); setNote(""); setEndDate(""); setMaxOccurrences(""); setTotalAmount("");
         router.refresh();
       } else toast.error(res.error);
@@ -231,7 +242,7 @@ function AddForm({ accounts, categories }: { accounts: AccountDTO[]; categories:
   );
 }
 
-function RuleRow({ rule, categories }: { rule: RecurringDTO; categories: CategoryDTO[] }) {
+function RuleRow({ rule, categories, onRemoved }: { rule: RecurringDTO; categories: CategoryDTO[]; onRemoved: (id: string) => void }) {
   const router = useRouter();
   const { money } = useFormat();
   const cat = categories.find((c) => c.id === rule.categoryId);
@@ -239,7 +250,7 @@ function RuleRow({ rule, categories }: { rule: RecurringDTO; categories: Categor
 
   async function remove() {
     const res = await deleteRecurring(rule.id);
-    if (res.ok) { toast.success("Removed"); router.refresh(); }
+    if (res.ok) { toast.success("Removed"); onRemoved(rule.id); router.refresh(); }
     else toast.error(res.error);
   }
 

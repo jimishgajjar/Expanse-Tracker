@@ -14,8 +14,13 @@ import type { GoalDTO } from "@/lib/queries";
 
 export function GoalsManager({ trigger, goals }: { trigger: ReactElement; goals: GoalDTO[] }) {
   const { money } = useFormat();
-  const totalSaved = goals.reduce((s, g) => s + g.savedAmount, 0);
-  const totalTarget = goals.reduce((s, g) => s + g.targetAmount, 0);
+  const [items, setItems] = useState(goals);
+  const totalSaved = items.reduce((s, g) => s + g.savedAmount, 0);
+  const totalTarget = items.reduce((s, g) => s + g.targetAmount, 0);
+
+  const onAdded = (g: GoalDTO) => setItems((x) => [...x, g]);
+  const onContributed = (id: string, saved: number) => setItems((x) => x.map((g) => (g.id === id ? { ...g, savedAmount: saved } : g)));
+  const onRemoved = (id: string) => setItems((x) => x.filter((g) => g.id !== id));
 
   return (
     <Sheet>
@@ -26,18 +31,18 @@ export function GoalsManager({ trigger, goals }: { trigger: ReactElement; goals:
           <SheetDescription>Set targets and watch your progress toward them.</SheetDescription>
         </SheetHeader>
         <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
-          {goals.length > 0 && (
+          {items.length > 0 && (
             <div className="rounded-xl border bg-card p-4">
-              <div className="text-xs font-medium text-muted-foreground">Saved across {goals.length} goal{goals.length === 1 ? "" : "s"}</div>
+              <div className="text-xs font-medium text-muted-foreground">Saved across {items.length} goal{items.length === 1 ? "" : "s"}</div>
               <div className="amount mt-1 text-2xl font-semibold">
                 {money(totalSaved)}<span className="ml-1.5 text-sm font-normal text-muted-foreground">of {money(totalTarget)}</span>
               </div>
             </div>
           )}
-          <AddForm />
+          <AddForm onAdded={onAdded} />
           <div className="space-y-2">
-            {goals.map((g) => <GoalCard key={g.id} goal={g} />)}
-            {goals.length === 0 && <p className="py-4 text-center text-sm text-muted-foreground">No goals yet — add one above to start saving.</p>}
+            {items.map((g) => <GoalCard key={g.id} goal={g} onContributed={onContributed} onRemoved={onRemoved} />)}
+            {items.length === 0 && <p className="py-4 text-center text-sm text-muted-foreground">No goals yet — add one above to start saving.</p>}
           </div>
         </div>
       </SheetContent>
@@ -45,7 +50,7 @@ export function GoalsManager({ trigger, goals }: { trigger: ReactElement; goals:
   );
 }
 
-function AddForm() {
+function AddForm({ onAdded }: { onAdded: (g: GoalDTO) => void }) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [name, setName] = useState("");
@@ -57,8 +62,11 @@ function AddForm() {
     if (!name.trim() || !target) return;
     start(async () => {
       const res = await createGoal({ name, targetAmount: Number(target), deadline: deadline || null });
-      if (res.ok) { toast.success("Goal added"); setName(""); setTarget(""); setDeadline(""); router.refresh(); }
-      else toast.error(res.error);
+      if (res.ok) {
+        toast.success("Goal added");
+        onAdded({ id: crypto.randomUUID(), name: name.trim(), targetAmount: Number(target), savedAmount: 0, deadline: deadline || null, color: "#047857" });
+        setName(""); setTarget(""); setDeadline(""); router.refresh();
+      } else toast.error(res.error);
     });
   }
   return (
@@ -73,7 +81,7 @@ function AddForm() {
   );
 }
 
-function GoalCard({ goal }: { goal: GoalDTO }) {
+function GoalCard({ goal, onContributed, onRemoved }: { goal: GoalDTO; onContributed: (id: string, saved: number) => void; onRemoved: (id: string) => void }) {
   const router = useRouter();
   const { money } = useFormat();
   const [adding, setAdding] = useState(false);
@@ -88,13 +96,13 @@ function GoalCard({ goal }: { goal: GoalDTO }) {
     if (!n) return;
     start(async () => {
       const res = await contributeGoal(goal.id, n);
-      if (res.ok) { setAmt(""); setAdding(false); router.refresh(); }
+      if (res.ok) { onContributed(goal.id, Math.max(0, goal.savedAmount + n)); setAmt(""); setAdding(false); router.refresh(); }
       else toast.error(res.error);
     });
   }
   async function remove() {
     const res = await deleteGoal(goal.id);
-    if (res.ok) { toast.success("Goal removed"); router.refresh(); }
+    if (res.ok) { toast.success("Goal removed"); onRemoved(goal.id); router.refresh(); }
     else toast.error(res.error);
   }
 
