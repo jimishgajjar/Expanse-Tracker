@@ -1,17 +1,10 @@
 import { randomBytes } from "node:crypto";
-import { headers } from "next/headers";
 import { eq } from "drizzle-orm";
 import { getDb } from "./db";
 import { emailVerifications, invitations, users, workspaceMembers } from "./db/schema";
 import { sendEmail } from "./email";
 import { renderEmail, escapeHtml } from "./email-template";
-
-async function baseUrl() {
-  const h = await headers();
-  const host = h.get("host") ?? "localhost:3000";
-  const proto = h.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
-  return process.env.APP_URL || `${proto}://${host}`;
-}
+import { requestBaseUrl as baseUrl } from "./base-url";
 
 /** Create a single-use token and email a confirmation link (24h expiry). */
 export async function sendVerificationEmail(userId: string, email: string, name: string) {

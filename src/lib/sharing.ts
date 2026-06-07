@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { headers } from "next/headers";
+import { requestBaseUrl } from "./base-url";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { getDb } from "./db";
@@ -46,10 +46,7 @@ export async function inviteMember(input: unknown): Promise<InviteResult> {
     await db.insert(invitations).values({ workspaceId: c.ws.id, email, role }).onConflictDoNothing();
   }
 
-  const h = await headers();
-  const host = h.get("host") ?? "localhost:3000";
-  const proto = h.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
-  const base = process.env.APP_URL || `${proto}://${host}`;
+  const base = await requestBaseUrl();
   const inviter = c.me.name || c.me.email;
   const access = role === "viewer" ? "View only" : "Can edit";
   await sendEmail(

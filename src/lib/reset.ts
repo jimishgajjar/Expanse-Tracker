@@ -1,7 +1,6 @@
 "use server";
 
 import { randomBytes } from "node:crypto";
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
@@ -12,6 +11,7 @@ import { createSession } from "./session";
 import { sendEmail } from "./email";
 import { renderEmail } from "./email-template";
 import { rateLimit } from "./rate-limit";
+import { requestBaseUrl } from "./base-url";
 
 export async function requestPasswordReset(_prev: string | undefined, formData: FormData): Promise<string> {
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
@@ -25,10 +25,7 @@ export async function requestPasswordReset(_prev: string | undefined, formData: 
       const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
       await db.insert(passwordResets).values({ id: token, userId: u.id, expiresAt });
 
-      const h = await headers();
-      const host = h.get("host") ?? "localhost:3000";
-      const proto = h.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
-      const base = process.env.APP_URL || `${proto}://${host}`;
+      const base = await requestBaseUrl();
       const link = `${base}/reset?token=${token}`;
       await sendEmail(
         email,
@@ -50,6 +47,7 @@ export async function resetPassword(_prev: string | undefined, formData: FormDat
   const token = String(formData.get("token") ?? "");
   const pwP = z.string().min(8, "Password must be at least 8 characters").safeParse(formData.get("password"));
   if (!pwP.success) return pwP.error.issues[0].message;
+  if (pwP.data !== String(formData.get("confirm") ?? "")) return "Passwords don't match.";
 
   const db = await getDb();
   const [row] = await db.select().from(passwordResets).where(eq(passwordResets.id, token)).limit(1);
