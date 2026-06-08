@@ -1,4 +1,4 @@
-import { pgTable, pgEnum, primaryKey, text, numeric, date, timestamp, integer, boolean, index } from "drizzle-orm/pg-core";
+import { pgTable, pgEnum, primaryKey, text, numeric, date, timestamp, integer, boolean, index, unique } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
 // Shared enum for the two flavours of money movement.
@@ -166,6 +166,29 @@ export const budgetAlerts = pgTable(
   (t) => [primaryKey({ columns: [t.workspaceId, t.categoryId, t.period, t.threshold] })],
 );
 
+// A free-form label attachable to many transactions — independent of the single
+// category (which still drives analytics). Tags are for grouping / filtering.
+export const tags = pgTable(
+  "tags",
+  {
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    workspaceId: ws(),
+    name: text("name").notNull(),
+    color: text("color").notNull().default("#64748b"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [index("tag_ws_idx").on(t.workspaceId), unique("tag_ws_name_uq").on(t.workspaceId, t.name)],
+);
+
+export const transactionTags = pgTable(
+  "transaction_tags",
+  {
+    transactionId: text("transaction_id").notNull().references(() => transactions.id, { onDelete: "cascade" }),
+    tagId: text("tag_id").notNull().references(() => tags.id, { onDelete: "cascade" }),
+  },
+  (t) => [primaryKey({ columns: [t.transactionId, t.tagId] }), index("txtag_tag_idx").on(t.tagId)],
+);
+
 export const transactionsRelations = relations(transactions, ({ one }) => ({
   account: one(accounts, { fields: [transactions.accountId], references: [accounts.id] }),
   category: one(categories, { fields: [transactions.categoryId], references: [categories.id] }),
@@ -264,6 +287,7 @@ export type Transfer = typeof transfers.$inferSelect;
 export type Recurring = typeof recurring.$inferSelect;
 export type Goal = typeof goals.$inferSelect;
 export type Split = typeof splits.$inferSelect;
+export type Tag = typeof tags.$inferSelect;
 export type User = typeof users.$inferSelect;
 export type Workspace = typeof workspaces.$inferSelect;
 export type PushSubscription = typeof pushSubscriptions.$inferSelect;

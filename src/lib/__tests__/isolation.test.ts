@@ -78,7 +78,7 @@ describe("workspace isolation", () => {
     h.activeWs = ids.wsA; // acting inside A
     const before = await txAmount(ids.txB);
     const res = await updateTransaction(ids.txB, { amount: 1 }); // try to edit B's transaction
-    expect(res.ok).toBe(true); // the action runs, but the WHERE clause matches 0 rows
+    expect(res.ok).toBe(false); // rejected: row isn't in the active workspace (ownership-checked)
     expect(await txAmount(ids.txB)).toBe(before); // B's row is unchanged
   });
 

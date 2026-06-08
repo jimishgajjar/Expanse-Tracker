@@ -11,10 +11,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Icon } from "@/components/icon";
+import { TagInput } from "@/components/tag-input";
 import { cn } from "@/lib/utils";
 import { todayISO } from "@/lib/dates";
 import { createTransaction, createTransfer, updateTransaction } from "@/lib/actions";
-import type { AccountDTO, CategoryDTO, TransactionDTO } from "@/lib/queries";
+import type { AccountDTO, CategoryDTO, TagRef, TransactionDTO } from "@/lib/queries";
 
 const NONE = "__none__";
 type TxType = "income" | "expense" | "transfer";
@@ -50,10 +51,11 @@ export function TransactionDialog({
     toAccountId: accounts[1]?.id ?? accounts[0]?.id ?? "",
   });
   const [f, setF] = useState(init);
+  const [tags, setTags] = useState<TagRef[]>(transaction?.tags ?? []);
 
   function onOpenChange(o: boolean) {
     setOpen(o);
-    if (o) setF(init());
+    if (o) { setF(init()); setTags(transaction?.tags ?? []); }
   }
 
   function setType(type: TxType) {
@@ -76,7 +78,7 @@ export function TransactionDialog({
       if (f.type === "transfer") {
         res = await createTransfer({ amount: Number(f.amount), date: f.date, note: f.note, fromAccountId: f.fromAccountId, toAccountId: f.toAccountId });
       } else {
-        const payload = { type: f.type, amount: Number(f.amount), date: f.date, note: f.note, accountId: f.accountId, categoryId: f.categoryId === NONE ? null : f.categoryId };
+        const payload = { type: f.type, amount: Number(f.amount), date: f.date, note: f.note, accountId: f.accountId, categoryId: f.categoryId === NONE ? null : f.categoryId, tagIds: tags.map((t) => t.id) };
         res = isEdit ? await updateTransaction(transaction!.id, payload) : await createTransaction(payload);
       }
       if (res.ok) {
@@ -164,6 +166,13 @@ export function TransactionDialog({
                   </SelectContent>
                 </Select>
               </div>
+            </div>
+          )}
+
+          {f.type !== "transfer" && (
+            <div className="grid gap-1.5">
+              <Label>Tags</Label>
+              <TagInput value={tags} onChange={setTags} />
             </div>
           )}
 

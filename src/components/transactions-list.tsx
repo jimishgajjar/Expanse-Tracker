@@ -1,6 +1,7 @@
 "use client";
 
 import { startTransition, useMemo, useOptimistic } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { format, parseISO } from "date-fns";
@@ -110,6 +111,15 @@ function Row({
           {t.category?.name ?? "Uncategorised"} · {t.account?.name ?? "—"}
           {showAuthors && t.createdByName ? ` · ${t.createdByName}` : ""}
         </div>
+        {t.tags.length > 0 && (
+          <div className="mt-0.5 flex flex-wrap gap-1">
+            {t.tags.map((tag) => (
+              <Link key={tag.id} href={`/tags/${tag.id}`} className="inline-flex items-center rounded-full px-1.5 text-[10px] font-medium leading-4 transition hover:brightness-110" style={{ backgroundColor: `${tag.color}22`, color: tag.color }}>
+                {tag.name}
+              </Link>
+            ))}
+          </div>
+        )}
       </div>
       <div className={cn("shrink-0 font-mono text-[13px] font-semibold tabular-nums", isIncome ? "text-positive" : "text-negative")}>
         {isIncome ? "+" : "−"}{money(t.amount)}

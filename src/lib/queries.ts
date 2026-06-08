@@ -1,7 +1,7 @@
-import { and, asc, desc, eq, gte, isNull, lt, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, isNull, lt, sql } from "drizzle-orm";
 import { addMonths, addWeeks, addYears, differenceInCalendarDays, format, parseISO } from "date-fns";
 import { getDb } from "./db";
-import { accounts, appSettings, budgets, categories, goals, invitations, recurring, splits, transactions, transfers, users, workspaceMembers } from "./db/schema";
+import { accounts, appSettings, budgets, categories, goals, invitations, recurring, splits, tags, transactionTags, transactions, transfers, users, workspaceMembers } from "./db/schema";
 import { CURRENCIES, DEFAULT_CURRENCY_CODE, findCurrencyByCode } from "./currencies";
 import { todayISO } from "./dates";
 import { getActiveWorkspaceId } from "./workspace";
@@ -15,10 +15,12 @@ export type AccountDTO = {
 };
 export type CategoryDTO = { id: string; name: string; kind: "income" | "expense"; icon: string; color: string };
 export type RefDTO = { name: string; icon: string; color: string } | null;
+export type TagRef = { id: string; name: string; color: string };
+export type TagDTO = { id: string; name: string; color: string; count: number };
 export type TransactionDTO = {
   id: string; type: "income" | "expense"; amount: number; date: string; note: string;
   accountId: string | null; categoryId: string | null; account: RefDTO; category: RefDTO;
-  createdByName: string | null;
+  createdByName: string | null; tags: TagRef[];
 };
 export type TransferDTO = { id: string; amount: number; date: string; note: string; fromAccountId: string; toAccountId: string };
 export type RecurringDTO = {
@@ -280,6 +282,22 @@ export async function getGoals(): Promise<GoalDTO[]> {
   return rows.map((g) => ({ id: g.id, name: g.name, targetAmount: Number(g.targetAmount), savedAmount: Number(g.savedAmount), deadline: g.deadline, color: g.color }));
 }
 
+async function tagsByTransaction(db: Awaited<ReturnType<typeof getDb>>, txIds: string[]): Promise<Map<string, TagRef[]>> {
+  const map = new Map<string, TagRef[]>();
+  if (!txIds.length) return map;
+  const rows = await db
+    .select({ txId: transactionTags.transactionId, id: tags.id, name: tags.name, color: tags.color })
+    .from(transactionTags)
+    .innerJoin(tags, eq(transactionTags.tagId, tags.id))
+    .where(inArray(transactionTags.transactionId, txIds));
+  for (const r of rows) {
+    const arr = map.get(r.txId) ?? [];
+    arr.push({ id: r.id, name: r.name, color: r.color });
+    map.set(r.txId, arr);
+  }
+  return map;
+}
+
 export async function getTransactionsInRange(start: string, end: string): Promise<TransactionDTO[]> {
   const wid = await getActiveWorkspaceId();
   if (!wid) return [];
@@ -289,13 +307,29 @@ export async function getTransactionsInRange(start: string, end: string): Promis
     orderBy: [desc(transactions.date), desc(transactions.createdAt)],
     with: { account: true, category: true, creator: true },
   });
+  const tagMap = await tagsByTransaction(db, rows.map((t) => t.id));
   return rows.map((t) => ({
     id: t.id, type: t.type, amount: Number(t.amount), date: t.date, note: t.note,
     accountId: t.accountId, categoryId: t.categoryId,
     account: t.account ? { name: t.account.name, icon: t.account.icon, color: t.account.color } : null,
     category: t.category ? { name: t.category.name, icon: t.category.icon, color: t.category.color } : null,
     createdByName: t.creator ? (t.creator.name || t.creator.email) : null,
+    tags: tagMap.get(t.id) ?? [],
   }));
+}
+
+export async function getTags(): Promise<TagDTO[]> {
+  const wid = await getActiveWorkspaceId();
+  if (!wid) return [];
+  const db = await getDb();
+  const rows = await db
+    .select({ id: tags.id, name: tags.name, color: tags.color, count: sql<number>`count(${transactionTags.transactionId})` })
+    .from(tags)
+    .leftJoin(transactionTags, eq(transactionTags.tagId, tags.id))
+    .where(eq(tags.workspaceId, wid))
+    .groupBy(tags.id)
+    .orderBy(asc(tags.name));
+  return rows.map((r) => ({ id: r.id, name: r.name, color: r.color, count: Number(r.count) }));
 }
 
 export async function getAllTransactions(): Promise<TransactionDTO[]> {

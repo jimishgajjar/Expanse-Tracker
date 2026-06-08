@@ -4,7 +4,7 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { and, eq, isNull, or, sql } from "drizzle-orm";
 import { getDb } from "./db";
-import { accounts, appSettings, budgets, categories, goals, recurring, splits, transactions, transfers, workspaceMembers } from "./db/schema";
+import { accounts, appSettings, budgets, categories, goals, recurring, splits, tags, transactionTags, transactions, transfers, workspaceMembers } from "./db/schema";
 import { findCurrencyByCode } from "./currencies";
 import { getActiveRole, getActiveWorkspaceId, getUserWorkspaces } from "./workspace";
 import { getCurrentUser, setActiveWorkspace } from "./session";
@@ -127,6 +127,7 @@ const txSchema = z.object({
   note: z.string().trim().max(200).default(""),
   accountId: z.string().min(1, "Pick an account"),
   categoryId: z.string().min(1).nullable().optional(),
+  tagIds: z.array(z.string()).optional(),
 });
 
 export async function createTransaction(input: unknown): Promise<Result> {
@@ -135,11 +136,12 @@ export async function createTransaction(input: unknown): Promise<Result> {
     const w = await wid();
     const me = await getCurrentUser();
     const db = await getDb();
-    await db.insert(transactions).values({
+    const [row] = await db.insert(transactions).values({
       workspaceId: w, type: d.type, amount: String(d.amount), date: d.date,
       note: d.note ?? "", accountId: d.accountId, categoryId: d.categoryId ?? null,
       createdBy: me?.id ?? null,
-    });
+    }).returning({ id: transactions.id });
+    if (d.tagIds?.length) await db.insert(transactionTags).values(d.tagIds.map((tagId) => ({ transactionId: row.id, tagId })));
     revalidatePath("/");
     return { ok: true };
   } catch (e) { return fail(e); }
@@ -148,11 +150,18 @@ export async function createTransaction(input: unknown): Promise<Result> {
 export async function updateTransaction(id: string, input: unknown): Promise<Result> {
   try {
     const d = txSchema.partial().parse(input);
-    const patch: Record<string, unknown> = { ...d };
+    const { tagIds, ...rest } = d;
+    const patch: Record<string, unknown> = { ...rest };
     if (d.amount !== undefined) patch.amount = String(d.amount);
     const w = await wid();
     const db = await getDb();
-    await db.update(transactions).set(patch).where(and(eq(transactions.id, id), eq(transactions.workspaceId, w)));
+    const [owned] = await db.select({ id: transactions.id }).from(transactions).where(and(eq(transactions.id, id), eq(transactions.workspaceId, w))).limit(1);
+    if (!owned) return { ok: false, error: "Transaction not found." };
+    if (Object.keys(patch).length) await db.update(transactions).set(patch).where(and(eq(transactions.id, id), eq(transactions.workspaceId, w)));
+    if (tagIds !== undefined) {
+      await db.delete(transactionTags).where(eq(transactionTags.transactionId, id));
+      if (tagIds.length) await db.insert(transactionTags).values(tagIds.map((tagId) => ({ transactionId: id, tagId })));
+    }
     revalidatePath("/");
     return { ok: true };
   } catch (e) { return fail(e); }
@@ -403,6 +412,42 @@ export async function deleteSplit(id: string): Promise<Result> {
     const w = await wid();
     const db = await getDb();
     await db.delete(splits).where(and(eq(splits.id, id), eq(splits.workspaceId, w)));
+    revalidatePath("/");
+    return { ok: true };
+  } catch (e) { return fail(e); }
+}
+
+// ── tags ─────────────────────────────────────────────────
+const TAG_COLORS = ["#6366f1", "#0ea5e9", "#10b981", "#f59e0b", "#ef4444", "#ec4899", "#8b5cf6", "#14b8a6"];
+
+/** All tags in the active workspace (read; used by the tag picker). */
+export async function listTags(): Promise<{ id: string; name: string; color: string }[]> {
+  const w = await getActiveWorkspaceId();
+  if (!w) return [];
+  const db = await getDb();
+  return db.select({ id: tags.id, name: tags.name, color: tags.color }).from(tags).where(eq(tags.workspaceId, w)).orderBy(tags.name);
+}
+
+/** Find-or-create a tag by name (case-sensitive), returns it. */
+export async function createTag(input: unknown): Promise<Result<{ id: string; name: string; color: string }>> {
+  try {
+    const d = z.object({ name: z.string().trim().min(1, "Tag name required").max(40), color: z.string().optional() }).parse(input);
+    const w = await wid();
+    const db = await getDb();
+    const [existing] = await db.select().from(tags).where(and(eq(tags.workspaceId, w), eq(tags.name, d.name))).limit(1);
+    if (existing) return { ok: true, data: { id: existing.id, name: existing.name, color: existing.color } };
+    const color = d.color || TAG_COLORS[d.name.length % TAG_COLORS.length];
+    const [row] = await db.insert(tags).values({ workspaceId: w, name: d.name, color }).returning();
+    revalidatePath("/");
+    return { ok: true, data: { id: row.id, name: row.name, color: row.color } };
+  } catch (e) { return fail(e); }
+}
+
+export async function deleteTag(id: string): Promise<Result> {
+  try {
+    const w = await wid();
+    const db = await getDb();
+    await db.delete(tags).where(and(eq(tags.id, id), eq(tags.workspaceId, w)));
     revalidatePath("/");
     return { ok: true };
   } catch (e) { return fail(e); }
