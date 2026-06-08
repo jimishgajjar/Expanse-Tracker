@@ -36,15 +36,15 @@ describe("date ranges", () => {
 describe("money formatting", () => {
   const { money, signedMoney, balanceMoney } = makeFormatters("$", "en-US");
 
-  it("rounds whole amounts", () => expect(money(1234.56)).toBe("$1,235"));
-  it("keeps decimals when asked", () => expect(money(1234.5, { decimals: true })).toBe("$1,234.5"));
+  it("always shows two decimals", () => expect(money(1234.56)).toBe("$1,234.56"));
+  it("keeps trailing-zero cents", () => expect(money(1234.5)).toBe("$1,234.50"));
   it("signs transactions", () => {
-    expect(signedMoney(100)).toBe("+$100");
-    expect(signedMoney(-100)).toBe("−$100");
+    expect(signedMoney(100)).toBe("+$100.00");
+    expect(signedMoney(-100)).toBe("−$100.00");
   });
   it("shows a minus only for negative balances", () => {
-    expect(balanceMoney(-50)).toBe("−$50");
-    expect(balanceMoney(50)).toBe("$50");
+    expect(balanceMoney(-50)).toBe("−$50.00");
+    expect(balanceMoney(50)).toBe("$50.00");
   });
 });
 

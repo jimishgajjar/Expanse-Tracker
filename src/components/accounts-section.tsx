@@ -137,14 +137,14 @@ function AccountCard({
         </div>
       )}
       {canEdit && !a.archived && (
-        <div className="absolute right-2 bottom-2 flex gap-1">
+        <div className="flex border-t text-xs font-medium">
           <TransactionDialog
             accounts={accounts} categories={categories} defaultAccountId={a.id} defaultType="income"
-            trigger={<Button size="icon-sm" variant="outline" aria-label={`Add income to ${a.name}`} title="Add income" className="size-7 border-positive/30 text-positive hover:bg-positive/10 hover:text-positive"><Plus className="size-4" /></Button>}
+            trigger={<button type="button" aria-label={`Add income to ${a.name}`} className="flex flex-1 items-center justify-center gap-1.5 py-2 text-positive transition-colors hover:bg-positive/10"><Plus className="size-3.5" /> Income</button>}
           />
           <TransactionDialog
             accounts={accounts} categories={categories} defaultAccountId={a.id} defaultType="expense"
-            trigger={<Button size="icon-sm" variant="outline" aria-label={`Add expense to ${a.name}`} title="Add expense" className="size-7 border-negative/30 text-negative hover:bg-negative/10 hover:text-negative"><Minus className="size-4" /></Button>}
+            trigger={<button type="button" aria-label={`Add expense to ${a.name}`} className="flex flex-1 items-center justify-center gap-1.5 border-l py-2 text-negative transition-colors hover:bg-negative/10"><Minus className="size-3.5" /> Expense</button>}
           />
         </div>
       )}
