@@ -32,7 +32,7 @@ export function TransactionDialog({
   transaction?: TransactionDTO;
   accounts: AccountDTO[];
   categories: CategoryDTO[];
-  defaultType?: "income" | "expense";
+  defaultType?: "income" | "expense" | "transfer";
   defaultAccountId?: string;
 }) {
   const isEdit = !!transaction;
@@ -47,8 +47,8 @@ export function TransactionDialog({
     note: transaction?.note ?? "",
     accountId: transaction?.accountId ?? defaultAccountId ?? accounts[0]?.id ?? "",
     categoryId: transaction?.categoryId ?? NONE,
-    fromAccountId: accounts[0]?.id ?? "",
-    toAccountId: accounts[1]?.id ?? accounts[0]?.id ?? "",
+    fromAccountId: defaultAccountId ?? accounts[0]?.id ?? "",
+    toAccountId: accounts.find((a) => a.id !== (defaultAccountId ?? accounts[0]?.id))?.id ?? accounts[0]?.id ?? "",
   });
   const [f, setF] = useState(init);
   const [tags, setTags] = useState<TagRef[]>(transaction?.tags ?? []);

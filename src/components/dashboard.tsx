@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Download, Handshake, Plus, Repeat, Settings, Tags, Target, Users, Wallet } from "lucide-react";
+import { ArrowRightLeft, Download, Handshake, Minus, Plus, Repeat, Settings, Tags, Target, Users, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -156,11 +156,20 @@ export function Dashboard({
             <Download className="size-4" /><span className="hidden sm:inline">Export</span>
           </Button>
           {canEdit && (
-            <TransactionDialog
-              accounts={accounts.filter((a) => !a.archived)}
-              categories={categories}
-              trigger={<Button size="sm"><Plus className="size-4" /> Add<span className="hidden sm:inline"> transaction</span></Button>}
-            />
+            <div className="flex items-center gap-1">
+              <TransactionDialog
+                accounts={accounts.filter((a) => !a.archived)} categories={categories} defaultType="income"
+                trigger={<Button size="sm" variant="outline" className="text-positive hover:bg-positive/10 hover:text-positive"><Plus className="size-4" /> Income</Button>}
+              />
+              <TransactionDialog
+                accounts={accounts.filter((a) => !a.archived)} categories={categories} defaultType="expense"
+                trigger={<Button size="sm" variant="outline" className="text-negative hover:bg-negative/10 hover:text-negative"><Minus className="size-4" /> Expense</Button>}
+              />
+              <TransactionDialog
+                accounts={accounts.filter((a) => !a.archived)} categories={categories} defaultType="transfer"
+                trigger={<Button size="sm" variant="outline"><ArrowRightLeft className="size-4" /> Transfer</Button>}
+              />
+            </div>
           )}
           <SettingsDialog
             currencyCode={currencyCode}

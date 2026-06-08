@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Archive, ArchiveRestore, ChevronDown, Minus, Pencil, Plus, Trash2 } from "lucide-react";
+import { Archive, ArchiveRestore, ArrowRightLeft, ChevronDown, Minus, Pencil, Plus, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Card } from "@/components/ui/card";
@@ -145,6 +145,10 @@ function AccountCard({
           <TransactionDialog
             accounts={accounts} categories={categories} defaultAccountId={a.id} defaultType="expense"
             trigger={<button type="button" aria-label={`Add expense to ${a.name}`} className="flex flex-1 items-center justify-center gap-1.5 border-l py-2 text-negative transition-colors hover:bg-negative/10"><Minus className="size-3.5" /> Expense</button>}
+          />
+          <TransactionDialog
+            accounts={accounts} categories={categories} defaultAccountId={a.id} defaultType="transfer"
+            trigger={<button type="button" aria-label={`Transfer from ${a.name}`} className="flex flex-1 items-center justify-center gap-1.5 border-l py-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"><ArrowRightLeft className="size-3.5" /> Transfer</button>}
           />
         </div>
       )}
