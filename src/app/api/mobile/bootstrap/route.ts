@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
-import { getAccountsWithBalances, getCategories, getTags, getTransactionsInRange } from "@/lib/queries";
+import { getAccountsWithBalances, getCategories, getTags, getTransactionsInRange, getTransfersInRange, getSettings } from "@/lib/queries";
 import { getRange, RANGE_TYPES, type RangeType } from "@/lib/dates";
 import { userWorkspaces } from "@/lib/mobile-api";
 
@@ -17,11 +17,13 @@ export async function GET(req: Request) {
   const anchor = url.searchParams.get("date") || new Date().toISOString().slice(0, 10);
   const { start, end } = getRange(range, anchor);
 
-  const [accounts, categories, tags, transactions, wss] = await Promise.all([
+  const [accounts, categories, tags, transactions, transfers, settings, wss] = await Promise.all([
     getAccountsWithBalances(),
     getCategories(),
     getTags(),
     getTransactionsInRange(start, end),
+    getTransfersInRange(start, end),
+    getSettings(),
     userWorkspaces(s.user.id),
   ]);
 
@@ -29,10 +31,12 @@ export async function GET(req: Request) {
     user: { id: s.user.id, email: s.user.email, name: s.user.name },
     workspaces: wss,
     activeWorkspaceId: s.workspaceId,
+    settings,
     range: { type: range, anchor, start, end },
     accounts,
     categories,
     tags,
     transactions,
+    transfers,
   });
 }

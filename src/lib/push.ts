@@ -20,11 +20,39 @@ export function pushConfigured(): boolean {
 
 export type PushPayload = { title: string; body: string; url?: string; tag?: string };
 
-/** Send one push. `gone` = the subscription is dead (404/410) and should be deleted. */
+/** Native (Expo) push tokens are stored with p256dh="expo" — route them to the
+    Expo push service instead of web-push. */
+async function sendExpoPush(token: string, payload: PushPayload): Promise<{ ok: boolean; gone: boolean }> {
+  try {
+    const res = await fetch("https://exp.host/--/api/v2/push/send", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify({
+        to: token,
+        title: payload.title,
+        body: payload.body,
+        data: payload.url ? { url: payload.url } : {},
+        sound: "default",
+        channelId: "default",
+      }),
+    });
+    const json = (await res.json().catch(() => null)) as
+      | { data?: { status?: string; details?: { error?: string } } }
+      | null;
+    return { ok: json?.data?.status === "ok", gone: json?.data?.details?.error === "DeviceNotRegistered" };
+  } catch {
+    return { ok: false, gone: false };
+  }
+}
+
+/** Send one push. `gone` = the subscription is dead and should be deleted. */
 export async function sendPushToSub(
   sub: { endpoint: string; p256dh: string; auth: string },
   payload: PushPayload,
 ): Promise<{ ok: boolean; gone: boolean }> {
+  if (sub.p256dh === "expo" || sub.endpoint.startsWith("ExponentPushToken")) {
+    return sendExpoPush(sub.endpoint, payload);
+  }
   if (!ensure()) return { ok: false, gone: false };
   try {
     await webpush.sendNotification(
