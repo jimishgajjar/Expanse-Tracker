@@ -1,7 +1,9 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { SESSION_COOKIE } from "@/lib/auth-constants";
 
-const PUBLIC = ["/login", "/signup", "/forgot", "/reset", "/verify", "/api/cron", "/manifest.webmanifest", "/sw.js"];
+// Note: /api/mobile/* self-authenticates with a Bearer token (and returns JSON
+// 401), so it bypasses this cookie-based redirect gate.
+const PUBLIC = ["/login", "/signup", "/forgot", "/reset", "/verify", "/api/cron", "/api/mobile", "/manifest.webmanifest", "/sw.js"];
 
 // Optimistic gate: anything without a session cookie is bounced to /login.
 // The real session check happens in the page (getCurrentUser).

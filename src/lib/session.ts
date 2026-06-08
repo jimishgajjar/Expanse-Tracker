@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { cache } from "react";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { eq } from "drizzle-orm";
 import { getDb } from "./db";
 import { sessions, users, type User } from "./db/schema";
@@ -23,10 +23,25 @@ export async function createSession(userId: string, workspaceId: string | null) 
   });
 }
 
+/** Create a session row and return its token, without setting a cookie — for
+    native/API clients that store the token themselves and send it as a Bearer. */
+export async function createApiSession(userId: string, workspaceId: string | null): Promise<string> {
+  const db = await getDb();
+  const token = randomBytes(32).toString("hex");
+  const expiresAt = new Date(Date.now() + DAYS * 86_400_000);
+  await db.insert(sessions).values({ id: token, userId, workspaceId, expiresAt });
+  return token;
+}
+
 /** Validated session (user + active workspace), memoized per request. */
 export const getSession = cache(async (): Promise<{ user: User; workspaceId: string | null } | null> => {
   const jar = await cookies();
-  const token = jar.get(SESSION_COOKIE)?.value;
+  let token = jar.get(SESSION_COOKIE)?.value;
+  if (!token) {
+    // Mobile / API clients send the session token as `Authorization: Bearer <token>`.
+    const auth = (await headers()).get("authorization");
+    if (auth?.toLowerCase().startsWith("bearer ")) token = auth.slice(7).trim();
+  }
   if (!token) return null;
   const db = await getDb();
   const [row] = await db
