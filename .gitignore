@@ -58,6 +58,7 @@ Desktop.ini
 /scripts/seed-hani.ts
 /scripts/seed-notion.ts
 /scripts/test-email.ts
+/scripts/copy-neon-to-local.ts
 
 # agent design skills (local tooling — reinstall via `npx skills` / `npx impeccable`)
 /.agents/

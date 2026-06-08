@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Archive, ArchiveRestore, ChevronDown, Pencil, Plus, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -9,23 +10,16 @@ import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/icon";
 import { AccountDialog } from "@/components/account-dialog";
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { AccountDetailSheet } from "@/components/account-detail-sheet";
 import { deleteAccount, setAccountArchived } from "@/lib/actions";
 import { useFormat } from "@/components/settings-provider";
 import { cn } from "@/lib/utils";
-import type { AccountDTO, CategoryDTO, TransactionDTO, TransferDTO } from "@/lib/queries";
+import type { AccountDTO } from "@/lib/queries";
 
 export function AccountsSection({
   accounts,
-  transactions,
-  transfers,
-  categories,
   canEdit = true,
 }: {
   accounts: AccountDTO[];
-  transactions: TransactionDTO[];
-  transfers: TransferDTO[];
-  categories: CategoryDTO[];
   canEdit?: boolean;
 }) {
   const router = useRouter();
@@ -48,7 +42,7 @@ export function AccountsSection({
     else toast.error(res.error);
   }
 
-  const shared = { transactions, transfers, categories, accounts, canEdit, balanceMoney, onRemove: remove, onArchive: setArchived };
+  const shared = { canEdit, balanceMoney, onRemove: remove, onArchive: setArchived };
 
   return (
     <section className="space-y-3">
@@ -88,13 +82,9 @@ export function AccountsSection({
 }
 
 function AccountCard({
-  account: a, transactions, transfers, categories, accounts, canEdit, balanceMoney, onRemove, onArchive,
+  account: a, canEdit, balanceMoney, onRemove, onArchive,
 }: {
   account: AccountDTO;
-  transactions: TransactionDTO[];
-  transfers: TransferDTO[];
-  categories: CategoryDTO[];
-  accounts: AccountDTO[];
   canEdit: boolean;
   balanceMoney: (n: number) => string;
   onRemove: (id: string) => void;
@@ -102,32 +92,23 @@ function AccountCard({
 }) {
   return (
     <Card className={cn("group relative gap-0 overflow-hidden p-0 transition-[transform,box-shadow] duration-200 ease-out-quart hover:-translate-y-0.5 hover:ring-foreground/20", a.archived && "opacity-65 hover:opacity-100")}>
-      <AccountDetailSheet
-        account={a}
-        transactions={transactions}
-        transfers={transfers}
-        categories={categories}
-        accounts={accounts}
-        trigger={
-          <button type="button" className="flex w-full flex-col items-start p-4 text-left transition-colors hover:bg-muted/40">
-            <div className="flex w-full items-center gap-2.5">
-              <span className="grid size-9 shrink-0 place-items-center rounded-lg" style={{ backgroundColor: `${a.color}22`, color: a.color }}>
-                <Icon name={a.icon} size={18} />
-              </span>
-              <div className="min-w-0">
-                <div className="flex items-center gap-1.5">
-                  <span className="truncate font-medium">{a.name}</span>
-                  {a.archived && <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">Archived</span>}
-                </div>
-                <div className="text-xs text-muted-foreground capitalize">{a.type}</div>
-              </div>
+      <Link href={`/accounts/${a.id}`} className="flex w-full flex-col items-start p-4 text-left transition-colors hover:bg-muted/40">
+        <div className="flex w-full items-center gap-2.5">
+          <span className="grid size-9 shrink-0 place-items-center rounded-lg" style={{ backgroundColor: `${a.color}22`, color: a.color }}>
+            <Icon name={a.icon} size={18} />
+          </span>
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5">
+              <span className="truncate font-medium">{a.name}</span>
+              {a.archived && <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">Archived</span>}
             </div>
-            <div className={cn("amount mt-3 text-xl font-semibold", a.balance < 0 && "text-negative")}>
-              {balanceMoney(a.balance)}
-            </div>
-          </button>
-        }
-      />
+            <div className="text-xs text-muted-foreground capitalize">{a.type}</div>
+          </div>
+        </div>
+        <div className={cn("amount mt-3 text-xl font-semibold", a.balance < 0 && "text-negative")}>
+          {balanceMoney(a.balance)}
+        </div>
+      </Link>
       {canEdit && (
         <div className="absolute top-2 right-2 flex opacity-100 transition sm:opacity-0 sm:group-hover:opacity-100">
           {a.archived ? (
