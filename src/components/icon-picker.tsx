@@ -5,8 +5,7 @@ import { ChevronDown } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { Icon } from "@/components/icon";
-import { ICON_NAMES } from "@/lib/icons";
+import { Icon, ICON_NAMES } from "@/components/icon";
 
 export function IconPicker({
   value,

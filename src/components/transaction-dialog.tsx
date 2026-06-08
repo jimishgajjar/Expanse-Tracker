@@ -25,12 +25,14 @@ export function TransactionDialog({
   accounts,
   categories,
   defaultType = "expense",
+  defaultAccountId,
 }: {
   trigger: ReactElement;
   transaction?: TransactionDTO;
   accounts: AccountDTO[];
   categories: CategoryDTO[];
   defaultType?: "income" | "expense";
+  defaultAccountId?: string;
 }) {
   const isEdit = !!transaction;
   const router = useRouter();
@@ -42,7 +44,7 @@ export function TransactionDialog({
     amount: transaction ? String(transaction.amount) : "",
     date: transaction?.date ?? todayISO(),
     note: transaction?.note ?? "",
-    accountId: transaction?.accountId ?? accounts[0]?.id ?? "",
+    accountId: transaction?.accountId ?? defaultAccountId ?? accounts[0]?.id ?? "",
     categoryId: transaction?.categoryId ?? NONE,
     fromAccountId: accounts[0]?.id ?? "",
     toAccountId: accounts[1]?.id ?? accounts[0]?.id ?? "",

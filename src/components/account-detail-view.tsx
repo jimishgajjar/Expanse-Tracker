@@ -1,10 +1,17 @@
 "use client";
 
+import { useEffect, useMemo, useState } from "react";
+import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Icon } from "@/components/icon";
 import { TransactionRows, TransferRows } from "@/components/transactions-list";
+import { TransactionDialog } from "@/components/transaction-dialog";
 import { useFormat } from "@/components/settings-provider";
 import { cn } from "@/lib/utils";
 import type { AccountDTO, CategoryDTO, TransactionDTO, TransferDTO } from "@/lib/queries";
+
+const PAGE_SIZES = [10, 25, 50, 100];
 
 export function AccountDetailView({
   account,
@@ -22,6 +29,16 @@ export function AccountDetailView({
   canEdit: boolean;
 }) {
   const { money, balanceMoney } = useFormat();
+  const [pageSize, setPageSize] = useState(25);
+  const [page, setPage] = useState(1);
+
+  useEffect(() => setPage(1), [pageSize]);
+
+  const total = transactions.length;
+  const pageCount = Math.max(1, Math.ceil(total / pageSize));
+  const curPage = Math.min(page, pageCount);
+  const start = (curPage - 1) * pageSize;
+  const pageItems = useMemo(() => transactions.slice(start, start + pageSize), [transactions, start, pageSize]);
 
   return (
     <div className="space-y-4">
@@ -46,11 +63,45 @@ export function AccountDetailView({
       </div>
 
       <div className="rounded-xl border bg-card p-4">
-        <div className="mb-3 flex items-baseline justify-between">
-          <h2 className="text-sm font-semibold">Transactions</h2>
-          <span className="text-xs text-muted-foreground">{transactions.length} total</span>
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <h2 className="text-sm font-semibold">
+            Transactions <span className="font-normal text-muted-foreground">· {total}</span>
+          </h2>
+          {canEdit && (
+            <TransactionDialog
+              accounts={accounts}
+              categories={categories}
+              defaultAccountId={account.id}
+              trigger={<Button size="sm"><Plus className="size-4" /> Add transaction</Button>}
+            />
+          )}
         </div>
-        <TransactionRows transactions={transactions} accounts={accounts} categories={categories} canEdit={canEdit} emptyMessage="No transactions for this account yet." />
+
+        <TransactionRows transactions={pageItems} accounts={accounts} categories={categories} canEdit={canEdit} emptyMessage="No transactions for this account yet." />
+
+        {total > pageSize && (
+          <div className="mt-4 flex flex-col items-stretch gap-3 border-t pt-3 text-sm sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center justify-center gap-2 text-muted-foreground sm:justify-start">
+              <span>Rows per page</span>
+              <Select value={String(pageSize)} onValueChange={(v) => setPageSize(Number(v))} items={PAGE_SIZES.map((n) => ({ value: String(n), label: String(n) }))}>
+                <SelectTrigger size="sm" className="w-[4.5rem]"><SelectValue /></SelectTrigger>
+                <SelectContent>{PAGE_SIZES.map((n) => <SelectItem key={n} value={String(n)}>{n}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-center justify-center gap-3">
+              <span className="text-muted-foreground">{start + 1}–{Math.min(start + pageSize, total)} of {total}</span>
+              <div className="flex items-center gap-1">
+                <Button size="icon-sm" variant="outline" disabled={curPage <= 1} onClick={() => setPage(curPage - 1)} aria-label="Previous page">
+                  <ChevronLeft className="size-4" />
+                </Button>
+                <span className="min-w-[3.5rem] text-center font-mono text-xs">{curPage} / {pageCount}</span>
+                <Button size="icon-sm" variant="outline" disabled={curPage >= pageCount} onClick={() => setPage(curPage + 1)} aria-label="Next page">
+                  <ChevronRight className="size-4" />
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {transfers.length > 0 && (
