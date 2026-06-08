@@ -68,7 +68,7 @@ export function OverviewTab({
         accountsCount={accounts.length}
         comparison={comparison}
       />
-      <AccountsSection accounts={accounts} canEdit={canEdit} />
+      <AccountsSection accounts={accounts} categories={categories} canEdit={canEdit} />
       <div className="grid gap-4 lg:grid-cols-2">
         <CategoryDonut transactions={transactions} />
         <TrendChart transactions={transactions} rangeType={rangeType} start={rangeStart} end={rangeEnd} />

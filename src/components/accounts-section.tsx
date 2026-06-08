@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Archive, ArchiveRestore, ChevronDown, Pencil, Plus, Trash2 } from "lucide-react";
+import { Archive, ArchiveRestore, ChevronDown, Minus, Pencil, Plus, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Card } from "@/components/ui/card";
@@ -10,16 +10,19 @@ import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/icon";
 import { AccountDialog } from "@/components/account-dialog";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { TransactionDialog } from "@/components/transaction-dialog";
 import { deleteAccount, setAccountArchived } from "@/lib/actions";
 import { useFormat } from "@/components/settings-provider";
 import { cn } from "@/lib/utils";
-import type { AccountDTO } from "@/lib/queries";
+import type { AccountDTO, CategoryDTO } from "@/lib/queries";
 
 export function AccountsSection({
   accounts,
+  categories,
   canEdit = true,
 }: {
   accounts: AccountDTO[];
+  categories: CategoryDTO[];
   canEdit?: boolean;
 }) {
   const router = useRouter();
@@ -42,7 +45,7 @@ export function AccountsSection({
     else toast.error(res.error);
   }
 
-  const shared = { canEdit, balanceMoney, onRemove: remove, onArchive: setArchived };
+  const shared = { accounts, categories, canEdit, balanceMoney, onRemove: remove, onArchive: setArchived };
 
   return (
     <section className="space-y-3">
@@ -82,9 +85,11 @@ export function AccountsSection({
 }
 
 function AccountCard({
-  account: a, canEdit, balanceMoney, onRemove, onArchive,
+  account: a, accounts, categories, canEdit, balanceMoney, onRemove, onArchive,
 }: {
   account: AccountDTO;
+  accounts: AccountDTO[];
+  categories: CategoryDTO[];
   canEdit: boolean;
   balanceMoney: (n: number) => string;
   onRemove: (id: string) => void;
@@ -128,6 +133,18 @@ function AccountCard({
             title={`Delete "${a.name}"?`}
             description="Its transactions and transfers will be deleted too. This can't be undone. (Tip: Archive instead to keep the history.)"
             onConfirm={() => onRemove(a.id)}
+          />
+        </div>
+      )}
+      {canEdit && !a.archived && (
+        <div className="absolute right-2 bottom-2 flex gap-1">
+          <TransactionDialog
+            accounts={accounts} categories={categories} defaultAccountId={a.id} defaultType="income"
+            trigger={<Button size="icon-sm" variant="outline" aria-label={`Add income to ${a.name}`} title="Add income" className="size-7 border-positive/30 text-positive hover:bg-positive/10 hover:text-positive"><Plus className="size-4" /></Button>}
+          />
+          <TransactionDialog
+            accounts={accounts} categories={categories} defaultAccountId={a.id} defaultType="expense"
+            trigger={<Button size="icon-sm" variant="outline" aria-label={`Add expense to ${a.name}`} title="Add expense" className="size-7 border-negative/30 text-negative hover:bg-negative/10 hover:text-negative"><Minus className="size-4" /></Button>}
           />
         </div>
       )}
