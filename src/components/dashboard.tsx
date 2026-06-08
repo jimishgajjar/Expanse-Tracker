@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowRightLeft, Download, Handshake, Minus, Plus, Repeat, Settings, Tags, Target, Users, Wallet } from "lucide-react";
+import { ArrowRightLeft, Download, Handshake, House, Minus, Plus, Receipt, Repeat, Settings, Tags, Target, TrendingUp, Users, Wallet } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -104,10 +105,10 @@ export function Dashboard({
 
   return (
     <SettingsProvider currency={currency} locale={locale}>
-      <div className="mx-auto max-w-6xl space-y-4 px-3 py-5 sm:space-y-5 sm:px-6 sm:py-6">
+      <div className="mx-auto max-w-6xl space-y-4 px-3 py-5 pb-24 sm:space-y-5 sm:px-6 sm:py-6 sm:pb-6">
         {!emailVerified && <VerifyBanner email={userEmail} />}
-        <header className="flex flex-wrap items-center gap-2 sm:gap-3">
-          <div className="mr-auto flex items-center gap-2.5">
+        <header className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
+          <div className="flex items-center gap-2.5 sm:mr-auto">
             <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-brand text-brand-foreground shadow-sm shadow-brand/25">
               <Wallet className="size-5" />
             </span>
@@ -122,6 +123,7 @@ export function Dashboard({
               <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-medium text-amber-600 dark:text-amber-400">View only</span>
             )}
           </div>
+          <div className="flex items-center gap-1 max-sm:w-full max-sm:justify-between max-sm:[&_button]:size-9 max-sm:[&_button]:!px-0 max-sm:[&_button]:!border-transparent max-sm:[&_button]:!bg-transparent max-sm:[&_button]:!shadow-none sm:flex-wrap sm:gap-2">
           {canEdit && (
             <CategoryManager
               categories={categories}
@@ -156,7 +158,7 @@ export function Dashboard({
             <Download className="size-4" /><span className="hidden sm:inline">Export</span>
           </Button>
           {canEdit && (
-            <div className="flex items-center gap-1">
+            <div className="hidden items-center gap-1 sm:flex">
               <TransactionDialog
                 accounts={accounts.filter((a) => !a.archived)} categories={categories} defaultType="income"
                 trigger={<Button size="sm" variant="outline" className="text-positive hover:bg-positive/10 hover:text-positive"><Plus className="size-4" /> Income</Button>}
@@ -177,12 +179,13 @@ export function Dashboard({
             trigger={<Button variant="ghost" size="icon" aria-label="Settings"><Settings className="size-4" /></Button>}
           />
           <ThemeToggle />
+          </div>
         </header>
 
         <PeriodBar rangeType={rangeType} anchor={anchor} rangeLabel={rangeLabel} />
 
         <Tabs value={tab} onValueChange={(v) => changeTab(v as Tab)}>
-          <TabsList className="w-full sm:w-auto">
+          <TabsList className="hidden w-full sm:inline-flex sm:w-auto">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="transactions">Transactions</TabsTrigger>
             <TabsTrigger value="analytics">Analytics</TabsTrigger>
@@ -219,6 +222,40 @@ export function Dashboard({
             comparison={comparison}
           />
         )}
+
+        {/* ── Mobile app chrome: floating + button and a bottom tab bar ── */}
+        {canEdit && (
+          <div className="fixed right-4 bottom-20 z-40 sm:hidden" style={{ marginBottom: "env(safe-area-inset-bottom)" }}>
+            <TransactionDialog
+              accounts={accounts.filter((a) => !a.archived)} categories={categories} defaultType="expense"
+              trigger={<Button size="icon" aria-label="Add transaction" className="size-14 rounded-full shadow-lg shadow-brand/30"><Plus className="size-6" /></Button>}
+            />
+          </div>
+        )}
+        <nav
+          className="fixed inset-x-0 bottom-0 z-40 flex items-stretch border-t bg-background/90 backdrop-blur-md sm:hidden"
+          style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+        >
+          {([
+            { id: "overview", label: "Home", Icon: House },
+            { id: "transactions", label: "Activity", Icon: Receipt },
+            { id: "analytics", label: "Insights", Icon: TrendingUp },
+          ] as const).map(({ id, label, Icon }) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => changeTab(id)}
+              aria-current={tab === id ? "page" : undefined}
+              className={cn(
+                "flex flex-1 flex-col items-center justify-center gap-0.5 py-2.5 text-[11px] font-medium transition-colors",
+                tab === id ? "text-brand" : "text-muted-foreground",
+              )}
+            >
+              <Icon className="size-5" strokeWidth={tab === id ? 2.4 : 2} />
+              {label}
+            </button>
+          ))}
+        </nav>
       </div>
     </SettingsProvider>
   );

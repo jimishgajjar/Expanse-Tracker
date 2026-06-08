@@ -43,7 +43,7 @@ export function SummaryCards({
             <span className="text-xs font-medium text-muted-foreground">{t.k}</span>
             <span className={cn("grid size-7 place-items-center rounded-lg", t.chip)}><t.Icon className="size-4" /></span>
           </div>
-          <div className={cn("amount mt-3 text-2xl font-semibold sm:text-[1.7rem]", t.vClass)}>{t.v}</div>
+          <div className={cn("amount mt-3 text-xl font-semibold tracking-tight sm:text-[1.7rem]", t.vClass)}>{t.v}</div>
           <div className="mt-1.5 flex items-center gap-1.5 truncate text-xs text-muted-foreground">
             {t.delta != null && (
               <span className={cn("font-medium", t.good ? "text-positive" : "text-negative")}>

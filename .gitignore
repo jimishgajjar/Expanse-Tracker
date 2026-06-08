@@ -45,6 +45,9 @@ dev.log
 # vercel
 .vercel
 
+# downloaded Stitch design exports (local reference only, not part of the app)
+/stitch-export/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
