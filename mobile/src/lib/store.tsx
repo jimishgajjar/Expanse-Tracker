@@ -1,5 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import * as SecureStore from "expo-secure-store";
+import { getItem, setItem, deleteItem } from "./storage";
 import { api, setAuthToken } from "./api";
 import { registerForPush } from "./push";
 import { makeMoney } from "./format";
@@ -51,7 +51,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     (async () => {
       try {
-        const t = await SecureStore.getItemAsync(TOKEN_KEY);
+        const t = await getItem(TOKEN_KEY);
         if (t) {
           setAuthToken(t);
           setToken(t);
@@ -71,13 +71,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const signIn = useCallback(async (email: string, password: string) => {
     const res = await api<{ token: string }>("/auth/login", { method: "POST", body: { email, password } });
-    await SecureStore.setItemAsync(TOKEN_KEY, res.token);
+    await setItem(TOKEN_KEY, res.token);
     setAuthToken(res.token);
     setToken(res.token);
   }, []);
 
   const signOut = useCallback(async () => {
-    await SecureStore.deleteItemAsync(TOKEN_KEY);
+    await deleteItem(TOKEN_KEY);
     setAuthToken(null);
     setToken(null);
     setData(null);
