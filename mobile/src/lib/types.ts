@@ -14,6 +14,24 @@ export type Transfer = { id: string; amount: number; date: string; note: string;
 export type Settings = { currencyCode: string; currency: string; locale: string };
 export type Workspace = { id: string; name: string; role: string; ownerId: string };
 export type Goal = { id: string; name: string; targetAmount: number; savedAmount: number; deadline: string | null; color: string };
+export type Recurring = {
+  id: string;
+  type: "income" | "expense";
+  amount: number;
+  note: string;
+  accountId: string | null;
+  categoryId: string | null;
+  frequency: string;
+  nextDate: string;
+  endDate: string | null;
+  maxOccurrences: number | null;
+  occurrenceCount: number;
+  alertsEnabled: boolean;
+  remindDaysBefore: number;
+  commitmentType: string;
+  autoPost: boolean;
+  totalAmount: number | null;
+};
 
 export type Bootstrap = {
   user: { id: string; email: string; name: string };
