@@ -12,6 +12,8 @@ export type Transaction = {
 };
 export type Transfer = { id: string; amount: number; date: string; note: string; fromAccountId: string; toAccountId: string };
 export type Settings = { currencyCode: string; currency: string; locale: string };
+export type Budget = { categoryId: string; name: string; icon: string; color: string; budget: number; spent: number };
+export type NetWorthPoint = { key: string; value: number };
 export type Workspace = { id: string; name: string; role: string; ownerId: string };
 export type Member = { id: string; email: string; name: string; role: string };
 export type SplitBalance = { userId: string; name: string; net: number };

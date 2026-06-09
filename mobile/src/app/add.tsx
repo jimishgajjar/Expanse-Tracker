@@ -17,6 +17,7 @@ import { format, parseISO } from "date-fns";
 import { useApp } from "@/lib/store";
 import { api } from "@/lib/api";
 import { Loading } from "@/components/ui";
+import { tapSuccess } from "@/lib/haptics";
 import { colors, radius } from "@/lib/theme";
 
 function todayISO() {
@@ -78,6 +79,7 @@ export default function TransactionForm() {
         else await api("/transactions", { method: "POST", body });
       }
       await reload();
+      tapSuccess();
       dismiss();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Couldn't save.");

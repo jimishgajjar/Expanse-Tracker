@@ -8,6 +8,7 @@ import { Card, ErrorView, IconBubble, Loading } from "@/components/ui";
 import { TxRow } from "@/components/tx-row";
 import { PeriodBar } from "@/components/period-bar";
 import { DonutChart } from "@/components/donut-chart";
+import { tapLight } from "@/lib/haptics";
 import { colors, radius } from "@/lib/theme";
 
 export default function Home() {
@@ -133,7 +134,7 @@ export default function Home() {
         </Card>
       </ScrollView>
 
-      <Pressable style={s.fab} onPress={() => router.push("/add")} accessibilityLabel="Add transaction">
+      <Pressable style={s.fab} onPress={() => { tapLight(); router.push("/add"); }} accessibilityLabel="Add transaction">
         <Feather name="plus" size={26} color="#fff" />
       </Pressable>
     </SafeAreaView>
