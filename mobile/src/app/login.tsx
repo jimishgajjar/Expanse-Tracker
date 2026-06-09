@@ -9,7 +9,7 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { Redirect, useRouter } from "expo-router";
+import { Link, Redirect, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useApp } from "@/lib/store";
 import { Loading } from "@/components/ui";
@@ -86,6 +86,13 @@ export default function Login() {
         <Pressable style={[s.button, busy && { opacity: 0.6 }]} onPress={submit} disabled={busy}>
           {busy ? <ActivityIndicator color="#fff" /> : <Text style={s.buttonText}>Sign in</Text>}
         </Pressable>
+
+        <View style={s.footer}>
+          <Text style={s.footerText}>New here? </Text>
+          <Link href="/signup" replace style={s.footerLink}>
+            Create an account
+          </Link>
+        </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -126,4 +133,7 @@ const s = StyleSheet.create({
     marginTop: 22,
   },
   buttonText: { color: "#fff", fontSize: 16, fontWeight: "600" },
+  footer: { flexDirection: "row", justifyContent: "center", marginTop: 22 },
+  footerText: { color: colors.inkSoft, fontSize: 14 },
+  footerLink: { color: colors.green, fontSize: 14, fontWeight: "600" },
 });

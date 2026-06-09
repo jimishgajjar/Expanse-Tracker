@@ -37,7 +37,7 @@ export default function AccountDetail() {
       </View>
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 16 }}>
-          <IconBubble label={account.name} color={account.color} size={44} />
+          <IconBubble icon={account.icon} label={account.name} color={account.color} size={44} />
           <View style={{ flex: 1, minWidth: 0 }}>
             <Text style={s.name} numberOfLines={1}>
               {account.name}

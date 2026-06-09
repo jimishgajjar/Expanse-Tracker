@@ -55,7 +55,7 @@ export default function Home() {
         {accounts.map((a) => (
           <Pressable key={a.id} onPress={() => router.push(`/account/${a.id}`)}>
             <Card style={s.accountCard}>
-              <IconBubble label={a.name} color={a.color} />
+              <IconBubble icon={a.icon} label={a.name} color={a.color} />
               <View style={{ flex: 1, minWidth: 0 }}>
                 <Text style={s.accountName} numberOfLines={1}>
                   {a.name}

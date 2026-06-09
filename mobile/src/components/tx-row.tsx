@@ -11,7 +11,7 @@ export function TxRow({ tx, fmt }: { tx: Transaction; fmt: { signed: (n: number)
 
   return (
     <View style={{ flexDirection: "row", alignItems: "center", paddingVertical: 11, paddingHorizontal: 12, gap: 12 }}>
-      <IconBubble label={tx.category?.name || tx.account?.name || "?"} color={tint} />
+      <IconBubble icon={tx.category?.icon ?? tx.account?.icon} label={tx.category?.name || tx.account?.name || "?"} color={tint} />
       <View style={{ flex: 1, minWidth: 0 }}>
         <Text style={{ fontSize: 15, fontWeight: "600", color: colors.ink }} numberOfLines={1}>
           {title}

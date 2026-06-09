@@ -1,13 +1,25 @@
 import React from "react";
 import { ActivityIndicator, StyleSheet, Text, View, type ViewStyle } from "react-native";
 import { colors, radius } from "@/lib/theme";
+import { LucideIcon } from "@/lib/icons";
 
 export function Card({ children, style }: { children: React.ReactNode; style?: ViewStyle | ViewStyle[] }) {
   return <View style={[styles.card, style as ViewStyle]}>{children}</View>;
 }
 
-/** Colored rounded square with the first letter — stands in for the web icon set. */
-export function IconBubble({ label, color, size = 38 }: { label: string; color?: string; size?: number }) {
+/** Colored rounded square showing the account/category's lucide icon (same set
+    as the web), falling back to the first letter of the label. */
+export function IconBubble({
+  icon,
+  label,
+  color,
+  size = 38,
+}: {
+  icon?: string | null;
+  label?: string;
+  color?: string;
+  size?: number;
+}) {
   const c = color || colors.inkSoft;
   return (
     <View
@@ -20,7 +32,11 @@ export function IconBubble({ label, color, size = 38 }: { label: string; color?:
         justifyContent: "center",
       }}
     >
-      <Text style={{ color: c, fontWeight: "700", fontSize: size * 0.4 }}>{(label || "?").slice(0, 1).toUpperCase()}</Text>
+      {icon ? (
+        <LucideIcon name={icon} size={Math.round(size * 0.5)} color={c} />
+      ) : (
+        <Text style={{ color: c, fontWeight: "700", fontSize: size * 0.4 }}>{(label || "?").slice(0, 1).toUpperCase()}</Text>
+      )}
     </View>
   );
 }

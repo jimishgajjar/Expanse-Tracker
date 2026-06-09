@@ -10,7 +10,10 @@
     "ios": {
       "icon": "./assets/expo.icon",
       "supportsTablet": true,
-      "bundleIdentifier": "com.jimishgajjar.expensetracker"
+      "bundleIdentifier": "com.jimishgajjar.expensetracker",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "com.jimishgajjar.expensetracker",
@@ -46,7 +49,12 @@
       "reactCompiler": false
     },
     "extra": {
-      "apiBase": "https://expensetracker.jimishgajjar.com/api/mobile"
-    }
+      "apiBase": "https://expensetracker.jimishgajjar.com/api/mobile",
+      "router": {},
+      "eas": {
+        "projectId": "8ddea09f-69b0-4e79-8ae5-4a3621006d2f"
+      }
+    },
+    "owner": "webhost466"
   }
 }

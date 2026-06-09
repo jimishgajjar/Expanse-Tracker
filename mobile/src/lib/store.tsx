@@ -1,93 +1,53 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { getItem, setItem, deleteItem } from "./storage";
-import { api, setAuthToken } from "./api";
-import { registerForPush } from "./push";
+import React, { useEffect, useMemo } from "react";
+import { QueryClientProvider, useQuery } from "@tanstack/react-query";
+import { queryClient, qk } from "./query";
+import { useAuth } from "./auth";
+import { api } from "./api";
 import { makeMoney } from "./format";
 import type { Bootstrap } from "./types";
 
-const TOKEN_KEY = "et_session_token";
-
-type AppState = {
-  ready: boolean;
-  token: string | null;
-  data: Bootstrap | null;
-  loading: boolean;
-  error: string | null;
-  money: ReturnType<typeof makeMoney>;
-  signIn: (email: string, password: string) => Promise<void>;
-  signOut: () => Promise<void>;
-  reload: () => Promise<void>;
-};
-
-const Ctx = createContext<AppState | null>(null);
-
-export function useApp(): AppState {
-  const v = useContext(Ctx);
-  if (!v) throw new Error("useApp must be used within AppProvider");
-  return v;
+/** Providers + session hydration. Wrap the whole app. */
+export function AppProvider({ children }: { children: React.ReactNode }) {
+  const hydrate = useAuth((s) => s.hydrate);
+  useEffect(() => {
+    hydrate();
+  }, [hydrate]);
+  return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
 }
 
-export function AppProvider({ children }: { children: React.ReactNode }) {
-  const [ready, setReady] = useState(false);
-  const [token, setToken] = useState<string | null>(null);
-  const [data, setData] = useState<Bootstrap | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+/** Back-compat facade over the auth store + the bootstrap query, so screens can
+    keep using a single hook. Server state is cached/shared by TanStack Query. */
+export function useApp() {
+  const hydrated = useAuth((s) => s.hydrated);
+  const token = useAuth((s) => s.token);
+  const signIn = useAuth((s) => s.signIn);
+  const signUp = useAuth((s) => s.signUp);
+  const signOut = useAuth((s) => s.signOut);
 
-  const reload = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const d = await api<Bootstrap>("/bootstrap?range=month");
-      setData(d);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Couldn't load your data.");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const q = useQuery({
+    queryKey: qk.bootstrap(),
+    queryFn: () => api<Bootstrap>("/bootstrap?range=month"),
+    enabled: !!token,
+  });
 
-  // Restore a saved session on launch.
-  useEffect(() => {
-    (async () => {
-      try {
-        const t = await getItem(TOKEN_KEY);
-        if (t) {
-          setAuthToken(t);
-          setToken(t);
-        }
-      } finally {
-        setReady(true);
-      }
-    })();
-  }, []);
-
-  // Load data + register for push whenever we have a token.
-  useEffect(() => {
-    if (!token) return;
-    reload();
-    registerForPush().catch(() => {});
-  }, [token, reload]);
-
-  const signIn = useCallback(async (email: string, password: string) => {
-    const res = await api<{ token: string }>("/auth/login", { method: "POST", body: { email, password } });
-    await setItem(TOKEN_KEY, res.token);
-    setAuthToken(res.token);
-    setToken(res.token);
-  }, []);
-
-  const signOut = useCallback(async () => {
-    await deleteItem(TOKEN_KEY);
-    setAuthToken(null);
-    setToken(null);
-    setData(null);
-  }, []);
-
+  const data = q.data ?? null;
   const money = useMemo(
     () => makeMoney(data?.settings?.currency ?? "C$", data?.settings?.locale ?? "en-CA"),
     [data?.settings?.currency, data?.settings?.locale],
   );
 
-  const value: AppState = { ready, token, data, loading, error, money, signIn, signOut, reload };
-  return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
+  return {
+    ready: hydrated,
+    token,
+    data,
+    loading: q.isFetching,
+    error: q.error instanceof Error ? q.error.message : null,
+    money,
+    reload: async () => {
+      await q.refetch();
+    },
+    signIn,
+    signUp,
+    signOut,
+  };
 }
