@@ -1,16 +1,28 @@
-import { Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
+import { useRouter } from "expo-router";
 import { IconBubble, Pill } from "./ui";
 import { colors } from "@/lib/theme";
 import type { Transaction } from "@/lib/types";
 
 export function TxRow({ tx, fmt }: { tx: Transaction; fmt: { signed: (n: number) => string } }) {
+  const router = useRouter();
   const positive = tx.type === "income";
   const tint = tx.category?.color || tx.account?.color || colors.inkSoft;
   const title = tx.note || tx.category?.name || (positive ? "Income" : "Expense");
   const sub = [tx.category?.name, tx.account?.name].filter(Boolean).join("  ·  ");
 
   return (
-    <View style={{ flexDirection: "row", alignItems: "center", paddingVertical: 11, paddingHorizontal: 12, gap: 12 }}>
+    <Pressable
+      onPress={() => router.push(`/add?id=${tx.id}`)}
+      style={({ pressed }) => ({
+        flexDirection: "row",
+        alignItems: "center",
+        paddingVertical: 11,
+        paddingHorizontal: 12,
+        gap: 12,
+        backgroundColor: pressed ? colors.hover : "transparent",
+      })}
+    >
       <IconBubble icon={tx.category?.icon ?? tx.account?.icon} label={tx.category?.name || tx.account?.name || "?"} color={tint} />
       <View style={{ flex: 1, minWidth: 0 }}>
         <Text style={{ fontSize: 15, fontWeight: "600", color: colors.ink }} numberOfLines={1}>
@@ -32,6 +44,6 @@ export function TxRow({ tx, fmt }: { tx: Transaction; fmt: { signed: (n: number)
       <Text style={{ fontSize: 15, fontWeight: "700", color: positive ? colors.green : colors.red }}>
         {fmt.signed(positive ? tx.amount : -tx.amount)}
       </Text>
-    </View>
+    </Pressable>
   );
 }
