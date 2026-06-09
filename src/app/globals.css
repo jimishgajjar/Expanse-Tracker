@@ -172,11 +172,44 @@
   }
 }
 
+/* ── Native-app feel on touch / small screens ───────────────────────────── */
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    /* Kill the grey tap-flash on buttons/links — the biggest "this is a website"
+       tell on mobile. */
+    -webkit-tap-highlight-color: transparent;
+  }
+  @media (max-width: 639px) {
+    /* No rubber-band white overscroll behind the fixed app chrome. */
+    html,
+    body {
+      overscroll-behavior-y: none;
+    }
+  }
+}
+
 @layer utilities {
   /* Large money figures: tight tracking + tabular, set on .amount. */
   .amount {
     font-variant-numeric: tabular-nums;
     letter-spacing: -0.01em;
+  }
+  /* iOS safe-area insets (notch / home indicator). */
+  .pt-safe {
+    padding-top: env(safe-area-inset-top);
+  }
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  /* Physical press feedback for app-like controls. */
+  .press {
+    transition: transform 0.1s var(--ease-out-quart);
+  }
+  .press:active {
+    transform: scale(0.96);
   }
   /* Honour reduced-motion: collapse transitions/animations to near-instant. */
   @media (prefers-reduced-motion: reduce) {

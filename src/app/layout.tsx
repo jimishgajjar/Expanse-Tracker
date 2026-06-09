@@ -17,6 +17,11 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  // Let content + safe-area insets extend under the notch / home indicator so
+  // the app chrome can reach the screen edges like a native app.
+  viewportFit: "cover",
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#ffffff" },
     { media: "(prefers-color-scheme: dark)", color: "#0e1116" },
