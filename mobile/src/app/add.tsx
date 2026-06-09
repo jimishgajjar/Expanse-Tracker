@@ -8,9 +8,10 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { useRouter } from "expo-router";
+import { Redirect, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useApp } from "@/lib/store";
+import { Loading } from "@/components/ui";
 import { api } from "@/lib/api";
 import { colors, radius } from "@/lib/theme";
 
@@ -21,8 +22,9 @@ function todayISO() {
 }
 
 export default function Add() {
-  const { data, reload } = useApp();
+  const { data, reload, token, ready } = useApp();
   const router = useRouter();
+  const dismiss = () => (router.canGoBack() ? router.back() : router.replace("/home"));
   const accounts = (data?.accounts ?? []).filter((a) => !a.archived);
 
   const [type, setType] = useState<"expense" | "income">("expense");
@@ -56,17 +58,20 @@ export default function Add() {
         body: { type, amount: value, date: todayISO(), accountId, categoryId: categoryId || null, note: note.trim() },
       });
       await reload();
-      router.back();
+      dismiss();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Couldn't save.");
       setBusy(false);
     }
   }
 
+  if (!ready) return <Loading />;
+  if (!token) return <Redirect href="/login" />;
+
   return (
     <SafeAreaView style={s.screen} edges={["top", "bottom"]}>
       <View style={s.header}>
-        <Pressable onPress={() => router.back()} hitSlop={12}>
+        <Pressable onPress={dismiss} hitSlop={12}>
           <Text style={s.cancel}>Cancel</Text>
         </Pressable>
         <Text style={s.title}>New transaction</Text>
