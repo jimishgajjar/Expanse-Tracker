@@ -13,6 +13,7 @@ export type Transaction = {
 export type Transfer = { id: string; amount: number; date: string; note: string; fromAccountId: string; toAccountId: string };
 export type Settings = { currencyCode: string; currency: string; locale: string };
 export type Workspace = { id: string; name: string; role: string; ownerId: string };
+export type Goal = { id: string; name: string; targetAmount: number; savedAmount: number; deadline: string | null; color: string };
 
 export type Bootstrap = {
   user: { id: string; email: string; name: string };

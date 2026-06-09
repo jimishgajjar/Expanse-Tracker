@@ -11,6 +11,7 @@ type Item = { label: string; icon: keyof typeof Feather.glyphMap; href: string }
 
 const ITEMS: Item[] = [
   { label: "Categories", icon: "tag", href: "/categories" },
+  { label: "Savings goals", icon: "target", href: "/goals" },
   { label: "Add account", icon: "credit-card", href: "/account-form" },
   { label: "Settings", icon: "settings", href: "/settings" },
 ];
