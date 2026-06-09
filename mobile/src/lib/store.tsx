@@ -2,6 +2,7 @@ import React, { useEffect, useMemo } from "react";
 import { QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { queryClient, qk } from "./query";
 import { useAuth } from "./auth";
+import { usePeriod } from "./period";
 import { api } from "./api";
 import { makeMoney } from "./format";
 import type { Bootstrap } from "./types";
@@ -24,9 +25,12 @@ export function useApp() {
   const signUp = useAuth((s) => s.signUp);
   const signOut = useAuth((s) => s.signOut);
 
+  const range = usePeriod((s) => s.range);
+  const anchor = usePeriod((s) => s.anchor);
+
   const q = useQuery({
-    queryKey: qk.bootstrap(),
-    queryFn: () => api<Bootstrap>("/bootstrap?range=month"),
+    queryKey: qk.bootstrap(range, anchor),
+    queryFn: () => api<Bootstrap>(`/bootstrap?range=${range}&date=${anchor}`),
     enabled: !!token,
   });
 

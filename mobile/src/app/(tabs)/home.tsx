@@ -6,6 +6,8 @@ import { Feather } from "@expo/vector-icons";
 import { useApp } from "@/lib/store";
 import { Card, ErrorView, IconBubble, Loading } from "@/components/ui";
 import { TxRow } from "@/components/tx-row";
+import { PeriodBar } from "@/components/period-bar";
+import { DonutChart } from "@/components/donut-chart";
 import { colors, radius } from "@/lib/theme";
 
 export default function Home() {
@@ -18,6 +20,19 @@ export default function Home() {
     const expense = txns.filter((t) => t.type === "expense").reduce((s, t) => s + t.amount, 0);
     const balance = (data?.accounts ?? []).filter((a) => !a.archived).reduce((s, a) => s + a.balance, 0);
     return { income, expense, net: income - expense, balance };
+  }, [data]);
+
+  const spending = useMemo(() => {
+    const cats = new Map<string, { name: string; color: string; amount: number }>();
+    for (const t of data?.transactions ?? []) {
+      if (t.type !== "expense") continue;
+      const name = t.category?.name ?? "Uncategorized";
+      const color = t.category?.color ?? "#9b9a97";
+      const cur = cats.get(name) ?? { name, color, amount: 0 };
+      cur.amount += t.amount;
+      cats.set(name, cur);
+    }
+    return [...cats.values()].sort((a, b) => b.amount - a.amount);
   }, [data]);
 
   if (!data) {
@@ -47,12 +62,40 @@ export default function Home() {
           </View>
         </View>
 
+        <View style={{ marginBottom: 18 }}>
+          <PeriodBar />
+        </View>
+
         <View style={s.grid}>
           <SummaryCard label="Total balance" value={money.balance(summary.balance)} hint={`across ${accounts.length} accounts`} />
           <SummaryCard label="Income" value={money.money(summary.income)} tone={colors.green} />
           <SummaryCard label="Expenses" value={money.money(summary.expense)} tone={colors.red} />
           <SummaryCard label="Net" value={money.signed(summary.net)} tone={summary.net >= 0 ? colors.green : colors.red} />
         </View>
+
+        {spending.length > 0 ? (
+          <Card style={{ marginTop: 16 }}>
+            <Text style={s.cardTitle}>Spending by category</Text>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 16, marginTop: 12 }}>
+              <DonutChart
+                data={spending.map((c) => ({ value: c.amount, color: c.color }))}
+                centerValue={money.money(summary.expense)}
+                centerLabel="spent"
+              />
+              <View style={{ flex: 1, gap: 9 }}>
+                {spending.slice(0, 5).map((c) => (
+                  <View key={c.name} style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                    <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: c.color }} />
+                    <Text style={{ flex: 1, fontSize: 13, color: colors.ink }} numberOfLines={1}>
+                      {c.name}
+                    </Text>
+                    <Text style={{ fontSize: 13, fontWeight: "600", color: colors.ink }}>{money.money(c.amount)}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          </Card>
+        ) : null}
 
         <Text style={s.section}>Accounts</Text>
         {accounts.map((a) => (
@@ -115,6 +158,7 @@ const s = StyleSheet.create({
   summaryValue: { fontSize: 21, fontWeight: "700", color: colors.ink, letterSpacing: -0.4 },
   summaryHint: { fontSize: 12, color: colors.inkFaint },
   section: { fontSize: 12, fontWeight: "700", color: colors.inkSoft, textTransform: "uppercase", letterSpacing: 0.6, marginTop: 24, marginBottom: 10 },
+  cardTitle: { fontSize: 15, fontWeight: "700", color: colors.ink },
   accountCard: { flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 10 },
   accountName: { fontSize: 15, fontWeight: "600", color: colors.ink },
   accountType: { fontSize: 13, color: colors.inkSoft, textTransform: "capitalize" },
