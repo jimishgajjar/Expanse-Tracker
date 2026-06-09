@@ -10,6 +10,12 @@ let authToken: string | null = null;
 export function setAuthToken(t: string | null) {
   authToken = t;
 }
+
+// Called when the server rejects our token (401) so the app can sign out.
+let onUnauthorized: (() => void) | null = null;
+export function setUnauthorizedHandler(fn: () => void) {
+  onUnauthorized = fn;
+}
 export function apiBase() {
   return API_BASE;
 }
@@ -33,6 +39,10 @@ export async function api<T = unknown>(
     json = text ? JSON.parse(text) : {};
   } catch {
     /* non-JSON response */
+  }
+  if (res.status === 401 && authToken) {
+    authToken = null; // stop further authed calls + prevent re-entry
+    onUnauthorized?.();
   }
   if (!res.ok) {
     const msg = (json as { error?: string })?.error || `Request failed (${res.status})`;

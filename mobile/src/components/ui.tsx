@@ -1,5 +1,5 @@
 import React from "react";
-import { ActivityIndicator, StyleSheet, Text, View, type ViewStyle } from "react-native";
+import { ActivityIndicator, Pressable, StyleSheet, Text, View, type ViewStyle } from "react-native";
 import { colors, radius } from "@/lib/theme";
 import { LucideIcon } from "@/lib/icons";
 
@@ -53,6 +53,31 @@ export function Loading() {
   return (
     <View style={styles.center}>
       <ActivityIndicator color={colors.green} />
+    </View>
+  );
+}
+
+export function ErrorView({
+  message,
+  onRetry,
+  onSignOut,
+}: {
+  message: string;
+  onRetry: () => void;
+  onSignOut?: () => void;
+}) {
+  return (
+    <View style={styles.center}>
+      <Text style={{ color: colors.ink, fontSize: 17, fontWeight: "700", marginBottom: 6 }}>Couldn&apos;t load your data</Text>
+      <Text style={{ color: colors.inkSoft, fontSize: 14, textAlign: "center", paddingHorizontal: 36, marginBottom: 18 }}>{message}</Text>
+      <Pressable onPress={onRetry} style={{ backgroundColor: colors.green, paddingHorizontal: 22, paddingVertical: 11, borderRadius: radius.md }}>
+        <Text style={{ color: "#fff", fontWeight: "600", fontSize: 15 }}>Try again</Text>
+      </Pressable>
+      {onSignOut ? (
+        <Pressable onPress={onSignOut} style={{ marginTop: 16 }} hitSlop={8}>
+          <Text style={{ color: colors.inkSoft, fontSize: 14 }}>Sign out</Text>
+        </Pressable>
+      ) : null}
     </View>
   );
 }

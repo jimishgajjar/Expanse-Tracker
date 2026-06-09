@@ -4,12 +4,12 @@ import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { useApp } from "@/lib/store";
-import { Card, IconBubble, Loading } from "@/components/ui";
+import { Card, ErrorView, IconBubble, Loading } from "@/components/ui";
 import { TxRow } from "@/components/tx-row";
 import { colors, radius } from "@/lib/theme";
 
 export default function Home() {
-  const { data, loading, reload, money } = useApp();
+  const { data, loading, error, reload, money, signOut } = useApp();
   const router = useRouter();
 
   const summary = useMemo(() => {
@@ -20,7 +20,10 @@ export default function Home() {
     return { income, expense, net: income - expense, balance };
   }, [data]);
 
-  if (!data) return <Loading />;
+  if (!data) {
+    if (error) return <ErrorView message={error} onRetry={reload} onSignOut={signOut} />;
+    return <Loading />;
+  }
 
   const accounts = data.accounts.filter((a) => !a.archived);
   const recent = data.transactions.slice(0, 8);

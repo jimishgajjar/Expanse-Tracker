@@ -104,11 +104,17 @@ export default function Add() {
 
         <View>
           <Text style={s.label}>Account</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
-            {accounts.map((a) => (
-              <Chip key={a.id} label={a.name} color={a.color} active={accountId === a.id} onPress={() => setAccountId(a.id)} />
-            ))}
-          </ScrollView>
+          {accounts.length === 0 ? (
+            <Text style={{ color: colors.inkSoft, fontSize: 14 }}>
+              No accounts loaded yet. Go back to Home and pull down to refresh.
+            </Text>
+          ) : (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+              {accounts.map((a) => (
+                <Chip key={a.id} label={a.name} color={a.color} active={accountId === a.id} onPress={() => setAccountId(a.id)} />
+              ))}
+            </ScrollView>
+          )}
         </View>
 
         <View>

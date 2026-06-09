@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { getItem, setItem, deleteItem } from "./storage";
-import { api, setAuthToken } from "./api";
+import { api, setAuthToken, setUnauthorizedHandler } from "./api";
 import { registerForPush } from "./push";
 import type { Workspace } from "./types";
 
@@ -74,4 +74,9 @@ export const useAuth = create<AuthState>((set) => {
     },
     setActiveWorkspace: (id) => set({ activeWorkspaceId: id }),
   };
+});
+
+// Any 401 from the API (expired/invalid token) signs the user out → login.
+setUnauthorizedHandler(() => {
+  void useAuth.getState().signOut();
 });
