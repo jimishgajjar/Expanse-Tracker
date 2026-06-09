@@ -7,7 +7,7 @@
 | **Platforms** | iOS, Android (one Expo codebase) |
 | **Location** | `mobile/` (Expo app) + new `/api/mobile/*` routes in the Next.js backend |
 | **Backend** | Reuses the existing Neon DB via the mobile API — **no DB/schema changes** |
-| **Status** | Backend API + token auth working; UI layer to be rebuilt on the stack below |
+| **Status** | ✅ **Complete** — all phases (0–8) + the buildable extras (forgot password, tag detail, period comparisons, verify banner) are built, typecheck‑clean & bundle‑verified. Only environment‑gated items remain: running it on a device, a push dev build, and store submission. Deliberately deferred: Excel export (browser download + Bearer auth don't mix on mobile — the web export still works) and two polish items (skeleton loaders, optimistic updates). |
 | **Last updated** | 2026‑06‑08 |
 
 ---
