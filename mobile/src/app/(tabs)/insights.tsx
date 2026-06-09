@@ -16,6 +16,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useApp } from "@/lib/store";
 import { api } from "@/lib/api";
 import { qk } from "@/lib/query";
+import { usePeriod } from "@/lib/period";
+import { shiftAnchor, canNavigate } from "@/lib/dates";
 import { Card, Loading } from "@/components/ui";
 import { LineChart } from "@/components/line-chart";
 import { colors, radius } from "@/lib/theme";
@@ -25,6 +27,14 @@ export default function Insights() {
   const { data, loading, reload, money } = useApp();
   const nw = useQuery({ queryKey: qk.netWorth(), queryFn: () => api<{ series: NetWorthPoint[] }>("/analytics/net-worth") });
   const bq = useQuery({ queryKey: qk.budgets(), queryFn: () => api<{ budgets: Budget[] }>("/budgets") });
+  const range = usePeriod((st) => st.range);
+  const anchor = usePeriod((st) => st.anchor);
+  const prevAnchor = shiftAnchor(range, anchor, -1);
+  const cmp = useQuery({
+    queryKey: ["range-totals", range, prevAnchor],
+    queryFn: () => api<{ totals: { income: number; expense: number } }>(`/analytics/range-totals?range=${range}&date=${prevAnchor}`),
+    enabled: canNavigate(range),
+  });
 
   const stats = useMemo(() => {
     const txns = data?.transactions ?? [];
@@ -69,6 +79,9 @@ export default function Insights() {
   }
 
   if (!data) return <Loading />;
+  const prev = cmp.data?.totals;
+  const incomeDelta = prev && prev.income > 0 ? ((stats.income - prev.income) / prev.income) * 100 : null;
+  const expenseDelta = prev && prev.expense > 0 ? ((stats.expense - prev.expense) / prev.expense) * 100 : null;
   const max = stats.byCategory[0]?.amount ?? 1;
   const series = nw.data?.series ?? [];
   const budgets = bq.data?.budgets ?? [];
@@ -104,8 +117,8 @@ export default function Insights() {
         ) : null}
 
         <View style={{ flexDirection: "row", gap: 10, marginBottom: 10 }}>
-          <Stat label="Income" value={money.money(stats.income)} tone={colors.green} />
-          <Stat label="Expenses" value={money.money(stats.expense)} tone={colors.red} />
+          <Stat label="Income" value={money.money(stats.income)} tone={colors.green} delta={incomeDelta != null ? { pct: incomeDelta, good: incomeDelta >= 0 } : undefined} />
+          <Stat label="Expenses" value={money.money(stats.expense)} tone={colors.red} delta={expenseDelta != null ? { pct: expenseDelta, good: expenseDelta <= 0 } : undefined} />
         </View>
         <Card style={{ marginBottom: 6 }}>
           <Text style={s.cardLabel}>Net this period</Text>
@@ -192,13 +205,18 @@ export default function Insights() {
   );
 }
 
-function Stat({ label, value, tone }: { label: string; value: string; tone: string }) {
+function Stat({ label, value, tone, delta }: { label: string; value: string; tone: string; delta?: { pct: number; good: boolean } }) {
   return (
     <Card style={{ flex: 1, gap: 3 }}>
       <Text style={s.cardLabel}>{label}</Text>
       <Text style={[s.statValue, { color: tone }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
         {value}
       </Text>
+      {delta ? (
+        <Text style={{ fontSize: 11, fontWeight: "600", color: delta.good ? colors.green : colors.red }}>
+          {delta.pct >= 0 ? "▲" : "▼"} {Math.abs(Math.round(delta.pct))}% vs last
+        </Text>
+      ) : null}
     </Card>
   );
 }

@@ -1,9 +1,11 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { useApp } from "@/lib/store";
+import { useAuth } from "@/lib/auth";
+import { api } from "@/lib/api";
 import { Card, ErrorView, IconBubble, Loading } from "@/components/ui";
 import { TxRow } from "@/components/tx-row";
 import { PeriodBar } from "@/components/period-bar";
@@ -13,6 +15,7 @@ import { colors, radius } from "@/lib/theme";
 
 export default function Home() {
   const { data, loading, error, reload, money, signOut } = useApp();
+  const user = useAuth((st) => st.user);
   const router = useRouter();
 
   const summary = useMemo(() => {
@@ -51,6 +54,7 @@ export default function Home() {
         contentContainerStyle={{ padding: 16, paddingBottom: 110 }}
         refreshControl={<RefreshControl refreshing={loading} onRefresh={reload} tintColor={colors.green} />}
       >
+        {user?.emailVerified === false ? <VerifyBanner /> : null}
         <View style={s.header}>
           <View style={s.logo}>
             <Text style={s.logoText}>E</Text>
@@ -141,6 +145,33 @@ export default function Home() {
   );
 }
 
+function VerifyBanner() {
+  const [sent, setSent] = useState(false);
+  const [busy, setBusy] = useState(false);
+  async function resend() {
+    setBusy(true);
+    try {
+      await api("/auth/resend-verification", { method: "POST" });
+      setSent(true);
+    } catch {
+      /* ignore */
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <View style={s.banner}>
+      <Feather name="mail" size={15} color={colors.yellow} />
+      <Text style={s.bannerText}>{sent ? "Verification email sent." : "Verify your email to unlock sharing."}</Text>
+      {!sent ? (
+        <Pressable onPress={resend} disabled={busy} hitSlop={6}>
+          <Text style={s.bannerAction}>{busy ? "…" : "Resend"}</Text>
+        </Pressable>
+      ) : null}
+    </View>
+  );
+}
+
 function SummaryCard({ label, value, hint, tone }: { label: string; value: string; hint?: string; tone?: string }) {
   return (
     <Card style={s.summaryCard}>
@@ -188,4 +219,7 @@ const s = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     elevation: 5,
   },
+  banner: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: colors.yellow + "18", borderRadius: radius.md, padding: 12, marginBottom: 14 },
+  bannerText: { flex: 1, fontSize: 13, color: colors.ink },
+  bannerAction: { fontSize: 13, fontWeight: "700", color: colors.yellow },
 });

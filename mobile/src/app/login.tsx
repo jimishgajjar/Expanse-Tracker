@@ -87,6 +87,10 @@ export default function Login() {
           {busy ? <ActivityIndicator color="#fff" /> : <Text style={s.buttonText}>Sign in</Text>}
         </Pressable>
 
+        <Link href="/forgot" style={s.forgot}>
+          Forgot password?
+        </Link>
+
         <View style={s.footer}>
           <Text style={s.footerText}>New here? </Text>
           <Link href="/signup" replace style={s.footerLink}>
@@ -136,4 +140,5 @@ const s = StyleSheet.create({
   footer: { flexDirection: "row", justifyContent: "center", marginTop: 22 },
   footerText: { color: colors.inkSoft, fontSize: 14 },
   footerLink: { color: colors.green, fontSize: 14, fontWeight: "600" },
+  forgot: { color: colors.inkSoft, fontSize: 14, textAlign: "center", marginTop: 16 },
 });

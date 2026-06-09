@@ -36,7 +36,9 @@ export function TxRow({ tx, fmt }: { tx: Transaction; fmt: { signed: (n: number)
         {tx.tags?.length ? (
           <View style={{ flexDirection: "row", gap: 5, marginTop: 4 }}>
             {tx.tags.slice(0, 3).map((t) => (
-              <Pill key={t.id} label={t.name} color={t.color} />
+              <Pressable key={t.id} onPress={() => router.push(`/tag/${t.id}`)} hitSlop={4}>
+                <Pill label={t.name} color={t.color} />
+              </Pressable>
             ))}
           </View>
         ) : null}
