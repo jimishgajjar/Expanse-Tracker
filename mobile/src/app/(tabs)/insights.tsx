@@ -222,7 +222,7 @@ function Stat({ label, value, tone, delta }: { label: string; value: string; ton
 }
 
 const s = StyleSheet.create({
-  title: { fontSize: 24, fontWeight: "700", color: colors.ink, letterSpacing: -0.4, marginBottom: 14 },
+  title: { fontSize: 30, fontWeight: "800", color: colors.ink, letterSpacing: -0.6, marginBottom: 16 },
   cardLabel: { fontSize: 13, color: colors.inkSoft },
   bigValue: { fontSize: 28, fontWeight: "800", color: colors.ink, letterSpacing: -0.5, marginTop: 4 },
   statValue: { fontSize: 20, fontWeight: "700" },

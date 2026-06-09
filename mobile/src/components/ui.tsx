@@ -89,6 +89,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     padding: 16,
+    shadowColor: "#181818",
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 1,
   },
   center: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.bg },
 });

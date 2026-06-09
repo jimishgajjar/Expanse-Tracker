@@ -72,7 +72,7 @@ export default function Activity() {
 
 const s = StyleSheet.create({
   head: { paddingHorizontal: 16, paddingTop: 8 },
-  title: { fontSize: 24, fontWeight: "700", color: colors.ink, letterSpacing: -0.4, marginBottom: 12 },
+  title: { fontSize: 30, fontWeight: "800", color: colors.ink, letterSpacing: -0.6, marginBottom: 14 },
   filters: { flexDirection: "row", backgroundColor: colors.hover, borderRadius: radius.md, padding: 3, gap: 3, marginBottom: 4 },
   filter: { flex: 1, paddingVertical: 7, borderRadius: radius.sm, alignItems: "center" },
   filterActive: { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border },

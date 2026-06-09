@@ -1,14 +1,5 @@
 import { useMemo, useState, type ReactNode } from "react";
-import {
-  ActivityIndicator,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import DateTimePicker from "@react-native-community/datetimepicker";
@@ -25,6 +16,7 @@ function todayISO() {
 }
 
 type TxType = "expense" | "income" | "transfer";
+const ACCENT: Record<TxType, string> = { expense: colors.red, income: colors.green, transfer: colors.ink };
 
 export default function TransactionForm() {
   const { data, reload, token, ready } = useApp();
@@ -53,9 +45,10 @@ export default function TransactionForm() {
     () => (data?.categories ?? []).filter((c) => c.kind === (type === "income" ? "income" : "expense")),
     [data, type],
   );
-
   const dismiss = () => (router.canGoBack() ? router.back() : router.replace("/home"));
   const types: TxType[] = isEdit ? ["expense", "income"] : ["expense", "income", "transfer"];
+  const accent = ACCENT[type];
+  const symbol = data?.settings.currency ?? "";
 
   if (!ready) return <Loading />;
   if (!token) return <Redirect href="/login" />;
@@ -119,62 +112,63 @@ export default function TransactionForm() {
         )}
       </View>
 
-      <ScrollView contentContainerStyle={{ padding: 16, gap: 20 }} keyboardShouldPersistTaps="handled">
+      {/* Amount hero */}
+      <View style={[s.hero, { backgroundColor: accent + "0f" }]}>
         <View style={s.toggle}>
           {types.map((t) => (
             <Pressable
               key={t}
-              onPress={() => setType(t)}
-              style={[s.toggleBtn, type === t && (t === "expense" ? s.toggleExpense : t === "income" ? s.toggleIncome : s.toggleTransfer)]}
+              onPress={() => {
+                setType(t);
+                setCategoryId(null);
+              }}
+              style={[s.toggleBtn, type === t && { backgroundColor: ACCENT[t] }]}
             >
-              <Text style={[s.toggleText, type === t && { color: "#fff" }]}>
-                {t[0].toUpperCase() + t.slice(1)}
-              </Text>
+              <Text style={[s.toggleText, type === t && { color: "#fff" }]}>{t[0].toUpperCase() + t.slice(1)}</Text>
             </Pressable>
           ))}
         </View>
-
-        <View style={{ flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between", gap: 16 }}>
-          <View style={{ flex: 1 }}>
-            <Text style={s.label}>Amount</Text>
-            <TextInput
-              style={s.amount}
-              value={amount}
-              onChangeText={setAmount}
-              keyboardType="decimal-pad"
-              placeholder="0.00"
-              placeholderTextColor={colors.inkFaint}
-              autoFocus={!isEdit}
-            />
-          </View>
-          <Pressable onPress={() => setShowDate((v) => !v)} style={s.dateBtn}>
-            <Feather name="calendar" size={15} color={colors.inkSoft} />
-            <Text style={s.dateText}>{format(parseISO(date), "d MMM yyyy")}</Text>
-          </Pressable>
-        </View>
-        {showDate ? (
-          <DateTimePicker
-            value={parseISO(date)}
-            mode="date"
-            display={Platform.OS === "ios" ? "inline" : "default"}
-            onChange={(_e, selected) => {
-              if (Platform.OS !== "ios") setShowDate(false);
-              if (selected) setDate(format(selected, "yyyy-MM-dd"));
-            }}
+        <View style={s.amountRow}>
+          <Text style={[s.currency, { color: accent }]}>{symbol}</Text>
+          <TextInput
+            style={[s.amountHero, { color: accent }]}
+            value={amount}
+            onChangeText={setAmount}
+            keyboardType="decimal-pad"
+            placeholder="0.00"
+            placeholderTextColor={accent + "44"}
+            autoFocus={!isEdit}
           />
-        ) : null}
+        </View>
+        <Pressable style={s.dateChip} onPress={() => setShowDate((v) => !v)}>
+          <Feather name="calendar" size={14} color={colors.inkSoft} />
+          <Text style={s.dateText}>{format(parseISO(date), "EEE, d MMM yyyy")}</Text>
+        </Pressable>
+      </View>
+      {showDate ? (
+        <DateTimePicker
+          value={parseISO(date)}
+          mode="date"
+          display={Platform.OS === "ios" ? "inline" : "default"}
+          onChange={(_e, selected) => {
+            if (Platform.OS !== "ios") setShowDate(false);
+            if (selected) setDate(format(selected, "yyyy-MM-dd"));
+          }}
+        />
+      ) : null}
 
+      <ScrollView contentContainerStyle={{ padding: 16, gap: 18 }} keyboardShouldPersistTaps="handled">
         {type === "transfer" ? (
           <>
-            <Picker label="From" accounts={accounts} value={fromAccountId} onChange={setFromAccountId} />
-            <Picker label="To" accounts={accounts} value={toAccountId} onChange={setToAccountId} />
+            <Picker label="From account" accounts={accounts} value={fromAccountId} onChange={setFromAccountId} />
+            <Picker label="To account" accounts={accounts} value={toAccountId} onChange={setToAccountId} />
           </>
         ) : (
           <>
             <View>
               <Text style={s.label}>Account</Text>
               {accounts.length === 0 ? (
-                <Text style={s.hint}>No accounts loaded. Pull to refresh on Home.</Text>
+                <Text style={s.hint}>No accounts loaded yet. Go back to Home and pull to refresh.</Text>
               ) : (
                 <Row>
                   {accounts.map((a) => (
@@ -183,7 +177,6 @@ export default function TransactionForm() {
                 </Row>
               )}
             </View>
-
             <View>
               <Text style={s.label}>Category</Text>
               <Row>
@@ -193,7 +186,6 @@ export default function TransactionForm() {
                 ))}
               </Row>
             </View>
-
             {allTags.length > 0 ? (
               <View>
                 <Text style={s.label}>Tags</Text>
@@ -216,7 +208,7 @@ export default function TransactionForm() {
       </ScrollView>
 
       <View style={s.footer}>
-        <Pressable style={[s.save, busy && { opacity: 0.6 }]} onPress={save} disabled={busy}>
+        <Pressable style={[s.save, { backgroundColor: accent }, busy && { opacity: 0.6 }]} onPress={save} disabled={busy}>
           {busy ? <ActivityIndicator color="#fff" /> : <Text style={s.saveText}>{isEdit ? "Save changes" : `Add ${type}`}</Text>}
         </Pressable>
       </View>
@@ -265,50 +257,25 @@ function Picker({
 
 const s = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
+  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingVertical: 12 },
   cancel: { fontSize: 16, color: colors.inkSoft },
   title: { fontSize: 16, fontWeight: "700", color: colors.ink },
-  toggle: { flexDirection: "row", backgroundColor: colors.hover, borderRadius: radius.md, padding: 3, gap: 3 },
-  toggleBtn: { flex: 1, paddingVertical: 10, borderRadius: radius.sm, alignItems: "center" },
-  toggleExpense: { backgroundColor: colors.red },
-  toggleIncome: { backgroundColor: colors.green },
-  toggleTransfer: { backgroundColor: colors.ink },
+  hero: { alignItems: "center", paddingTop: 8, paddingBottom: 22, paddingHorizontal: 16, gap: 18 },
+  toggle: { flexDirection: "row", backgroundColor: colors.card, borderRadius: radius.pill, padding: 4, gap: 4, borderWidth: 1, borderColor: colors.border },
+  toggleBtn: { paddingVertical: 8, paddingHorizontal: 18, borderRadius: radius.pill },
   toggleText: { fontSize: 14, fontWeight: "600", color: colors.inkSoft },
+  amountRow: { flexDirection: "row", alignItems: "center", justifyContent: "center" },
+  currency: { fontSize: 28, fontWeight: "700", marginRight: 4 },
+  amountHero: { fontSize: 52, fontWeight: "800", letterSpacing: -1.5, minWidth: 90, padding: 0 },
+  dateChip: { flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, borderRadius: radius.pill, paddingHorizontal: 14, paddingVertical: 8 },
+  dateText: { fontSize: 13, fontWeight: "600", color: colors.ink },
   label: { fontSize: 13, fontWeight: "600", color: colors.inkSoft, marginBottom: 8 },
   hint: { color: colors.inkSoft, fontSize: 14 },
-  amount: { fontSize: 34, fontWeight: "800", color: colors.ink, paddingVertical: 2, letterSpacing: -0.5 },
-  dateBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    paddingHorizontal: 12,
-    paddingVertical: 9,
-  },
-  dateText: { fontSize: 14, fontWeight: "600", color: colors.ink },
-  input: {
-    borderWidth: 1,
-    borderColor: colors.borderStrong,
-    borderRadius: radius.md,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 16,
-    color: colors.ink,
-  },
-  chip: { borderWidth: 1, borderRadius: radius.pill, paddingHorizontal: 14, paddingVertical: 8 },
+  input: { borderWidth: 1, borderColor: colors.borderStrong, borderRadius: radius.md, paddingHorizontal: 14, paddingVertical: 12, fontSize: 16, color: colors.ink },
+  chip: { borderWidth: 1, borderRadius: radius.pill, paddingHorizontal: 14, paddingVertical: 9 },
   chipText: { fontSize: 14, fontWeight: "600", color: colors.inkSoft },
   error: { color: colors.red, fontSize: 14 },
   footer: { padding: 16, borderTopWidth: 1, borderTopColor: colors.border },
-  save: { backgroundColor: colors.green, borderRadius: radius.md, paddingVertical: 15, alignItems: "center" },
-  saveText: { color: "#fff", fontSize: 16, fontWeight: "600", textTransform: "capitalize" },
+  save: { borderRadius: radius.md, paddingVertical: 16, alignItems: "center" },
+  saveText: { color: "#fff", fontSize: 16, fontWeight: "700", textTransform: "capitalize" },
 });
