@@ -4,13 +4,14 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { useApp } from "@/lib/store";
+import { api } from "@/lib/api";
 import { Card, IconBubble, Loading } from "@/components/ui";
 import { TxRow } from "@/components/tx-row";
 import { colors } from "@/lib/theme";
 
 export default function AccountDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { data, money } = useApp();
+  const { data, money, reload } = useApp();
   const router = useRouter();
 
   const account = data?.accounts.find((a) => a.id === id);
@@ -28,12 +29,34 @@ export default function AccountDetail() {
     );
   }
 
+  const acc = account;
+  async function toggleArchive() {
+    await api(`/accounts/${acc.id}/archive`, { method: "POST", body: { archived: !acc.archived } });
+    await reload();
+  }
+  async function removeAccount() {
+    await api(`/accounts/${acc.id}`, { method: "DELETE" });
+    await reload();
+    router.back();
+  }
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }} edges={["top"]}>
-      <View style={s.head}>
+      <View style={[s.head, { justifyContent: "space-between" }]}>
         <Pressable onPress={() => router.back()} hitSlop={12}>
           <Feather name="chevron-left" size={26} color={colors.ink} />
         </Pressable>
+        <View style={{ flexDirection: "row", gap: 20 }}>
+          <Pressable onPress={() => router.push(`/account-form?id=${acc.id}`)} hitSlop={10}>
+            <Feather name="edit-2" size={19} color={colors.ink} />
+          </Pressable>
+          <Pressable onPress={toggleArchive} hitSlop={10}>
+            <Feather name={acc.archived ? "rotate-ccw" : "archive"} size={19} color={colors.inkSoft} />
+          </Pressable>
+          <Pressable onPress={removeAccount} hitSlop={10}>
+            <Feather name="trash-2" size={19} color={colors.red} />
+          </Pressable>
+        </View>
       </View>
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 16 }}>

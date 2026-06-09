@@ -97,7 +97,13 @@ export default function Home() {
           </Card>
         ) : null}
 
-        <Text style={s.section}>Accounts</Text>
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 24, marginBottom: 10 }}>
+          <Text style={[s.section, { marginTop: 0, marginBottom: 0 }]}>Accounts</Text>
+          <Pressable onPress={() => router.push("/account-form")} hitSlop={8} style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+            <Feather name="plus" size={16} color={colors.green} />
+            <Text style={{ color: colors.green, fontSize: 13, fontWeight: "600" }}>Add</Text>
+          </Pressable>
+        </View>
         {accounts.map((a) => (
           <Pressable key={a.id} onPress={() => router.push(`/account/${a.id}`)}>
             <Card style={s.accountCard}>
