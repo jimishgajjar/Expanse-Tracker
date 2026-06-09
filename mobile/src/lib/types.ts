@@ -13,6 +13,10 @@ export type Transaction = {
 export type Transfer = { id: string; amount: number; date: string; note: string; fromAccountId: string; toAccountId: string };
 export type Settings = { currencyCode: string; currency: string; locale: string };
 export type Workspace = { id: string; name: string; role: string; ownerId: string };
+export type Member = { id: string; email: string; name: string; role: string };
+export type SplitBalance = { userId: string; name: string; net: number };
+export type SplitItem = { id: string; note: string; creditorId: string; debtorId: string; amount: number };
+export type SplitData = { meId: string; otherMembers: { id: string; name: string }[]; balances: SplitBalance[]; splits: SplitItem[] };
 export type Goal = { id: string; name: string; targetAmount: number; savedAmount: number; deadline: string | null; color: string };
 export type Recurring = {
   id: string;

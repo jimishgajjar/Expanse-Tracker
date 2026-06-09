@@ -13,6 +13,8 @@ const ITEMS: Item[] = [
   { label: "Categories", icon: "tag", href: "/categories" },
   { label: "Subscriptions & bills", icon: "repeat", href: "/subscriptions" },
   { label: "Savings goals", icon: "target", href: "/goals" },
+  { label: "Split expenses", icon: "users", href: "/split" },
+  { label: "Sharing", icon: "user-plus", href: "/members" },
   { label: "Add account", icon: "credit-card", href: "/account-form" },
   { label: "Settings", icon: "settings", href: "/settings" },
 ];
