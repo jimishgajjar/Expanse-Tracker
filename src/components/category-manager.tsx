@@ -38,7 +38,7 @@ export function CategoryManager({ trigger, categories }: { trigger: ReactElement
             return (
               <TabsContent key={kind} value={kind} className="mt-3 space-y-3">
                 <AddCategoryForm kind={kind} />
-                <div className="max-h-[calc(100vh-19rem)] space-y-1.5 overflow-y-auto pr-1">
+                <div className="max-h-[calc(100dvh-19rem)] space-y-1.5 overflow-y-auto pr-1">
                   {list.map((c) => <CategoryRow key={c.id} category={c} />)}
                   {list.length === 0 && (
                     <p className="py-6 text-center text-sm text-muted-foreground">No {kind} categories yet.</p>

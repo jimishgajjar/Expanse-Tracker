@@ -188,6 +188,17 @@
     body {
       overscroll-behavior-y: none;
     }
+    /* Full-screen side sheets (the managers) clear the notch + home indicator
+       when installed to the Home Screen (standalone PWA). 0 in a normal browser. */
+    [data-slot="sheet-content"][data-side="right"],
+    [data-slot="sheet-content"][data-side="left"] {
+      padding-top: env(safe-area-inset-top);
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+    [data-slot="sheet-content"][data-side="right"] > [data-slot="sheet-close"],
+    [data-slot="sheet-content"][data-side="left"] > [data-slot="sheet-close"] {
+      top: calc(env(safe-area-inset-top) + 0.5rem);
+    }
   }
 }
 

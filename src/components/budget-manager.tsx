@@ -32,7 +32,7 @@ export function BudgetManager({
           <SheetTitle>Monthly budgets</SheetTitle>
           <SheetDescription>Set a monthly limit per expense category. Leave blank to remove.</SheetDescription>
         </SheetHeader>
-        <div className="max-h-[calc(100vh-7rem)] space-y-2 overflow-y-auto p-4">
+        <div className="max-h-[calc(100dvh-7rem)] space-y-2 overflow-y-auto p-4">
           {expenseCats.map((c) => <BudgetRow key={c.id} category={c} amount={current[c.id]} />)}
           {expenseCats.length === 0 && <p className="text-sm text-muted-foreground">Add an expense category first.</p>}
         </div>
