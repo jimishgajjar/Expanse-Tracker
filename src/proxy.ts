@@ -28,6 +28,11 @@ export function proxy(req: NextRequest) {
     return res;
   }
 
+  // Root is public: page.tsx renders the marketing landing for logged-out
+  // visitors and the dashboard for signed-in users. (Exact match only — a
+  // startsWith("/") entry in PUBLIC would expose every route.)
+  if (pathname === "/") return NextResponse.next();
+
   if (PUBLIC.some((p) => pathname.startsWith(p))) return NextResponse.next();
   if (req.cookies.get(SESSION_COOKIE)?.value) return NextResponse.next();
 

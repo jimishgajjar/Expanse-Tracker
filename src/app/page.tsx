@@ -7,7 +7,7 @@ import {
 } from "@/lib/queries";
 import { getCurrentUser } from "@/lib/session";
 import { getActiveWorkspace, getUserWorkspaces } from "@/lib/workspace";
-import { redirect } from "next/navigation";
+import { Landing } from "@/components/landing";
 
 // DB-backed dashboard: always render with fresh data (Cache Components is off).
 export const dynamic = "force-dynamic";
@@ -18,7 +18,7 @@ export default async function Page({
   searchParams: Promise<{ range?: string; date?: string; tab?: string }>;
 }) {
   const user = await getCurrentUser();
-  if (!user) redirect("/login");
+  if (!user) return <Landing />;
 
   const [workspaces, activeWorkspace] = await Promise.all([getUserWorkspaces(), getActiveWorkspace()]);
 
