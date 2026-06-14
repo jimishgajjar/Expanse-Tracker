@@ -40,7 +40,7 @@ export default function Activity() {
         </View>
       </View>
       <ScrollView
-        contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
+        contentContainerStyle={{ padding: 16, paddingBottom: 110 }}
         refreshControl={<RefreshControl refreshing={loading} onRefresh={reload} tintColor={colors.green} />}
       >
         {groups.length === 0 ? (

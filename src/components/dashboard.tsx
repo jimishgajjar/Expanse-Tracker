@@ -265,7 +265,7 @@ export function Dashboard({
 
       {/* ── Mobile app chrome: floating + button, bottom tab bar, More sheet ── */}
       {canEdit && (
-        <div className="fixed right-4 z-40 sm:hidden" style={{ bottom: "calc(4.75rem + env(safe-area-inset-bottom))" }}>
+        <div className="fixed right-4 z-40 sm:hidden" style={{ bottom: "calc(5.25rem + env(safe-area-inset-bottom))" }}>
           <TransactionDialog
             accounts={liveAccounts} categories={categories} defaultType="expense"
             trigger={<Button size="icon" aria-label="Add transaction" className="press size-14 rounded-full shadow-lg shadow-brand/30"><Plus className="size-6" /></Button>}
@@ -273,35 +273,37 @@ export function Dashboard({
         </div>
       )}
 
-      <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-4 border-t bg-background/90 pb-safe backdrop-blur-md sm:hidden">
-        {([
-          { id: "overview", label: "Home", Icon: House },
-          { id: "transactions", label: "Activity", Icon: Receipt },
-          { id: "analytics", label: "Insights", Icon: TrendingUp },
-        ] as const).map(({ id, label, Icon }) => (
-          <button
-            key={id}
-            type="button"
-            onClick={() => changeTab(id)}
-            aria-current={tab === id ? "page" : undefined}
-            className={cn(
-              "flex min-h-[3.25rem] flex-col items-center justify-center gap-0.5 text-[11px] font-medium transition-colors",
-              tab === id ? "text-brand" : "text-muted-foreground",
-            )}
-          >
-            <Icon className="size-5" strokeWidth={tab === id ? 2.4 : 2} />
-            {label}
-          </button>
-        ))}
-        <button
-          type="button"
-          onClick={() => setMoreOpen(true)}
-          className="flex min-h-[3.25rem] flex-col items-center justify-center gap-0.5 text-[11px] font-medium text-muted-foreground transition-colors"
-        >
-          <Menu className="size-5" strokeWidth={2} />
-          More
-        </button>
-      </nav>
+      {/* Floating glass pill nav (iOS "liquid glass" style) */}
+      <div
+        className="fixed inset-x-0 bottom-0 z-40 flex justify-center px-5 sm:hidden"
+        style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 0.6rem)" }}
+      >
+        <nav className="flex items-center gap-1 rounded-full bg-foreground/90 p-1.5 shadow-xl shadow-black/25 ring-1 ring-white/15 backdrop-blur-2xl supports-[backdrop-filter]:bg-foreground/70">
+          {([
+            { id: "overview", label: "Home", Icon: House, more: false },
+            { id: "transactions", label: "Activity", Icon: Receipt, more: false },
+            { id: "analytics", label: "Insights", Icon: TrendingUp, more: false },
+            { id: "more", label: "More", Icon: Menu, more: true },
+          ] as const).map(({ id, label, Icon, more }) => {
+            const active = !more && tab === id;
+            return (
+              <button
+                key={id}
+                type="button"
+                onClick={() => (more ? setMoreOpen(true) : changeTab(id as Tab))}
+                aria-label={label}
+                aria-current={active ? "page" : undefined}
+                className={cn(
+                  "flex items-center justify-center rounded-full transition-all duration-200 ease-out-quart active:scale-95",
+                  active ? "bg-background/20 px-5 py-2.5" : "px-3.5 py-2.5 active:bg-background/10",
+                )}
+              >
+                <Icon className={cn("size-[1.35rem]", active ? "text-background" : "text-background/60")} strokeWidth={active ? 2.4 : 2} />
+              </button>
+            );
+          })}
+        </nav>
+      </div>
 
       <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
         <SheetContent side="bottom" className="rounded-t-2xl sm:hidden" style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}>

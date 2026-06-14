@@ -90,7 +90,7 @@ export default function Insights() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }} edges={["top"]}>
       <ScrollView
-        contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
+        contentContainerStyle={{ padding: 16, paddingBottom: 110 }}
         keyboardShouldPersistTaps="handled"
         refreshControl={
           <RefreshControl

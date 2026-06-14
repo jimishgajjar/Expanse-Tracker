@@ -43,7 +43,7 @@ export default function More() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }} edges={["top"]}>
-      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
+      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 110 }}>
         <Text style={s.bigTitle}>More</Text>
 
         <Card style={s.profile}>
