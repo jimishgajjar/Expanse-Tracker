@@ -263,45 +263,34 @@ export function Dashboard({
         )}
       </div>
 
-      {/* ── Mobile app chrome: floating + button, bottom tab bar, More sheet ── */}
-      {canEdit && (
-        <div className="fixed right-4 z-40 sm:hidden" style={{ bottom: "calc(5.25rem + env(safe-area-inset-bottom))" }}>
-          <TransactionDialog
-            accounts={liveAccounts} categories={categories} defaultType="expense"
-            trigger={<Button size="icon" aria-label="Add transaction" className="press size-14 rounded-full shadow-lg shadow-brand/30"><Plus className="size-6" /></Button>}
-          />
-        </div>
-      )}
-
-      {/* Floating glass pill nav (iOS "liquid glass" style) */}
+      {/* ── Mobile app chrome: a floating iOS "liquid glass" tab bar + More sheet.
+          Consistent dark blurred material with white icons, a highlighted active
+          capsule, and a brand "+" in the centre to add a transaction. ── */}
       <div
-        className="fixed inset-x-0 bottom-0 z-40 flex justify-center px-5 sm:hidden"
+        className="fixed inset-x-0 bottom-0 z-40 flex justify-center px-3 sm:hidden"
         style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 0.6rem)" }}
       >
-        <nav className="flex items-center gap-1 rounded-full bg-foreground/90 p-1.5 shadow-xl shadow-black/25 ring-1 ring-white/15 backdrop-blur-2xl supports-[backdrop-filter]:bg-foreground/70">
-          {([
-            { id: "overview", label: "Home", Icon: House, more: false },
-            { id: "transactions", label: "Activity", Icon: Receipt, more: false },
-            { id: "analytics", label: "Insights", Icon: TrendingUp, more: false },
-            { id: "more", label: "More", Icon: Menu, more: true },
-          ] as const).map(({ id, label, Icon, more }) => {
-            const active = !more && tab === id;
-            return (
-              <button
-                key={id}
-                type="button"
-                onClick={() => (more ? setMoreOpen(true) : changeTab(id as Tab))}
-                aria-label={label}
-                aria-current={active ? "page" : undefined}
-                className={cn(
-                  "flex items-center justify-center rounded-full transition-all duration-200 ease-out-quart active:scale-95",
-                  active ? "bg-background/20 px-5 py-2.5" : "px-3.5 py-2.5 active:bg-background/10",
-                )}
-              >
-                <Icon className={cn("size-[1.35rem]", active ? "text-background" : "text-background/60")} strokeWidth={active ? 2.4 : 2} />
-              </button>
-            );
-          })}
+        <nav className="flex max-w-[calc(100vw-1.5rem)] items-center gap-0.5 rounded-full border border-white/15 bg-black/35 p-1.5 shadow-[0_8px_30px_rgba(0,0,0,0.4)] backdrop-blur-2xl backdrop-saturate-150">
+          {glassTab(tab === "overview", House, "Home", () => changeTab("overview"))}
+          {glassTab(tab === "transactions", Receipt, "Activity", () => changeTab("transactions"))}
+          {canEdit && (
+            <TransactionDialog
+              accounts={liveAccounts}
+              categories={categories}
+              defaultType="expense"
+              trigger={
+                <button
+                  type="button"
+                  aria-label="Add transaction"
+                  className="mx-0.5 flex size-11 shrink-0 items-center justify-center rounded-full bg-brand text-brand-foreground shadow-md shadow-brand/40 transition-transform active:scale-90"
+                >
+                  <Plus className="size-[1.45rem]" />
+                </button>
+              }
+            />
+          )}
+          {glassTab(tab === "analytics", TrendingUp, "Insights", () => changeTab("analytics"))}
+          {glassTab(false, Menu, "More", () => setMoreOpen(true))}
         </nav>
       </div>
 
@@ -342,5 +331,22 @@ export function Dashboard({
         </SheetContent>
       </Sheet>
     </SettingsProvider>
+  );
+}
+
+function glassTab(active: boolean, Icon: LucideIcon, label: string, onClick: () => void) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={label}
+      aria-current={active ? "page" : undefined}
+      className={cn(
+        "flex shrink-0 items-center justify-center rounded-full transition-all duration-200 ease-out-quart active:scale-90",
+        active ? "bg-white/15 px-4 py-2.5" : "px-3 py-2.5",
+      )}
+    >
+      <Icon className={cn("size-[1.3rem]", active ? "text-white" : "text-white/55")} strokeWidth={active ? 2.3 : 2} />
+    </button>
   );
 }
