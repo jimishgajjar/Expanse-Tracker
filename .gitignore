@@ -72,3 +72,8 @@ Desktop.ini
 /.claude/skills/
 /.impeccable/
 /skills-lock.json
+
+# Local DB backups (financial data — never commit)
+backups/
+_backup.mjs
+_verifycol.mjs

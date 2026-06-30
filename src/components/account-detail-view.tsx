@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Icon } from "@/components/icon";
 import { TransactionRows, TransferRows } from "@/components/transactions-list";
@@ -29,16 +30,25 @@ export function AccountDetailView({
   canEdit: boolean;
 }) {
   const { money, balanceMoney } = useFormat();
+  const [search, setSearch] = useState("");
   const [pageSize, setPageSize] = useState(25);
   const [page, setPage] = useState(1);
 
-  useEffect(() => setPage(1), [pageSize]);
+  useEffect(() => setPage(1), [pageSize, search]);
 
-  const total = transactions.length;
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return transactions;
+    return transactions.filter((t) =>
+      `${t.note} ${t.category?.name ?? ""} ${t.tags.map((tg) => tg.name).join(" ")}`.toLowerCase().includes(q),
+    );
+  }, [transactions, search]);
+
+  const total = filtered.length;
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
   const curPage = Math.min(page, pageCount);
   const start = (curPage - 1) * pageSize;
-  const pageItems = useMemo(() => transactions.slice(start, start + pageSize), [transactions, start, pageSize]);
+  const pageItems = useMemo(() => filtered.slice(start, start + pageSize), [filtered, start, pageSize]);
 
   return (
     <div className="space-y-4">
@@ -77,7 +87,12 @@ export function AccountDetailView({
           )}
         </div>
 
-        <TransactionRows transactions={pageItems} accounts={accounts} categories={categories} canEdit={canEdit} emptyMessage="No transactions for this account yet." />
+        <div className="relative mb-3">
+          <Search className="absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search this account — note, category, tag…" className="pl-8" />
+        </div>
+
+        <TransactionRows transactions={pageItems} accounts={accounts} categories={categories} canEdit={canEdit} emptyMessage={search ? "No transactions match your search." : "No transactions for this account yet."} />
 
         {total > pageSize && (
           <div className="mt-4 flex flex-col items-stretch gap-3 border-t pt-3 text-sm sm:flex-row sm:items-center sm:justify-between">

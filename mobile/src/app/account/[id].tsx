@@ -1,5 +1,5 @@
-import { useMemo } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useMemo, useState } from "react";
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
@@ -7,15 +7,26 @@ import { useApp } from "@/lib/store";
 import { api } from "@/lib/api";
 import { Card, IconBubble, Loading } from "@/components/ui";
 import { TxRow } from "@/components/tx-row";
-import { colors } from "@/lib/theme";
+import { colors, radius } from "@/lib/theme";
 
 export default function AccountDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { data, money, reload } = useApp();
   const router = useRouter();
+  const [search, setSearch] = useState("");
 
   const account = data?.accounts.find((a) => a.id === id);
-  const txns = useMemo(() => (data?.transactions ?? []).filter((t) => t.accountId === id), [data, id]);
+  const txns = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return (data?.transactions ?? []).filter((t) => {
+      if (t.accountId !== id) return false;
+      if (q) {
+        const hay = `${t.note} ${t.category?.name ?? ""} ${(t.tags ?? []).map((tg) => tg.name).join(" ")}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+  }, [data, id, search]);
 
   if (!data) return <Loading />;
   if (!account) {
@@ -84,10 +95,28 @@ export default function AccountDetail() {
           </View>
         </Card>
 
+        <View style={s.searchWrap}>
+          <Feather name="search" size={16} color={colors.inkFaint} />
+          <TextInput
+            value={search}
+            onChangeText={setSearch}
+            placeholder="Search note, category, tag…"
+            placeholderTextColor={colors.inkFaint}
+            style={s.searchInput}
+            autoCapitalize="none"
+            returnKeyType="search"
+          />
+          {search ? (
+            <Pressable onPress={() => setSearch("")} hitSlop={8}>
+              <Feather name="x" size={16} color={colors.inkSoft} />
+            </Pressable>
+          ) : null}
+        </View>
+
         <Text style={s.section}>This month · {txns.length}</Text>
         <Card style={{ padding: 0 }}>
           {txns.length === 0 ? (
-            <Text style={s.empty}>No transactions this month.</Text>
+            <Text style={s.empty}>{search ? "No transactions match your search." : "No transactions this month."}</Text>
           ) : (
             txns.map((t, i) => (
               <View key={t.id} style={i > 0 ? s.divider : undefined}>
@@ -111,6 +140,8 @@ const s = StyleSheet.create({
   statLabel: { fontSize: 12, color: colors.inkFaint },
   stat: { fontSize: 16, fontWeight: "700", marginTop: 2 },
   section: { fontSize: 12, fontWeight: "700", color: colors.inkSoft, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 10 },
+  searchWrap: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: colors.hover, borderRadius: radius.md, paddingHorizontal: 12, paddingVertical: 9, marginBottom: 16 },
+  searchInput: { flex: 1, fontSize: 15, color: colors.ink, padding: 0 },
   divider: { borderTopWidth: 1, borderTopColor: colors.border },
   empty: { color: colors.inkSoft, fontSize: 14, padding: 16 },
 });
