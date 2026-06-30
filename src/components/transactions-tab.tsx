@@ -44,7 +44,7 @@ export function TransactionsTab({
       if (accountId !== "all" && t.accountId !== accountId) return false;
       if (categoryId !== "all" && t.categoryId !== categoryId) return false;
       if (q) {
-        const hay = `${t.note} ${t.category?.name ?? ""} ${t.account?.name ?? ""}`.toLowerCase();
+        const hay = `${t.note} ${t.category?.name ?? ""} ${t.account?.name ?? ""} ${t.tags.map((tg) => tg.name).join(" ")}`.toLowerCase();
         if (!hay.includes(q)) return false;
       }
       return true;
@@ -90,7 +90,7 @@ export function TransactionsTab({
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           <div className="relative flex-1">
             <Search className="absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search…" className="pl-8" />
+            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search note, category, tag…" className="pl-8" />
           </div>
           <div className="flex gap-2">
             <Select value={accountId} onValueChange={(v) => setAccountId(v as string)} items={accountItems}>

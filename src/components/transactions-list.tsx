@@ -108,7 +108,15 @@ function Row({
       <div className="min-w-0 flex-1 leading-tight">
         <div className="truncate text-[13px] font-medium">{t.note || t.category?.name || "Transaction"}</div>
         <div className="truncate text-[11px] text-muted-foreground">
-          {t.category?.name ?? "Uncategorised"} · {t.account?.name ?? "—"}
+          {t.categoryId && t.category ? (
+            <Link href={`/categories/${t.categoryId}`} className="transition hover:text-foreground hover:underline">
+              {t.category.name}
+            </Link>
+          ) : (
+            "Uncategorised"
+          )}
+          {" · "}
+          {t.account?.name ?? "—"}
           {showAuthors && t.createdByName ? ` · ${t.createdByName}` : ""}
         </div>
         {t.tags.length > 0 && (

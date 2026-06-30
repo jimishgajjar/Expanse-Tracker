@@ -443,6 +443,19 @@ export async function createTag(input: unknown): Promise<Result<{ id: string; na
   } catch (e) { return fail(e); }
 }
 
+export async function renameTag(id: string, input: unknown): Promise<Result> {
+  try {
+    const d = z.object({ name: z.string().trim().min(1, "Tag name required").max(40) }).parse(input);
+    const w = await wid();
+    const db = await getDb();
+    const [dup] = await db.select().from(tags).where(and(eq(tags.workspaceId, w), eq(tags.name, d.name))).limit(1);
+    if (dup && dup.id !== id) return { ok: false, error: "A tag with that name already exists." };
+    await db.update(tags).set({ name: d.name }).where(and(eq(tags.id, id), eq(tags.workspaceId, w)));
+    revalidatePath("/");
+    return { ok: true };
+  } catch (e) { return fail(e); }
+}
+
 export async function deleteTag(id: string): Promise<Result> {
   try {
     const w = await wid();
