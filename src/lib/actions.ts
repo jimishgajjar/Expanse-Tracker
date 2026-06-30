@@ -292,7 +292,41 @@ export async function createRecurring(input: unknown): Promise<Result> {
       alertsEnabled: d.alertsEnabled ?? false, remindDaysBefore: d.remindDaysBefore ?? 1,
       commitmentType: d.commitmentType ?? "other", autoPost: d.autoPost ?? true,
       totalAmount: d.totalAmount != null ? String(d.totalAmount) : null,
+      priceHistory: [{ amount: d.amount, at: new Date().toISOString() }],
     });
+    revalidatePath("/");
+    return { ok: true };
+  } catch (e) { return fail(e); }
+}
+
+export async function updateRecurring(id: string, input: unknown): Promise<Result> {
+  try {
+    const d = recurringSchema.parse(input);
+    const w = await wid();
+    const db = await getDb();
+    const [cur] = await db.select().from(recurring).where(and(eq(recurring.id, id), eq(recurring.workspaceId, w))).limit(1);
+    if (!cur) return { ok: false, error: "Subscription not found." };
+
+    // Log a price-change entry whenever the amount changes. Future occurrences
+    // post at the current amount (processRecurring reads it), so editing the
+    // price also updates the next charge.
+    let priceHistory = cur.priceHistory ?? [];
+    const oldAmount = Number(cur.amount);
+    if (d.amount !== oldAmount) {
+      if (priceHistory.length === 0) priceHistory = [{ amount: oldAmount, at: (cur.createdAt ?? new Date()).toISOString() }];
+      priceHistory = [...priceHistory, { amount: d.amount, at: new Date().toISOString() }];
+    }
+
+    await db.update(recurring).set({
+      type: d.type, amount: String(d.amount), note: d.note ?? "",
+      accountId: d.accountId, categoryId: d.categoryId ?? null,
+      frequency: d.frequency, nextDate: d.nextDate,
+      endDate: d.endDate ?? null, maxOccurrences: d.maxOccurrences ?? null,
+      alertsEnabled: d.alertsEnabled ?? false, remindDaysBefore: d.remindDaysBefore ?? 1,
+      commitmentType: d.commitmentType ?? "other", autoPost: d.autoPost ?? true,
+      totalAmount: d.totalAmount != null ? String(d.totalAmount) : null,
+      priceHistory,
+    }).where(and(eq(recurring.id, id), eq(recurring.workspaceId, w)));
     revalidatePath("/");
     return { ok: true };
   } catch (e) { return fail(e); }

@@ -1,0 +1,1 @@
+ALTER TABLE "recurring" ADD COLUMN "price_history" jsonb DEFAULT '[]'::jsonb NOT NULL;

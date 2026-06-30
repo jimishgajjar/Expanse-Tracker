@@ -29,6 +29,7 @@ export type RecurringDTO = {
   endDate: string | null; maxOccurrences: number | null; occurrenceCount: number;
   alertsEnabled: boolean; remindDaysBefore: number;
   commitmentType: string; autoPost: boolean; totalAmount: number | null;
+  priceHistory: { amount: number; at: string }[];
 };
 export type SettingsDTO = { currencyCode: string; currency: string; locale: string };
 export type BudgetProgressDTO = { categoryId: string; name: string; icon: string; color: string; budget: number; spent: number };
@@ -250,6 +251,7 @@ export async function getRecurring(): Promise<RecurringDTO[]> {
     endDate: r.endDate, maxOccurrences: r.maxOccurrences, occurrenceCount: r.occurrenceCount,
     alertsEnabled: r.alertsEnabled, remindDaysBefore: r.remindDaysBefore,
     commitmentType: r.commitmentType, autoPost: r.autoPost, totalAmount: r.totalAmount != null ? Number(r.totalAmount) : null,
+    priceHistory: r.priceHistory ?? [],
   }));
 }
 

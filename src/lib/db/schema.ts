@@ -1,4 +1,4 @@
-import { pgTable, pgEnum, primaryKey, text, numeric, date, timestamp, integer, boolean, index, unique } from "drizzle-orm/pg-core";
+import { pgTable, pgEnum, primaryKey, text, numeric, date, timestamp, integer, boolean, index, unique, jsonb } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
 // Shared enum for the two flavours of money movement.
@@ -108,6 +108,9 @@ export const recurring = pgTable(
     commitmentType: text("commitment_type").notNull().default("other"), // subscription | bill | emi | other
     autoPost: boolean("auto_post").notNull().default(true), // false = remind to log (variable bills)
     totalAmount: numeric("total_amount", { precision: 14, scale: 2 }), // optional EMI total
+    // Append-only log of price changes — each entry is the amount that became
+    // effective at `at` (ISO). Additive column; existing rows default to [].
+    priceHistory: jsonb("price_history").$type<{ amount: number; at: string }[]>().notNull().default([]),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (t) => [index("recurring_ws_idx").on(t.workspaceId)],
