@@ -1,6 +1,6 @@
 import { Redirect, Tabs, useRouter } from "expo-router";
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
-import { Pressable, StyleSheet, View } from "react-native";
+import { LayoutAnimation, Platform, Pressable, StyleSheet, Text, UIManager, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { BlurView } from "expo-blur";
 import { Feather } from "@expo/vector-icons";
@@ -9,15 +9,20 @@ import { Loading } from "@/components/ui";
 import { tapLight } from "@/lib/haptics";
 import { colors } from "@/lib/theme";
 
+if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
+
 const ICONS: Record<string, keyof typeof Feather.glyphMap> = {
   home: "home",
   activity: "list",
   insights: "bar-chart-2",
   more: "menu",
 };
+const LABELS: Record<string, string> = { home: "Home", activity: "Activity", insights: "Insights", more: "More" };
 
-/** Floating iOS "liquid glass" tab bar: a blurred dark pill that hovers over the
-    content, a highlighted active capsule, and a brand "+" in the centre. */
+/** Floating liquid-glass tab bar where the active tab smoothly expands into a
+    labelled pill (icon -> icon + label), with a glowing brand "+" in the centre. */
 function GlassTabBar({ state, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -28,6 +33,7 @@ function GlassTabBar({ state, navigation }: BottomTabBarProps) {
     const focused = state.index === index;
     const onPress = () => {
       tapLight();
+      LayoutAnimation.configureNext(LayoutAnimation.create(260, LayoutAnimation.Types.easeInEaseOut, LayoutAnimation.Properties.opacity));
       const event = navigation.emit({ type: "tabPress", target: route.key, canPreventDefault: true });
       if (!focused && !event.defaultPrevented) navigation.navigate(route.name);
     };
@@ -40,6 +46,11 @@ function GlassTabBar({ state, navigation }: BottomTabBarProps) {
         style={[styles.item, focused && styles.itemActive]}
       >
         <Feather name={ICONS[route.name] ?? "circle"} size={22} color={focused ? "#ffffff" : "rgba(255,255,255,0.55)"} />
+        {focused ? (
+          <Text style={styles.label} numberOfLines={1}>
+            {LABELS[route.name] ?? route.name}
+          </Text>
+        ) : null}
       </Pressable>
     );
   };
@@ -94,27 +105,28 @@ const styles = StyleSheet.create({
     borderRadius: 40,
     overflow: "hidden",
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(255,255,255,0.16)",
+    borderColor: "rgba(255,255,255,0.18)",
     backgroundColor: "rgba(20,20,22,0.20)",
     shadowColor: "#000000",
-    shadowOpacity: 0.32,
+    shadowOpacity: 0.34,
     shadowRadius: 18,
     shadowOffset: { width: 0, height: 8 },
     elevation: 14,
   },
-  item: { width: 50, height: 44, alignItems: "center", justifyContent: "center", borderRadius: 22 },
-  itemActive: { width: 58, backgroundColor: "rgba(255,255,255,0.18)" },
+  item: { flexDirection: "row", alignItems: "center", height: 44, paddingHorizontal: 13, borderRadius: 22 },
+  itemActive: { backgroundColor: "rgba(255,255,255,0.16)", paddingHorizontal: 15 },
+  label: { color: "#ffffff", fontSize: 13, fontWeight: "700", marginLeft: 7 },
   add: {
     width: 46,
     height: 46,
     borderRadius: 23,
-    marginHorizontal: 3,
+    marginHorizontal: 4,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: colors.green,
     shadowColor: colors.green,
-    shadowOpacity: 0.5,
-    shadowRadius: 8,
+    shadowOpacity: 0.55,
+    shadowRadius: 10,
     shadowOffset: { width: 0, height: 3 },
   },
 });

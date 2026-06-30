@@ -270,7 +270,7 @@ export function Dashboard({
         className="fixed inset-x-0 bottom-0 z-40 flex justify-center px-3 sm:hidden"
         style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 0.6rem)" }}
       >
-        <nav className="flex max-w-[calc(100vw-1.5rem)] items-center gap-0.5 rounded-full border border-white/15 bg-black/35 p-1.5 shadow-[0_8px_30px_rgba(0,0,0,0.4)] backdrop-blur-2xl backdrop-saturate-150">
+        <nav className="flex max-w-[calc(100vw-1.5rem)] items-center gap-0.5 rounded-full border border-white/15 bg-black/35 p-1.5 shadow-[0_12px_36px_rgba(0,0,0,0.45),inset_0_1px_0_rgba(255,255,255,0.18)] backdrop-blur-2xl backdrop-saturate-150">
           {glassTab(tab === "overview", House, "Home", () => changeTab("overview"))}
           {glassTab(tab === "transactions", Receipt, "Activity", () => changeTab("transactions"))}
           {canEdit && (
@@ -342,11 +342,19 @@ function glassTab(active: boolean, Icon: LucideIcon, label: string, onClick: () 
       aria-label={label}
       aria-current={active ? "page" : undefined}
       className={cn(
-        "flex shrink-0 items-center justify-center rounded-full transition-all duration-200 ease-out-quart active:scale-90",
-        active ? "bg-white/15 px-4 py-2.5" : "px-3 py-2.5",
+        "flex shrink-0 items-center rounded-full transition-all duration-300 ease-out-expo active:scale-90",
+        active ? "bg-white/15 px-3.5 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.18)]" : "px-3 py-2 hover:bg-white/5",
       )}
     >
-      <Icon className={cn("size-[1.3rem]", active ? "text-white" : "text-white/55")} strokeWidth={active ? 2.3 : 2} />
+      <Icon className={cn("size-[1.3rem] shrink-0 transition-colors duration-300", active ? "text-white" : "text-white/55")} strokeWidth={active ? 2.5 : 2} />
+      <span
+        className={cn(
+          "overflow-hidden text-[13px] font-semibold whitespace-nowrap text-white transition-all duration-300 ease-out-expo",
+          active ? "ml-1.5 max-w-[6rem] opacity-100" : "ml-0 max-w-0 opacity-0",
+        )}
+      >
+        {label}
+      </span>
     </button>
   );
 }
