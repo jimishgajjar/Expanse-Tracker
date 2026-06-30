@@ -263,14 +263,14 @@ export function Dashboard({
         )}
       </div>
 
-      {/* ── Mobile app chrome: a floating iOS "liquid glass" tab bar + More sheet.
-          Consistent dark blurred material with white icons, a highlighted active
-          capsule, and a brand "+" in the centre to add a transaction. ── */}
-      <div
-        className="fixed inset-x-0 bottom-0 z-40 flex justify-center px-3 sm:hidden"
-        style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 0.6rem)" }}
-      >
-        <nav className="flex max-w-[calc(100vw-1.5rem)] items-center gap-0.5 rounded-full border border-white/15 bg-black/35 p-1.5 shadow-[0_12px_36px_rgba(0,0,0,0.45),inset_0_1px_0_rgba(255,255,255,0.18)] backdrop-blur-2xl backdrop-saturate-150">
+      {/* ── Mobile app chrome: a full-width iOS "liquid glass" tab bar + More sheet.
+          Edge-to-edge dark blurred material with white icons, an expanding active
+          label, and a brand "+" in the centre to add a transaction. ── */}
+      <div className="fixed inset-x-0 bottom-0 z-40 sm:hidden">
+        <nav
+          className="flex items-center justify-around gap-0.5 rounded-t-[1.75rem] border-t border-white/12 bg-black/40 px-2 pt-2.5 shadow-[0_-10px_30px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.14)] backdrop-blur-2xl backdrop-saturate-150"
+          style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 0.6rem)" }}
+        >
           {glassTab(tab === "overview", House, "Home", () => changeTab("overview"))}
           {glassTab(tab === "transactions", Receipt, "Activity", () => changeTab("transactions"))}
           {canEdit && (
