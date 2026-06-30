@@ -130,6 +130,8 @@ export function Dashboard({
   const { resolvedTheme, setTheme } = useTheme();
   const showAuthors = members.length > 1;
   const liveAccounts = accounts.filter((a) => !a.archived);
+  // Which dock slot the sliding spotlight sits under (slot 2 is the centre "+").
+  const activeSlot = tab === "transactions" ? 1 : tab === "analytics" ? 3 : 0;
 
   // Persist the active tab in the URL without a server round-trip.
   function changeTab(t: Tab) {
@@ -263,34 +265,47 @@ export function Dashboard({
         )}
       </div>
 
-      {/* ── Mobile app chrome: a full-width iOS "liquid glass" tab bar + More sheet.
-          Edge-to-edge dark blurred material with white icons, an expanding active
-          label, and a brand "+" in the centre to add a transaction. ── */}
+      {/* ── Mobile app chrome: a full-width "liquid glass" dock + More sheet.
+          A single emerald spotlight glides under the active tab; the active icon
+          and label light up white, and a glowing brand "+" sits in the centre. ── */}
       <div className="fixed inset-x-0 bottom-0 z-40 sm:hidden">
         <nav
-          className="flex items-center justify-around gap-0.5 rounded-t-[1.75rem] border-t border-white/12 bg-black/40 px-2 pt-2.5 shadow-[0_-10px_30px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.14)] backdrop-blur-2xl backdrop-saturate-150"
+          className="relative flex items-start rounded-t-[1.75rem] border-t border-white/12 bg-black/40 px-2 pt-2.5 shadow-[0_-10px_30px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.14)] backdrop-blur-2xl backdrop-saturate-150"
           style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 0.6rem)" }}
         >
-          {glassTab(tab === "overview", House, "Home", () => changeTab("overview"))}
-          {glassTab(tab === "transactions", Receipt, "Activity", () => changeTab("transactions"))}
-          {canEdit && (
-            <TransactionDialog
-              accounts={liveAccounts}
-              categories={categories}
-              defaultType="expense"
-              trigger={
-                <button
-                  type="button"
-                  aria-label="Add transaction"
-                  className="mx-0.5 flex size-11 shrink-0 items-center justify-center rounded-full bg-brand text-brand-foreground shadow-md shadow-brand/40 transition-transform active:scale-90"
-                >
-                  <Plus className="size-[1.45rem]" />
-                </button>
-              }
-            />
-          )}
-          {glassTab(tab === "analytics", TrendingUp, "Insights", () => changeTab("analytics"))}
-          {glassTab(false, Menu, "More", () => setMoreOpen(true))}
+          {/* Sliding spotlight — one slot wide, glides under the active tab. */}
+          <div
+            aria-hidden
+            className="pointer-events-none absolute top-2.5 left-2 h-[3.25rem] w-[calc((100%-1rem)/5)] transition-transform duration-500 ease-out-expo"
+            style={{ transform: `translateX(calc(${activeSlot} * 100%))` }}
+          >
+            <div className="size-full rounded-[1.15rem] bg-brand/20 ring-1 ring-white/20 ring-inset shadow-[0_0_22px_rgba(16,185,129,0.28)]" />
+          </div>
+
+          {spotTab(tab === "overview", House, "Home", () => changeTab("overview"))}
+          {spotTab(tab === "transactions", Receipt, "Activity", () => changeTab("transactions"))}
+
+          <div className="relative z-10 flex h-[3.25rem] flex-1 items-center justify-center">
+            {canEdit && (
+              <TransactionDialog
+                accounts={liveAccounts}
+                categories={categories}
+                defaultType="expense"
+                trigger={
+                  <button
+                    type="button"
+                    aria-label="Add transaction"
+                    className="flex size-12 items-center justify-center rounded-2xl bg-brand text-brand-foreground shadow-[0_5px_18px_rgba(16,185,129,0.5)] ring-1 ring-white/15 transition-transform active:scale-90"
+                  >
+                    <Plus className="size-6" />
+                  </button>
+                }
+              />
+            )}
+          </div>
+
+          {spotTab(tab === "analytics", TrendingUp, "Insights", () => changeTab("analytics"))}
+          {spotTab(false, Menu, "More", () => setMoreOpen(true))}
         </nav>
       </div>
 
@@ -334,23 +349,23 @@ export function Dashboard({
   );
 }
 
-function glassTab(active: boolean, Icon: LucideIcon, label: string, onClick: () => void) {
+function spotTab(active: boolean, Icon: LucideIcon, label: string, onClick: () => void) {
   return (
     <button
       type="button"
       onClick={onClick}
       aria-label={label}
       aria-current={active ? "page" : undefined}
-      className={cn(
-        "flex shrink-0 items-center rounded-full transition-all duration-300 ease-out-expo active:scale-90",
-        active ? "bg-white/15 px-3.5 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.18)]" : "px-3 py-2 hover:bg-white/5",
-      )}
+      className="relative z-10 flex h-[3.25rem] flex-1 flex-col items-center justify-center gap-1 transition-transform active:scale-90"
     >
-      <Icon className={cn("size-[1.3rem] shrink-0 transition-colors duration-300", active ? "text-white" : "text-white/55")} strokeWidth={active ? 2.5 : 2} />
+      <Icon
+        className={cn("size-[1.35rem] transition-all duration-300", active ? "scale-110 text-white" : "text-white/45")}
+        strokeWidth={active ? 2.4 : 2}
+      />
       <span
         className={cn(
-          "overflow-hidden text-[13px] font-semibold whitespace-nowrap text-white transition-all duration-300 ease-out-expo",
-          active ? "ml-1.5 max-w-[6rem] opacity-100" : "ml-0 max-w-0 opacity-0",
+          "text-[10px] leading-none font-semibold transition-opacity duration-300",
+          active ? "text-white opacity-100" : "text-white opacity-0",
         )}
       >
         {label}
