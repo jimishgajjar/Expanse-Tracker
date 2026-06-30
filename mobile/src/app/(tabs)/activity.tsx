@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
-import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Feather } from "@expo/vector-icons";
 import { useApp } from "@/lib/store";
 import { Card, Loading } from "@/components/ui";
 import { TxRow } from "@/components/tx-row";
@@ -13,9 +14,18 @@ type Filter = "all" | "expense" | "income";
 export default function Activity() {
   const { data, loading, reload, money } = useApp();
   const [filter, setFilter] = useState<Filter>("all");
+  const [search, setSearch] = useState("");
 
   const groups = useMemo<[string, Transaction[]][]>(() => {
-    const txns = (data?.transactions ?? []).filter((t) => filter === "all" || t.type === filter);
+    const q = search.trim().toLowerCase();
+    const txns = (data?.transactions ?? []).filter((t) => {
+      if (filter !== "all" && t.type !== filter) return false;
+      if (q) {
+        const hay = `${t.note} ${t.category?.name ?? ""} ${t.account?.name ?? ""} ${(t.tags ?? []).map((tg) => tg.name).join(" ")}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
     const byDay = new Map<string, Transaction[]>();
     for (const t of txns) {
       const arr = byDay.get(t.date) ?? [];
@@ -23,7 +33,7 @@ export default function Activity() {
       byDay.set(t.date, arr);
     }
     return [...byDay.entries()].sort((a, b) => (a[0] < b[0] ? 1 : -1));
-  }, [data, filter]);
+  }, [data, filter, search]);
 
   if (!data) return <Loading />;
 
@@ -37,6 +47,23 @@ export default function Activity() {
               <Text style={[s.filterText, filter === f && s.filterTextActive]}>{f[0].toUpperCase() + f.slice(1)}</Text>
             </Pressable>
           ))}
+        </View>
+        <View style={s.searchWrap}>
+          <Feather name="search" size={16} color={colors.inkFaint} />
+          <TextInput
+            value={search}
+            onChangeText={setSearch}
+            placeholder="Search note, category, tag…"
+            placeholderTextColor={colors.inkFaint}
+            style={s.searchInput}
+            autoCapitalize="none"
+            returnKeyType="search"
+          />
+          {search ? (
+            <Pressable onPress={() => setSearch("")} hitSlop={8}>
+              <Feather name="x" size={16} color={colors.inkSoft} />
+            </Pressable>
+          ) : null}
         </View>
       </View>
       <ScrollView
@@ -73,7 +100,9 @@ export default function Activity() {
 const s = StyleSheet.create({
   head: { paddingHorizontal: 16, paddingTop: 8 },
   title: { fontSize: 30, fontWeight: "800", color: colors.ink, letterSpacing: -0.6, marginBottom: 14 },
-  filters: { flexDirection: "row", backgroundColor: colors.hover, borderRadius: radius.md, padding: 3, gap: 3, marginBottom: 4 },
+  filters: { flexDirection: "row", backgroundColor: colors.hover, borderRadius: radius.md, padding: 3, gap: 3, marginBottom: 10 },
+  searchWrap: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: colors.hover, borderRadius: radius.md, paddingHorizontal: 12, paddingVertical: 9, marginBottom: 4 },
+  searchInput: { flex: 1, fontSize: 15, color: colors.ink, padding: 0 },
   filter: { flex: 1, paddingVertical: 7, borderRadius: radius.sm, alignItems: "center" },
   filterActive: { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border },
   filterText: { fontSize: 13, fontWeight: "600", color: colors.inkSoft },

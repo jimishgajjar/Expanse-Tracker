@@ -23,7 +23,13 @@ export function TxRow({ tx, fmt }: { tx: Transaction; fmt: { signed: (n: number)
         backgroundColor: pressed ? colors.hover : "transparent",
       })}
     >
-      <IconBubble icon={tx.category?.icon ?? tx.account?.icon} label={tx.category?.name || tx.account?.name || "?"} color={tint} />
+      {tx.categoryId ? (
+        <Pressable onPress={() => router.push(`/category/${tx.categoryId}`)} hitSlop={6}>
+          <IconBubble icon={tx.category?.icon ?? tx.account?.icon} label={tx.category?.name || tx.account?.name || "?"} color={tint} />
+        </Pressable>
+      ) : (
+        <IconBubble icon={tx.category?.icon ?? tx.account?.icon} label={tx.category?.name || tx.account?.name || "?"} color={tint} />
+      )}
       <View style={{ flex: 1, minWidth: 0 }}>
         <Text style={{ fontSize: 15, fontWeight: "600", color: colors.ink }} numberOfLines={1}>
           {title}
