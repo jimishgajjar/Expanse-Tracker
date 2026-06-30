@@ -3,11 +3,9 @@
 import { useState } from "react";
 import {
   ArrowRightLeft,
-  ChevronRight,
   Download,
   Handshake,
   House,
-  Menu,
   Minus,
   Moon,
   Plus,
@@ -50,14 +48,34 @@ type Tab = "overview" | "transactions" | "analytics";
 
 /** Full-width row for the mobile "More" sheet. Returns a raw <button> so Base
     UI's <SheetTrigger render={...}> can clone it and wire up the open handler. */
-function moreRow(Icon: LucideIcon, label: string, tint: string) {
+/** One tile in the Control-Center launcher grid: a rounded icon square + label.
+    Used directly for tab/action tiles and as the `trigger` for manager dialogs. */
+function launchTile(
+  Icon: LucideIcon,
+  label: string,
+  tint: string,
+  opts: { active?: boolean; primary?: boolean; onClick?: () => void } = {},
+) {
   return (
-    <button type="button" className="press flex w-full items-center gap-3 rounded-xl px-2 py-2.5 text-left hover:bg-accent">
-      <span className="grid size-9 shrink-0 place-items-center rounded-[10px] text-white" style={{ backgroundColor: tint }}>
-        <Icon className="size-[18px]" />
+    <button
+      type="button"
+      onClick={opts.onClick}
+      aria-label={label}
+      className={cn(
+        "press flex flex-col items-center gap-2 rounded-2xl p-2.5 transition-colors",
+        opts.active ? "bg-white/10 ring-1 ring-brand/60" : "hover:bg-white/5",
+      )}
+    >
+      <span
+        className={cn(
+          "grid size-[3.25rem] place-items-center rounded-[1.1rem] text-white",
+          opts.primary ? "shadow-[0_6px_18px_rgba(16,185,129,0.5)]" : "shadow-sm",
+        )}
+        style={{ backgroundColor: tint }}
+      >
+        <Icon className="size-6" />
       </span>
-      <span className="flex-1 text-[15px] font-medium">{label}</span>
-      <ChevronRight className="size-4 text-muted-foreground" />
+      <span className="text-center text-[11.5px] leading-tight font-medium text-white/85">{label}</span>
     </button>
   );
 }
@@ -126,12 +144,18 @@ export function Dashboard({
   initialTab: Tab;
 }) {
   const [tab, setTab] = useState<Tab>(initialTab);
-  const [moreOpen, setMoreOpen] = useState(false);
+  const [launcherOpen, setLauncherOpen] = useState(false);
   const { resolvedTheme, setTheme } = useTheme();
   const showAuthors = members.length > 1;
   const liveAccounts = accounts.filter((a) => !a.archived);
-  // Which dock slot the sliding spotlight sits under (slot 2 is the centre "+").
-  const activeSlot = tab === "transactions" ? 1 : tab === "analytics" ? 3 : 0;
+  // The launcher grabber reflects the section you're currently viewing.
+  const current =
+    tab === "transactions"
+      ? { Icon: Receipt, label: "Activity" }
+      : tab === "analytics"
+        ? { Icon: TrendingUp, label: "Insights" }
+        : { Icon: House, label: "Overview" };
+  const CurrentIcon = current.Icon;
 
   // Persist the active tab in the URL without a server round-trip.
   function changeTab(t: Tab) {
@@ -265,111 +289,90 @@ export function Dashboard({
         )}
       </div>
 
-      {/* ── Mobile app chrome: a full-width "liquid glass" dock + More sheet.
-          A single emerald spotlight glides under the active tab; the active icon
-          and label light up white, and a glowing brand "+" sits in the centre. ── */}
-      <div className="fixed inset-x-0 bottom-0 z-40 sm:hidden">
-        <nav
-          className="relative flex items-start rounded-t-[1.75rem] border-t border-white/12 bg-black/40 px-2 pt-2.5 shadow-[0_-10px_30px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.14)] backdrop-blur-2xl backdrop-saturate-150"
-          style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 0.6rem)" }}
+      {/* ── Mobile nav: a "Control Center" launcher. A frosted grabber sits at the
+          bottom; tapping it raises a grid of every destination. Mobile only — the
+          desktop action row + tab list above cover navigation on larger screens. ── */}
+      <div
+        className="fixed inset-x-0 bottom-0 z-40 flex justify-center sm:hidden"
+        style={{ paddingBottom: "max(0.55rem, env(safe-area-inset-bottom))" }}
+      >
+        <button
+          type="button"
+          onClick={() => setLauncherOpen(true)}
+          aria-label="Open navigation"
+          aria-haspopup="dialog"
+          className="press flex items-center gap-2.5 rounded-full border border-white/15 bg-black/45 py-2.5 pr-3 pl-4 text-white shadow-[0_10px_30px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.16)] backdrop-blur-2xl backdrop-saturate-150"
         >
-          {/* Sliding spotlight — one slot wide, glides under the active tab. */}
-          <div
-            aria-hidden
-            className="pointer-events-none absolute top-2.5 left-2 h-[3.25rem] w-[calc((100%-1rem)/5)] transition-transform duration-500 ease-out-expo"
-            style={{ transform: `translateX(calc(${activeSlot} * 100%))` }}
-          >
-            <div className="size-full rounded-[1.15rem] bg-brand/20 ring-1 ring-white/20 ring-inset shadow-[0_0_22px_rgba(16,185,129,0.28)]" />
-          </div>
+          <CurrentIcon className="size-[1.15rem]" />
+          <span className="text-[13px] font-semibold whitespace-nowrap">{current.label}</span>
+          <span className="ml-0.5 grid grid-cols-2 gap-[3px]" aria-hidden>
+            <i className="size-[5px] rounded-[1.5px] bg-white/75" />
+            <i className="size-[5px] rounded-[1.5px] bg-white/75" />
+            <i className="size-[5px] rounded-[1.5px] bg-white/75" />
+            <i className="size-[5px] rounded-[1.5px] bg-white/75" />
+          </span>
+        </button>
+      </div>
 
-          {spotTab(tab === "overview", House, "Home", () => changeTab("overview"))}
-          {spotTab(tab === "transactions", Receipt, "Activity", () => changeTab("transactions"))}
-
-          <div className="relative z-10 flex h-[3.25rem] flex-1 items-center justify-center">
+      <Sheet open={launcherOpen} onOpenChange={setLauncherOpen}>
+        <SheetContent
+          side="bottom"
+          className="rounded-t-3xl border-t border-white/10 bg-neutral-900/85 text-white backdrop-blur-xl sm:hidden"
+          style={{ paddingBottom: "max(1rem, env(safe-area-inset-bottom))" }}
+        >
+          <SheetHeader className="pb-2">
+            <SheetTitle className="text-center text-[13px] font-medium text-white/55">{workspaceName}</SheetTitle>
+          </SheetHeader>
+          <div className="grid max-h-[70dvh] grid-cols-3 gap-1.5 overflow-y-auto px-1.5 pb-2">
+            {launchTile(House, "Overview", "#0f7b6c", {
+              active: tab === "overview",
+              onClick: () => {
+                changeTab("overview");
+                setLauncherOpen(false);
+              },
+            })}
+            {launchTile(Receipt, "Activity", "#0b6e99", {
+              active: tab === "transactions",
+              onClick: () => {
+                changeTab("transactions");
+                setLauncherOpen(false);
+              },
+            })}
+            {launchTile(TrendingUp, "Insights", "#6940a5", {
+              active: tab === "analytics",
+              onClick: () => {
+                changeTab("analytics");
+                setLauncherOpen(false);
+              },
+            })}
             {canEdit && (
               <TransactionDialog
                 accounts={liveAccounts}
                 categories={categories}
                 defaultType="expense"
-                trigger={
-                  <button
-                    type="button"
-                    aria-label="Add transaction"
-                    className="flex size-12 items-center justify-center rounded-2xl bg-brand text-brand-foreground shadow-[0_5px_18px_rgba(16,185,129,0.5)] ring-1 ring-white/15 transition-transform active:scale-90"
-                  >
-                    <Plus className="size-6" />
-                  </button>
-                }
+                trigger={launchTile(Plus, "Add", "#047857", { primary: true })}
               />
             )}
-          </div>
-
-          {spotTab(tab === "analytics", TrendingUp, "Insights", () => changeTab("analytics"))}
-          {spotTab(false, Menu, "More", () => setMoreOpen(true))}
-        </nav>
-      </div>
-
-      <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
-        <SheetContent side="bottom" className="rounded-t-2xl sm:hidden" style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}>
-          <SheetHeader className="pb-1">
-            <SheetTitle>More</SheetTitle>
-          </SheetHeader>
-          <div className="grid gap-0.5 px-2 pb-2">
-            {canEdit && <CategoryManager categories={categories} trigger={moreRow(Tags, "Categories", "#0b6e99")} />}
+            {canEdit && <CategoryManager categories={categories} trigger={launchTile(Tags, "Categories", "#0b6e99")} />}
             {canEdit && (
-              <RecurringManager recurring={recurring} accounts={liveAccounts} categories={categories} trigger={moreRow(Repeat, "Subscriptions & bills", "#6940a5")} />
+              <RecurringManager recurring={recurring} accounts={liveAccounts} categories={categories} trigger={launchTile(Repeat, "Subscriptions", "#6940a5")} />
             )}
-            <GoalsManager goals={goals} trigger={moreRow(Target, "Savings goals", "#0f7b6c")} />
-            <SplitManager data={split} trigger={moreRow(Handshake, "Split expenses", "#dd6b20")} />
-            <MembersManager members={members} invites={invites} currentEmail={userEmail} workspaceName={workspaceName} isOwner={isOwner} trigger={moreRow(Users, "Sharing", "#d53f8c")} />
-            <SettingsDialog currencyCode={currencyCode} userEmail={userEmail} trigger={moreRow(Settings, "Settings", "#787774")} />
-            <button
-              type="button"
-              onClick={() => { setMoreOpen(false); window.location.assign("/api/export"); }}
-              className="press flex w-full items-center gap-3 rounded-xl px-2 py-2.5 text-left hover:bg-accent"
-            >
-              <span className="grid size-9 shrink-0 place-items-center rounded-[10px] bg-[#0f7b6c] text-white"><Download className="size-[18px]" /></span>
-              <span className="flex-1 text-[15px] font-medium">Export to Excel</span>
-              <ChevronRight className="size-4 text-muted-foreground" />
-            </button>
-            <button
-              type="button"
-              onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
-              className="press flex w-full items-center gap-3 rounded-xl px-2 py-2.5 text-left hover:bg-accent"
-            >
-              <span className="grid size-9 shrink-0 place-items-center rounded-[10px] bg-foreground/80 text-background">
-                {resolvedTheme === "dark" ? <Sun className="size-[18px]" /> : <Moon className="size-[18px]" />}
-              </span>
-              <span className="flex-1 text-[15px] font-medium">{resolvedTheme === "dark" ? "Light mode" : "Dark mode"}</span>
-            </button>
+            <GoalsManager goals={goals} trigger={launchTile(Target, "Goals", "#0f7b6c")} />
+            <SplitManager data={split} trigger={launchTile(Handshake, "Split", "#dd6b20")} />
+            <MembersManager members={members} invites={invites} currentEmail={userEmail} workspaceName={workspaceName} isOwner={isOwner} trigger={launchTile(Users, "Sharing", "#d53f8c")} />
+            <SettingsDialog currencyCode={currencyCode} userEmail={userEmail} trigger={launchTile(Settings, "Settings", "#787774")} />
+            {launchTile(Download, "Export", "#0b6e99", {
+              onClick: () => {
+                setLauncherOpen(false);
+                window.location.assign("/api/export");
+              },
+            })}
+            {launchTile(resolvedTheme === "dark" ? Sun : Moon, resolvedTheme === "dark" ? "Light" : "Dark", "#3f3f46", {
+              onClick: () => setTheme(resolvedTheme === "dark" ? "light" : "dark"),
+            })}
           </div>
         </SheetContent>
       </Sheet>
     </SettingsProvider>
-  );
-}
-
-function spotTab(active: boolean, Icon: LucideIcon, label: string, onClick: () => void) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-label={label}
-      aria-current={active ? "page" : undefined}
-      className="relative z-10 flex h-[3.25rem] flex-1 flex-col items-center justify-center gap-1 transition-transform active:scale-90"
-    >
-      <Icon
-        className={cn("size-[1.35rem] transition-all duration-300", active ? "scale-110 text-white" : "text-white/45")}
-        strokeWidth={active ? 2.4 : 2}
-      />
-      <span
-        className={cn(
-          "text-[10px] leading-none font-semibold transition-opacity duration-300",
-          active ? "text-white opacity-100" : "text-white opacity-0",
-        )}
-      >
-        {label}
-      </span>
-    </button>
   );
 }
