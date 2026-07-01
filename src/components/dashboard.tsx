@@ -3,9 +3,11 @@
 import { useState } from "react";
 import {
   ArrowRightLeft,
+  ChevronRight,
   Download,
   Handshake,
   House,
+  Menu,
   Minus,
   Moon,
   Plus,
@@ -48,34 +50,39 @@ type Tab = "overview" | "transactions" | "analytics";
 
 /** Full-width row for the mobile "More" sheet. Returns a raw <button> so Base
     UI's <SheetTrigger render={...}> can clone it and wire up the open handler. */
-/** One tile in the Control-Center launcher grid: a rounded icon square + label.
-    Used directly for tab/action tiles and as the `trigger` for manager dialogs. */
-function launchTile(
-  Icon: LucideIcon,
-  label: string,
-  tint: string,
-  opts: { active?: boolean; primary?: boolean; onClick?: () => void } = {},
-) {
+/** One tab in the always-visible bottom bar: an icon over a label, with a soft
+    emerald pill behind the active section. */
+function tabItem(active: boolean, Icon: LucideIcon, label: string, onClick: () => void) {
   return (
     <button
       type="button"
-      onClick={opts.onClick}
+      onClick={onClick}
       aria-label={label}
-      className={cn(
-        "press flex flex-col items-center gap-2 rounded-2xl p-2.5 transition-colors",
-        opts.active ? "bg-white/10 ring-1 ring-brand/60" : "hover:bg-white/5",
-      )}
+      aria-current={active ? "page" : undefined}
+      className="flex flex-1 flex-col items-center justify-center transition-transform active:scale-95"
     >
       <span
         className={cn(
-          "grid size-[3.25rem] place-items-center rounded-[1.1rem] text-white",
-          opts.primary ? "shadow-[0_6px_18px_rgba(16,185,129,0.5)]" : "shadow-sm",
+          "flex flex-col items-center gap-1 rounded-2xl px-3 py-1.5 transition-colors",
+          active ? "bg-brand/15 text-brand" : "text-muted-foreground",
         )}
-        style={{ backgroundColor: tint }}
       >
-        <Icon className="size-6" />
+        <Icon className="size-[1.4rem]" strokeWidth={active ? 2.3 : 2} />
+        <span className="text-[10.5px] font-medium">{label}</span>
       </span>
-      <span className="text-center text-[11.5px] leading-tight font-medium text-white/85">{label}</span>
+    </button>
+  );
+}
+
+/** One row in the "More" sheet: a tinted icon square, a label, and a chevron. */
+function moreRow(Icon: LucideIcon, label: string, tint: string) {
+  return (
+    <button type="button" className="press flex w-full items-center gap-3 rounded-xl px-2 py-2.5 text-left hover:bg-accent">
+      <span className="grid size-9 shrink-0 place-items-center rounded-[10px] text-white" style={{ backgroundColor: tint }}>
+        <Icon className="size-[18px]" />
+      </span>
+      <span className="flex-1 text-[15px] font-medium">{label}</span>
+      <ChevronRight className="size-4 text-muted-foreground" />
     </button>
   );
 }
@@ -144,18 +151,10 @@ export function Dashboard({
   initialTab: Tab;
 }) {
   const [tab, setTab] = useState<Tab>(initialTab);
-  const [launcherOpen, setLauncherOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
   const { resolvedTheme, setTheme } = useTheme();
   const showAuthors = members.length > 1;
   const liveAccounts = accounts.filter((a) => !a.archived);
-  // The launcher grabber reflects the section you're currently viewing.
-  const current =
-    tab === "transactions"
-      ? { Icon: Receipt, label: "Activity" }
-      : tab === "analytics"
-        ? { Icon: TrendingUp, label: "Insights" }
-        : { Icon: House, label: "Overview" };
-  const CurrentIcon = current.Icon;
 
   // Persist the active tab in the URL without a server round-trip.
   function changeTab(t: Tab) {
@@ -289,87 +288,78 @@ export function Dashboard({
         )}
       </div>
 
-      {/* ── Mobile nav: a "Control Center" launcher. A frosted grabber sits at the
-          bottom; tapping it raises a grid of every destination. Mobile only — the
+      {/* ── Mobile nav: a clean, always-visible labeled tab bar — one tap to any
+          section. "More" opens a sheet with the secondary tools. Mobile only; the
           desktop action row + tab list above cover navigation on larger screens. ── */}
-      <div
-        className="fixed inset-x-0 bottom-0 z-40 flex justify-center sm:hidden"
-        style={{ paddingBottom: "max(0.55rem, env(safe-area-inset-bottom))" }}
-      >
-        <button
-          type="button"
-          onClick={() => setLauncherOpen(true)}
-          aria-label="Open navigation"
-          aria-haspopup="dialog"
-          className="press flex items-center gap-2.5 rounded-full border border-white/15 bg-black/45 py-2.5 pr-3 pl-4 text-white shadow-[0_10px_30px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.16)] backdrop-blur-2xl backdrop-saturate-150"
+      <div className="fixed inset-x-0 bottom-0 z-40 sm:hidden">
+        <nav
+          className="flex items-stretch justify-around border-t border-border bg-background/90 px-1 pt-1.5 backdrop-blur-lg"
+          style={{ paddingBottom: "max(0.4rem, env(safe-area-inset-bottom))" }}
         >
-          <CurrentIcon className="size-[1.15rem]" />
-          <span className="text-[13px] font-semibold whitespace-nowrap">{current.label}</span>
-          <span className="ml-0.5 grid grid-cols-2 gap-[3px]" aria-hidden>
-            <i className="size-[5px] rounded-[1.5px] bg-white/75" />
-            <i className="size-[5px] rounded-[1.5px] bg-white/75" />
-            <i className="size-[5px] rounded-[1.5px] bg-white/75" />
-            <i className="size-[5px] rounded-[1.5px] bg-white/75" />
-          </span>
-        </button>
+          {tabItem(tab === "overview", House, "Home", () => changeTab("overview"))}
+          {tabItem(tab === "transactions", Receipt, "Activity", () => changeTab("transactions"))}
+          {canEdit ? (
+            <TransactionDialog
+              accounts={liveAccounts}
+              categories={categories}
+              defaultType="expense"
+              trigger={
+                <button
+                  type="button"
+                  aria-label="Add transaction"
+                  className="flex flex-1 flex-col items-center justify-center transition-transform active:scale-95"
+                >
+                  <span className="flex flex-col items-center gap-1 rounded-2xl px-3 py-1.5 text-muted-foreground">
+                    <Plus className="size-[1.4rem]" />
+                    <span className="text-[10.5px] font-medium">Add</span>
+                  </span>
+                </button>
+              }
+            />
+          ) : (
+            <span className="flex-1" />
+          )}
+          {tabItem(tab === "analytics", TrendingUp, "Insights", () => changeTab("analytics"))}
+          {tabItem(false, Menu, "More", () => setMoreOpen(true))}
+        </nav>
       </div>
 
-      <Sheet open={launcherOpen} onOpenChange={setLauncherOpen}>
-        <SheetContent
-          side="bottom"
-          className="rounded-t-3xl border-t border-white/10 bg-neutral-900/85 text-white backdrop-blur-xl sm:hidden"
-          style={{ paddingBottom: "max(1rem, env(safe-area-inset-bottom))" }}
-        >
-          <SheetHeader className="pb-2">
-            <SheetTitle className="text-center text-[13px] font-medium text-white/55">{workspaceName}</SheetTitle>
+      <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
+        <SheetContent side="bottom" className="rounded-t-2xl sm:hidden" style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}>
+          <SheetHeader className="pb-1">
+            <SheetTitle>More</SheetTitle>
           </SheetHeader>
-          <div className="grid max-h-[70dvh] grid-cols-3 gap-1.5 overflow-y-auto px-1.5 pb-2">
-            {launchTile(House, "Overview", "#0f7b6c", {
-              active: tab === "overview",
-              onClick: () => {
-                changeTab("overview");
-                setLauncherOpen(false);
-              },
-            })}
-            {launchTile(Receipt, "Activity", "#0b6e99", {
-              active: tab === "transactions",
-              onClick: () => {
-                changeTab("transactions");
-                setLauncherOpen(false);
-              },
-            })}
-            {launchTile(TrendingUp, "Insights", "#6940a5", {
-              active: tab === "analytics",
-              onClick: () => {
-                changeTab("analytics");
-                setLauncherOpen(false);
-              },
-            })}
+          <div className="grid gap-0.5 px-2 pb-2">
+            {canEdit && <CategoryManager categories={categories} trigger={moreRow(Tags, "Categories", "#0b6e99")} />}
             {canEdit && (
-              <TransactionDialog
-                accounts={liveAccounts}
-                categories={categories}
-                defaultType="expense"
-                trigger={launchTile(Plus, "Add", "#047857", { primary: true })}
-              />
+              <RecurringManager recurring={recurring} accounts={liveAccounts} categories={categories} trigger={moreRow(Repeat, "Subscriptions & bills", "#6940a5")} />
             )}
-            {canEdit && <CategoryManager categories={categories} trigger={launchTile(Tags, "Categories", "#0b6e99")} />}
-            {canEdit && (
-              <RecurringManager recurring={recurring} accounts={liveAccounts} categories={categories} trigger={launchTile(Repeat, "Subscriptions", "#6940a5")} />
-            )}
-            <GoalsManager goals={goals} trigger={launchTile(Target, "Goals", "#0f7b6c")} />
-            <SplitManager data={split} trigger={launchTile(Handshake, "Split", "#dd6b20")} />
-            <MembersManager members={members} invites={invites} currentEmail={userEmail} workspaceName={workspaceName} isOwner={isOwner} trigger={launchTile(Users, "Sharing", "#d53f8c")} />
-            <SettingsDialog currencyCode={currencyCode} userEmail={userEmail} trigger={launchTile(Settings, "Settings", "#787774")} />
-            {launchTile(Download, "Export", "#0b6e99", {
-              onClick: () => {
-                setLauncherOpen(false);
+            <GoalsManager goals={goals} trigger={moreRow(Target, "Savings goals", "#0f7b6c")} />
+            <SplitManager data={split} trigger={moreRow(Handshake, "Split expenses", "#dd6b20")} />
+            <MembersManager members={members} invites={invites} currentEmail={userEmail} workspaceName={workspaceName} isOwner={isOwner} trigger={moreRow(Users, "Sharing", "#d53f8c")} />
+            <SettingsDialog currencyCode={currencyCode} userEmail={userEmail} trigger={moreRow(Settings, "Settings", "#787774")} />
+            <button
+              type="button"
+              onClick={() => {
+                setMoreOpen(false);
                 window.location.assign("/api/export");
-              },
-            })}
-            {launchTile(resolvedTheme === "dark" ? Sun : Moon, resolvedTheme === "dark" ? "Light" : "Dark", "#3f3f46", {
-              onClick: () => setTheme(resolvedTheme === "dark" ? "light" : "dark"),
-            })}
+              }}
+              className="press flex w-full items-center gap-3 rounded-xl px-2 py-2.5 text-left hover:bg-accent"
+            >
+              <span className="grid size-9 shrink-0 place-items-center rounded-[10px] bg-[#0f7b6c] text-white"><Download className="size-[18px]" /></span>
+              <span className="flex-1 text-[15px] font-medium">Export to Excel</span>
+              <ChevronRight className="size-4 text-muted-foreground" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+              className="press flex w-full items-center gap-3 rounded-xl px-2 py-2.5 text-left hover:bg-accent"
+            >
+              <span className="grid size-9 shrink-0 place-items-center rounded-[10px] bg-foreground/80 text-background">
+                {resolvedTheme === "dark" ? <Sun className="size-[18px]" /> : <Moon className="size-[18px]" />}
+              </span>
+              <span className="flex-1 text-[15px] font-medium">{resolvedTheme === "dark" ? "Light mode" : "Dark mode"}</span>
+            </button>
           </div>
         </SheetContent>
       </Sheet>
