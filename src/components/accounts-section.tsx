@@ -115,7 +115,7 @@ function AccountCard({
         </div>
       </Link>
       {canEdit && (
-        <div className="absolute top-2 right-2 flex opacity-100 transition sm:opacity-0 sm:group-hover:opacity-100">
+        <div className="absolute top-2 right-2 flex text-muted-foreground/70 transition sm:text-foreground sm:opacity-0 sm:group-hover:opacity-100">
           {a.archived ? (
             <Button size="icon-sm" variant="ghost" aria-label="Restore account" title="Restore" onClick={() => onArchive(a.id, false)}>
               <ArchiveRestore className="size-3.5" />

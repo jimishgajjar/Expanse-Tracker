@@ -99,7 +99,7 @@ function Row({
   showAuthors: boolean;
 }) {
   const isIncome = t.type === "income";
-  const color = t.category?.color ?? "#94a3b8";
+  const color = t.category?.color ?? "#9b9a97";
   return (
     <div className="group flex items-center gap-2.5 px-2.5 py-1.5">
       <span className="grid size-7 shrink-0 place-items-center rounded-md" style={{ backgroundColor: `${color}22`, color }}>
@@ -133,7 +133,7 @@ function Row({
         {isIncome ? "+" : "−"}{money(t.amount)}
       </div>
       {canEdit && (
-        <div className="-mr-1 flex shrink-0 opacity-100 transition sm:opacity-0 sm:focus-within:opacity-100 sm:group-hover:opacity-100">
+        <div className="-mr-1 flex shrink-0 text-muted-foreground/70 transition sm:text-foreground sm:opacity-0 sm:focus-within:opacity-100 sm:group-hover:opacity-100">
           <TransactionDialog
             transaction={t}
             accounts={accounts}
@@ -198,7 +198,7 @@ export function TransferRows({ transfers, accounts, canEdit = true }: { transfer
                   </div>
                   <div className="shrink-0 font-mono text-[13px] font-semibold tabular-nums">{money(t.amount)}</div>
                   {canEdit && (
-                    <div className="-mr-1 flex shrink-0 opacity-100 transition sm:opacity-0 sm:group-hover:opacity-100">
+                    <div className="-mr-1 flex shrink-0 text-muted-foreground/70 transition sm:text-foreground sm:opacity-0 sm:group-hover:opacity-100">
                       <ConfirmDialog
                         trigger={<Button size="icon-xs" variant="ghost" aria-label="Delete transfer"><Trash2 className="size-3" /></Button>}
                         title="Delete transfer?"

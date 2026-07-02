@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useFormat } from "@/components/settings-provider";
+import { cn } from "@/lib/utils";
 import { bucketize } from "@/lib/buckets";
 import type { RangeType } from "@/lib/dates";
 import type { TransactionDTO } from "@/lib/queries";
@@ -39,21 +40,46 @@ export function TrendChart({
         {data.length === 0 ? (
           <p className="py-16 text-center text-sm text-muted-foreground">No data in this period.</p>
         ) : (
-          <div className="flex h-[200px] items-stretch gap-1">
-            {data.map((d, i) => (
-              <div key={d.key} className="group flex min-w-0 flex-1 flex-col items-center gap-1">
-                <div
-                  className="flex w-full grow items-end justify-center gap-0.5"
-                  title={`${d.label} · income ${money(d.income)} · expense ${money(d.expense)}`}
-                >
-                  <div className="w-1/2 max-w-[14px] rounded-t-sm bg-positive transition-opacity group-hover:opacity-80" style={{ height: `${(d.income / max) * 100}%` }} />
-                  <div className="w-1/2 max-w-[14px] rounded-t-sm bg-negative transition-opacity group-hover:opacity-80" style={{ height: `${(d.expense / max) * 100}%` }} />
-                </div>
-                <span className="h-3 w-full truncate text-center text-[9px] leading-3 text-muted-foreground">
+          <div>
+            {/* Plot area: hairline gridlines + a solid baseline ground the bars. */}
+            <div className="relative">
+              <div aria-hidden className="pointer-events-none absolute inset-0 flex flex-col justify-between">
+                <span className="border-t border-border/70" />
+                <span className="border-t border-border/50" />
+                <span className="border-t border-border/50" />
+                <span className="border-t border-border/50" />
+                <span />
+              </div>
+              <span aria-hidden className="pointer-events-none absolute -top-0.5 right-0 rounded bg-card px-1 text-[10px] leading-4 text-muted-foreground">
+                {money(max)}
+              </span>
+              <div className="relative flex h-[200px] items-stretch gap-1">
+                {data.map((d) => (
+                  <div
+                    key={d.key}
+                    className="group flex min-w-0 flex-1 items-end justify-center gap-0.5"
+                    title={`${d.label} · income ${money(d.income)} · expense ${money(d.expense)}`}
+                  >
+                    <div
+                      className={cn("w-1/2 max-w-[18px] rounded-t-[3px] bg-positive transition-opacity group-hover:opacity-75", d.income > 0 && "min-h-[3px]")}
+                      style={{ height: `${(d.income / max) * 100}%` }}
+                    />
+                    <div
+                      className={cn("w-1/2 max-w-[18px] rounded-t-[3px] bg-negative transition-opacity group-hover:opacity-75", d.expense > 0 && "min-h-[3px]")}
+                      style={{ height: `${(d.expense / max) * 100}%` }}
+                    />
+                  </div>
+                ))}
+              </div>
+              <div aria-hidden className="border-t border-border" />
+            </div>
+            <div className="mt-1 flex gap-1">
+              {data.map((d, i) => (
+                <span key={d.key} className="h-3 min-w-0 flex-1 truncate text-center text-[9px] leading-3 text-muted-foreground">
                   {i % labelStep === 0 ? d.label : ""}
                 </span>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         )}
       </CardContent>

@@ -20,13 +20,13 @@ export function VerifyBanner({ email }: { email: string }) {
   }
 
   return (
-    <div className="flex items-center gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm">
+    <div className="flex items-center gap-2.5 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[13px] sm:gap-3 sm:text-sm">
       <MailWarning className="size-4 shrink-0 text-amber-600 dark:text-amber-400" />
       <p className="min-w-0 flex-1">
-        Confirm your email (<span className="font-medium">{email}</span>) to unlock shared trackers.
+        Confirm your email<span className="hidden sm:inline"> (<span className="font-medium">{email}</span>)</span> to unlock shared trackers.
       </p>
-      <Button size="sm" variant="outline" onClick={resend} disabled={pending}>Resend</Button>
-      <Button size="icon-sm" variant="ghost" onClick={() => setDismissed(true)} aria-label="Dismiss"><X className="size-3.5" /></Button>
+      <Button size="sm" variant="outline" className="shrink-0" onClick={resend} disabled={pending}>Resend</Button>
+      <Button size="icon-sm" variant="ghost" className="shrink-0" onClick={() => setDismissed(true)} aria-label="Dismiss"><X className="size-3.5" /></Button>
     </div>
   );
 }

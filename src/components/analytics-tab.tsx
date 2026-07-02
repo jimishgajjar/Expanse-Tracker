@@ -71,7 +71,7 @@ export function AnalyticsTab({
       const note = t.note.trim();
       if (!note) continue;
       const key = note.toLowerCase();
-      const m = merchants.get(key) ?? { name: note, value: 0, count: 0, color: t.category?.color ?? "#94a3b8", icon: t.category?.icon ?? "circle-help" };
+      const m = merchants.get(key) ?? { name: note, value: 0, count: 0, color: t.category?.color ?? "#9b9a97", icon: t.category?.icon ?? "circle-help" };
       m.value += t.amount; m.count += 1; merchants.set(key, m);
     }
 
@@ -117,17 +117,19 @@ export function AnalyticsTab({
 
   return (
     <div className="space-y-5">
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      {/* One ledger lattice instead of eight identical cards: hairline-divided
+          cells, reading like a statement summary. */}
+      <div className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border bg-border sm:grid-cols-4">
         {stats.map((s) => (
-          <Card key={s.k} className="gap-0 p-3.5">
-            <div className="text-xs font-medium text-muted-foreground">{s.k}</div>
-            <div className={cn("mt-1.5 font-mono text-lg font-semibold tracking-tight sm:text-xl", s.tone)}>{s.v}</div>
+          <div key={s.k} className="bg-card p-3.5">
+            <div className="truncate text-xs font-medium text-muted-foreground">{s.k}</div>
+            <div className={cn("amount mt-1.5 truncate text-lg font-semibold tracking-tight sm:text-xl", s.tone)}>{s.v}</div>
             {s.delta != null && (
               <div className={cn("mt-1 text-[11px] font-medium", s.deltaGood ? "text-positive" : "text-negative")}>
                 {s.delta >= 0 ? "▲" : "▼"} {Math.abs(s.delta)}% vs last
               </div>
             )}
-          </Card>
+          </div>
         ))}
       </div>
 
@@ -155,7 +157,7 @@ export function AnalyticsTab({
             meta: t.account?.name ?? "—",
             value: `${t.type === "income" ? "+" : "−"}${money(t.amount)}`,
             valueClass: t.type === "income" ? "text-positive" : "text-negative",
-            color: t.category?.color ?? "#94a3b8",
+            color: t.category?.color ?? "#9b9a97",
             icon: t.category?.icon ?? "circle-help",
           }))}
         />
