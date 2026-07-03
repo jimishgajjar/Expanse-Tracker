@@ -3,7 +3,7 @@ import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
-import { format, parseISO } from "date-fns";
+import { differenceInCalendarDays, format, parseISO } from "date-fns";
 import { useApp } from "@/lib/store";
 import { api } from "@/lib/api";
 import { qk } from "@/lib/query";
@@ -50,24 +50,38 @@ export default function Subscriptions() {
               const acc = data?.accounts.find((a) => a.id === r.accountId);
               const color = cat?.color ?? acc?.color ?? colors.inkSoft;
               const title = r.note || cat?.name || (r.type === "income" ? "Income" : "Expense");
-              const sub = `${r.frequency} · next ${format(parseISO(r.nextDate), "d MMM")}${acc ? "  ·  " + acc.name : ""}`;
+              // The schedule gets its own full-width line so "next <date>" is never
+              // truncated away, plus a countdown that warms up as the charge nears.
+              const daysUntil = differenceInCalendarDays(parseISO(r.nextDate), new Date());
+              const due =
+                daysUntil < 0
+                  ? { label: "overdue", color: colors.red }
+                  : daysUntil === 0
+                    ? { label: "due today", color: colors.yellow }
+                    : daysUntil === 1
+                      ? { label: "due tomorrow", color: colors.yellow }
+                      : { label: `in ${daysUntil} days`, color: colors.inkFaint };
               return (
                 <View key={r.id} style={[s.row, i > 0 && s.divider]}>
-                  <IconBubble icon={cat?.icon ?? acc?.icon} color={color} size={36} />
-                  <View style={{ flex: 1, minWidth: 0 }}>
-                    <Text style={s.rowTitle} numberOfLines={1}>
+                  <View style={s.rowTop}>
+                    <IconBubble icon={cat?.icon ?? acc?.icon} color={color} size={36} />
+                    <Text style={[s.rowTitle, { flex: 1, minWidth: 0 }]} numberOfLines={1}>
                       {title}
                     </Text>
-                    <Text style={s.rowSub} numberOfLines={1}>
-                      {sub}
+                    <Text style={[s.amount, { color: r.type === "income" ? colors.green : colors.red }]}>
+                      {money.signed(r.type === "income" ? r.amount : -r.amount)}
                     </Text>
+                    <Pressable onPress={() => remove(r.id)} hitSlop={8} style={{ marginLeft: 10 }}>
+                      <Feather name="trash-2" size={16} color={colors.inkFaint} />
+                    </Pressable>
                   </View>
-                  <Text style={[s.amount, { color: r.type === "income" ? colors.green : colors.red }]}>
-                    {money.signed(r.type === "income" ? r.amount : -r.amount)}
-                  </Text>
-                  <Pressable onPress={() => remove(r.id)} hitSlop={8} style={{ marginLeft: 10 }}>
-                    <Feather name="trash-2" size={16} color={colors.inkFaint} />
-                  </Pressable>
+                  <View style={s.rowMeta}>
+                    <Text style={[s.rowSub, { flex: 1, minWidth: 0 }]} numberOfLines={1}>
+                      {r.frequency} · next <Text style={s.rowSubStrong}>{format(parseISO(r.nextDate), "EEE, d MMM")}</Text>
+                      {acc ? ` · ${acc.name}` : ""}
+                    </Text>
+                    <Text style={[s.rowSub, { color: due.color, fontWeight: daysUntil <= 1 ? "600" : "400" }]}>{due.label}</Text>
+                  </View>
                 </View>
               );
             })}
@@ -82,9 +96,12 @@ const s = StyleSheet.create({
   head: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 12, paddingVertical: 8 },
   title: { fontSize: 18, fontWeight: "700", color: colors.ink },
   empty: { color: colors.inkSoft, fontSize: 14, textAlign: "center", marginTop: 48, paddingHorizontal: 24 },
-  row: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 11, paddingHorizontal: 12 },
+  row: { paddingVertical: 11, paddingHorizontal: 12, gap: 7 },
+  rowTop: { flexDirection: "row", alignItems: "center", gap: 12 },
+  rowMeta: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10 },
   divider: { borderTopWidth: 1, borderTopColor: colors.border },
   rowTitle: { fontSize: 15, fontWeight: "600", color: colors.ink },
-  rowSub: { fontSize: 13, color: colors.inkSoft, marginTop: 1 },
-  amount: { fontSize: 15, fontWeight: "700" },
+  rowSub: { fontSize: 13, color: colors.inkSoft },
+  rowSubStrong: { color: colors.ink, fontWeight: "600" },
+  amount: { fontSize: 15, fontWeight: "700", fontVariant: ["tabular-nums"] },
 });

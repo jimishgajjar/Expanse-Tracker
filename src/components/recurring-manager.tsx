@@ -3,7 +3,7 @@
 import { useState, useTransition, type ReactElement } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { format, parseISO } from "date-fns";
+import { differenceInCalendarDays, format, parseISO } from "date-fns";
 import { Bell, History, Pencil, Plus, Trash2, X } from "lucide-react";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -326,7 +326,7 @@ function RuleRow({
   const [editing, setEditing] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const cat = categories.find((c) => c.id === rule.categoryId);
-  const color = cat?.color ?? "#94a3b8";
+  const color = cat?.color ?? "#9b9a97";
   const hasHistory = rule.priceHistory.length > 1;
 
   async function remove() {
@@ -359,8 +359,18 @@ function RuleRow({
   const remainingAmt = rule.totalAmount != null ? Math.max(0, rule.totalAmount - paid * rule.amount) : Math.max(0, total - paid) * rule.amount;
   const pct = total > 0 ? Math.min(100, Math.round((paid / total) * 100)) : 0;
 
-  const meta: string[] = [`every ${rule.frequency.replace("ly", "")}`, `next ${rule.nextDate}`];
-  if (!rule.autoPost) meta.unshift("remind to log");
+  // The schedule is the point of this row — give it a full-width line that can
+  // never be squeezed out by the amount + actions, plus a countdown that turns
+  // amber as the charge gets close.
+  const daysUntil = differenceInCalendarDays(parseISO(rule.nextDate), new Date());
+  const due =
+    daysUntil < 0
+      ? { label: "overdue", tone: "text-negative font-medium" }
+      : daysUntil === 0
+        ? { label: "due today", tone: "text-amber-600 dark:text-amber-400 font-medium" }
+        : daysUntil === 1
+          ? { label: "due tomorrow", tone: "text-amber-600 dark:text-amber-400 font-medium" }
+          : { label: `in ${daysUntil} days`, tone: "text-muted-foreground" };
 
   return (
     <div className="rounded-lg border px-2.5 py-2">
@@ -379,7 +389,6 @@ function RuleRow({
             {rule.alertsEnabled && <Bell className="size-3 shrink-0 text-amber-500" aria-label="Alerts on" />}
             {hasHistory && <History className="size-3 shrink-0 text-muted-foreground" aria-label="Price has changed" />}
           </div>
-          <div className="truncate text-xs text-muted-foreground">{meta.join(" · ")}</div>
         </button>
         <span className={cn("amount shrink-0 text-sm font-semibold", rule.type === "income" ? "text-positive" : "text-negative")}>
           {rule.type === "income" ? "+" : "−"}{money(rule.amount)}
@@ -391,6 +400,14 @@ function RuleRow({
           title="Delete this item?"
           onConfirm={remove}
         />
+      </div>
+
+      <div className="mt-1.5 flex items-center justify-between gap-2 border-t border-dashed pt-1.5 pl-0.5 text-xs">
+        <span className="truncate text-muted-foreground">
+          {!rule.autoPost && "remind to log · "}
+          {rule.frequency} · next <span className="font-medium text-foreground">{format(parseISO(rule.nextDate), "EEE, d MMM")}</span>
+        </span>
+        <span className={cn("shrink-0", due.tone)}>{due.label}</span>
       </div>
 
       {isEmi && (
