@@ -92,7 +92,7 @@ export function AccountDetailView({
           <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search this account — note, category, tag…" className="pl-8" />
         </div>
 
-        <TransactionRows transactions={pageItems} accounts={accounts} categories={categories} canEdit={canEdit} emptyMessage={search ? "No transactions match your search." : "No transactions for this account yet."} />
+        <TransactionRows transactions={pageItems} allTransactions={filtered} accounts={accounts} categories={categories} canEdit={canEdit} emptyMessage={search ? "No transactions match your search." : "No transactions for this account yet."} />
 
         {total > pageSize && (
           <div className="mt-4 flex flex-col items-stretch gap-3 border-t pt-3 text-sm sm:flex-row sm:items-center sm:justify-between">

@@ -10,15 +10,25 @@ import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/icon";
 import { TransactionDialog } from "@/components/transaction-dialog";
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { createTransaction, deleteTransaction, deleteTransfer } from "@/lib/actions";
+import { createTransaction, createTransfer, deleteTransaction, deleteTransfer } from "@/lib/actions";
 import { useFormat } from "@/components/settings-provider";
 import { cn } from "@/lib/utils";
 import type { AccountDTO, CategoryDTO, TransactionDTO, TransferDTO } from "@/lib/queries";
 
-type Props = { transactions: TransactionDTO[]; accounts: AccountDTO[]; categories: CategoryDTO[]; canEdit?: boolean; showAuthors?: boolean; emptyMessage?: string };
+type Props = {
+  transactions: TransactionDTO[];
+  accounts: AccountDTO[];
+  categories: CategoryDTO[];
+  canEdit?: boolean;
+  showAuthors?: boolean;
+  emptyMessage?: string;
+  /** The full (unpaginated) filtered set. Daily nets are summed from this, so a
+      day split across two pages still shows its true total on both. */
+  allTransactions?: TransactionDTO[];
+};
 
 /** Presentational list: groups the given transactions by date and renders compact rows. */
-export function TransactionRows({ transactions, accounts, categories, canEdit = true, showAuthors = false, emptyMessage = "No transactions match these filters." }: Props) {
+export function TransactionRows({ transactions, accounts, categories, canEdit = true, showAuthors = false, emptyMessage = "No transactions match these filters.", allTransactions }: Props) {
   const router = useRouter();
   const { money } = useFormat();
   const [optimistic, removeOptimistic] = useOptimistic(transactions, (state: TransactionDTO[], id: string) => state.filter((t) => t.id !== id));
@@ -33,6 +43,13 @@ export function TransactionRows({ transactions, accounts, categories, canEdit = 
     return [...m.entries()].sort((a, b) => b[0].localeCompare(a[0]));
   }, [optimistic]);
 
+  const netSource = allTransactions ?? optimistic;
+  const dayNets = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const t of netSource) m.set(t.date, (m.get(t.date) ?? 0) + (t.type === "income" ? t.amount : -t.amount));
+    return m;
+  }, [netSource]);
+
   function remove(t: TransactionDTO) {
     startTransition(async () => {
       removeOptimistic(t.id); // vanish immediately
@@ -46,6 +63,7 @@ export function TransactionRows({ transactions, accounts, categories, canEdit = 
             const r = await createTransaction({
               type: t.type, amount: t.amount, date: t.date, note: t.note,
               accountId: t.accountId, categoryId: t.categoryId,
+              tagIds: t.tags.map((tag) => tag.id),
             });
             if (r.ok) { toast.success("Transaction restored"); router.refresh(); }
             else toast.error(r.error);
@@ -62,12 +80,12 @@ export function TransactionRows({ transactions, accounts, categories, canEdit = 
   return (
     <div className="space-y-4">
       {groups.map(([date, rows]) => {
-        const net = rows.reduce((s, t) => s + (t.type === "income" ? t.amount : -t.amount), 0);
+        const net = dayNets.get(date) ?? rows.reduce((s, t) => s + (t.type === "income" ? t.amount : -t.amount), 0);
         return (
           <div key={date}>
             <div className="mb-1 flex items-center justify-between px-0.5 text-[11px] text-muted-foreground">
               <span className="font-medium">{format(parseISO(date), "EEE, d MMM yyyy")}</span>
-              <span className="font-mono tabular-nums">{net < 0 ? "−" : "+"}{money(Math.abs(net))}</span>
+              <span className="amount">{net < 0 ? "−" : "+"}{money(Math.abs(net))}</span>
             </div>
             <div className="divide-y overflow-hidden rounded-lg border">
               {rows.map((t) => (
@@ -108,14 +126,19 @@ function Row({
       <div className="min-w-0 flex-1 leading-tight">
         <div className="truncate text-[13px] font-medium">{t.note || t.category?.name || "Transaction"}</div>
         <div className="truncate text-[11px] text-muted-foreground">
-          {t.categoryId && t.category ? (
-            <Link href={`/categories/${t.categoryId}`} className="transition hover:text-foreground hover:underline">
-              {t.category.name}
-            </Link>
-          ) : (
-            "Uncategorised"
-          )}
-          {" · "}
+          {/* When there's no note the title already shows the category — don't repeat it here. */}
+          {t.note ? (
+            <>
+              {t.categoryId && t.category ? (
+                <Link href={`/categories/${t.categoryId}`} className="transition hover:text-foreground hover:underline">
+                  {t.category.name}
+                </Link>
+              ) : (
+                "Uncategorised"
+              )}
+              {" · "}
+            </>
+          ) : null}
           {t.account?.name ?? "—"}
           {showAuthors && t.createdByName ? ` · ${t.createdByName}` : ""}
         </div>
@@ -129,11 +152,11 @@ function Row({
           </div>
         )}
       </div>
-      <div className={cn("shrink-0 font-mono text-[13px] font-semibold tabular-nums", isIncome ? "text-positive" : "text-negative")}>
+      <div className={cn("amount shrink-0 text-[13px] font-semibold", isIncome ? "text-positive" : "text-negative")}>
         {isIncome ? "+" : "−"}{money(t.amount)}
       </div>
       {canEdit && (
-        <div className="-mr-1 flex shrink-0 text-muted-foreground/70 transition sm:text-foreground sm:opacity-0 sm:focus-within:opacity-100 sm:group-hover:opacity-100">
+        <div className="-mr-1 flex shrink-0 gap-0.5 text-muted-foreground/70 transition sm:text-foreground sm:opacity-0 sm:focus-within:opacity-100 sm:group-hover:opacity-100">
           <TransactionDialog
             transaction={t}
             accounts={accounts}
@@ -168,14 +191,28 @@ export function TransferRows({ transfers, accounts, canEdit = true }: { transfer
     return [...m.entries()].sort((a, b) => b[0].localeCompare(a[0]));
   }, [transfers]);
 
-  async function remove(id: string) {
-    const res = await deleteTransfer(id);
-    if (res.ok) { toast.success("Transfer deleted"); router.refresh(); }
-    else toast.error(res.error);
+  async function remove(t: TransferDTO) {
+    const res = await deleteTransfer(t.id);
+    if (!res.ok) { toast.error(res.error); return; }
+    router.refresh();
+    // Same safety net as transactions: deletion is undoable.
+    toast.success("Transfer deleted", {
+      action: {
+        label: "Undo",
+        onClick: async () => {
+          const r = await createTransfer({
+            amount: t.amount, date: t.date, note: t.note,
+            fromAccountId: t.fromAccountId, toAccountId: t.toAccountId,
+          });
+          if (r.ok) { toast.success("Transfer restored"); router.refresh(); }
+          else toast.error(r.error);
+        },
+      },
+    });
   }
 
   if (!transfers.length) {
-    return <p className="py-12 text-center text-sm text-muted-foreground">No transfers in this view.</p>;
+    return <p className="py-12 text-center text-sm text-muted-foreground">No transfers match these filters.</p>;
   }
 
   return (
@@ -196,14 +233,14 @@ export function TransferRows({ transfers, accounts, canEdit = true }: { transfer
                     <div className="truncate text-[13px] font-medium">{t.note || "Transfer"}</div>
                     <div className="truncate text-[11px] text-muted-foreground">{from?.name ?? "—"} → {to?.name ?? "—"}</div>
                   </div>
-                  <div className="shrink-0 font-mono text-[13px] font-semibold tabular-nums">{money(t.amount)}</div>
+                  <div className="amount shrink-0 text-[13px] font-semibold">{money(t.amount)}</div>
                   {canEdit && (
-                    <div className="-mr-1 flex shrink-0 text-muted-foreground/70 transition sm:text-foreground sm:opacity-0 sm:group-hover:opacity-100">
+                    <div className="-mr-1 flex shrink-0 text-muted-foreground/70 transition sm:text-foreground sm:opacity-0 sm:focus-within:opacity-100 sm:group-hover:opacity-100">
                       <ConfirmDialog
                         trigger={<Button size="icon-xs" variant="ghost" aria-label="Delete transfer"><Trash2 className="size-3" /></Button>}
                         title="Delete transfer?"
                         description={`${from?.name ?? ""} → ${to?.name ?? ""} · ${money(t.amount)}`}
-                        onConfirm={() => remove(t.id)}
+                        onConfirm={() => remove(t)}
                       />
                     </div>
                   )}

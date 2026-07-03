@@ -176,7 +176,7 @@ Flat by default: structure comes from hairline borders and the Mist/Paper two-la
 - **Internal Padding:** 16px (p-4); dense lists run p-0 with row dividers.
 
 ### Inputs / Fields
-- **Style:** 36px height, hairline stroke (`--input` at 16% ink), Paper fill, small radius.
+- **Style:** 32px height on desktop (`h-8`; raise to 40px on touch layouts), hairline stroke (`--input` at 16% ink), Paper fill, small radius.
 - **Focus:** emerald ring + border shift.
 - **Error:** Spend Red border + caption text.
 

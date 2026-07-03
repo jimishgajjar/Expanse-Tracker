@@ -70,12 +70,59 @@ export default function Home() {
           <PeriodBar />
         </View>
 
-        <View style={s.grid}>
-          <SummaryCard label="Total balance" value={money.balance(summary.balance)} hint={`across ${accounts.length} accounts`} />
-          <SummaryCard label="Income" value={money.money(summary.income)} tone={colors.green} />
-          <SummaryCard label="Expenses" value={money.money(summary.expense)} tone={colors.red} />
-          <SummaryCard label="Net" value={money.signed(summary.net)} tone={summary.net >= 0 ? colors.green : colors.red} />
-        </View>
+        {/* Hero: total balance is the one Display-scale figure on this screen,
+            on a faint emerald wash — mirrors the web overview. */}
+        <Card style={s.hero}>
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+            <Text style={s.summaryLabel}>Total balance</Text>
+            <View style={s.heroTile}>
+              <Feather name="credit-card" size={15} color="#ffffff" />
+            </View>
+          </View>
+          <Text
+            style={[s.heroValue, summary.balance < 0 && { color: colors.red }]}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.6}
+          >
+            {money.balance(summary.balance)}
+          </Text>
+          <Text style={s.summaryHint}>
+            across {accounts.length} account{accounts.length === 1 ? "" : "s"}
+          </Text>
+        </Card>
+
+        {/* This period as one hairline-divided ledger strip. */}
+        <Card style={s.strip}>
+          <View style={s.stripCell}>
+            <Text style={s.summaryLabel} numberOfLines={1}>Income</Text>
+            <Text style={[s.stripValue, { color: colors.green }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
+              {money.money(summary.income)}
+            </Text>
+            <Text style={s.summaryHint} numberOfLines={1}>this period</Text>
+          </View>
+          <View style={[s.stripCell, s.stripDivider]}>
+            <Text style={s.summaryLabel} numberOfLines={1}>Expenses</Text>
+            <Text style={[s.stripValue, { color: colors.red }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
+              {money.money(summary.expense)}
+            </Text>
+            <Text style={s.summaryHint} numberOfLines={1}>this period</Text>
+          </View>
+          <View style={[s.stripCell, s.stripDivider]}>
+            <Text style={s.summaryLabel} numberOfLines={1}>Net</Text>
+            <Text
+              style={[s.stripValue, { color: summary.net >= 0 ? colors.green : colors.red }]}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.6}
+            >
+              {money.signed(summary.net)}
+            </Text>
+            <Text style={s.summaryHint} numberOfLines={1}>
+              {summary.income > 0 ? `${Math.round((summary.net / summary.income) * 100)}% saved` : "this period"}
+            </Text>
+          </View>
+        </Card>
 
         {spending.length > 0 ? (
           <Card style={{ marginTop: 16 }}>
@@ -167,28 +214,33 @@ function VerifyBanner() {
   );
 }
 
-function SummaryCard({ label, value, hint, tone }: { label: string; value: string; hint?: string; tone?: string }) {
-  return (
-    <Card style={s.summaryCard}>
-      <Text style={s.summaryLabel}>{label}</Text>
-      <Text style={[s.summaryValue, tone ? { color: tone } : null]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
-        {value}
-      </Text>
-      {hint ? <Text style={s.summaryHint}>{hint}</Text> : null}
-    </Card>
-  );
-}
-
 const s = StyleSheet.create({
   header: { flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 18 },
   logo: { width: 40, height: 40, borderRadius: radius.md, backgroundColor: colors.green, alignItems: "center", justifyContent: "center" },
   logoText: { color: "#fff", fontSize: 20, fontWeight: "800" },
   brand: { fontSize: 19, fontWeight: "700", color: colors.ink, letterSpacing: -0.3 },
   ws: { fontSize: 13, color: colors.inkSoft },
-  grid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
-  summaryCard: { width: "47%", flexGrow: 1, padding: 14, gap: 3 },
+  // Total-balance hero: white card washed with ~4.5% emerald (#0f7b6c over #fff).
+  hero: { backgroundColor: "#f4f9f8", padding: 18, gap: 6 },
+  heroTile: {
+    width: 30,
+    height: 30,
+    borderRadius: 9,
+    backgroundColor: colors.green,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: colors.green,
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 2,
+  },
+  heroValue: { fontSize: 32, fontWeight: "700", color: colors.ink, letterSpacing: -0.7, fontVariant: ["tabular-nums"] },
+  strip: { flexDirection: "row", padding: 0, marginTop: 10 },
+  stripCell: { flex: 1, minWidth: 0, paddingHorizontal: 12, paddingVertical: 12, gap: 3 },
+  stripDivider: { borderLeftWidth: 1, borderLeftColor: colors.border },
+  stripValue: { fontSize: 16, fontWeight: "700", letterSpacing: -0.3, fontVariant: ["tabular-nums"] },
   summaryLabel: { fontSize: 13, color: colors.inkSoft },
-  summaryValue: { fontSize: 21, fontWeight: "700", color: colors.ink, letterSpacing: -0.4 },
   summaryHint: { fontSize: 12, color: colors.inkFaint },
   section: { fontSize: 12, fontWeight: "700", color: colors.inkSoft, textTransform: "uppercase", letterSpacing: 0.6, marginTop: 24, marginBottom: 10 },
   cardTitle: { fontSize: 15, fontWeight: "700", color: colors.ink },

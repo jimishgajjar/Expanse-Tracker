@@ -188,12 +188,14 @@ export function Dashboard({
             )}
           </div>
 
-          {/* Desktop action row — on mobile these live in the "More" sheet. */}
-          <div className="hidden items-center gap-1.5 sm:flex sm:flex-wrap sm:justify-end">
+          {/* Desktop action row — on mobile these live in the "More" sheet.
+              Three visual clusters instead of one long strip of equal buttons:
+              quiet manage links · one attached "add" group · utility icons. */}
+          <div className="hidden items-center gap-1 sm:flex sm:flex-wrap sm:justify-end">
             {canEdit && (
               <CategoryManager
                 categories={categories}
-                trigger={<Button variant="outline" size="sm" aria-label="Categories"><Tags className="size-4" /><span className="hidden sm:inline">Categories</span></Button>}
+                trigger={<Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground" aria-label="Categories"><Tags className="size-4" />Categories</Button>}
               />
             )}
             {canEdit && (
@@ -201,38 +203,45 @@ export function Dashboard({
                 recurring={recurring}
                 accounts={liveAccounts}
                 categories={categories}
-                trigger={<Button variant="outline" size="sm" aria-label="Subscriptions"><Repeat className="size-4" /><span className="hidden sm:inline">Subscriptions</span></Button>}
+                trigger={<Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground" aria-label="Subscriptions"><Repeat className="size-4" />Subscriptions</Button>}
               />
             )}
-            <GoalsManager goals={goals} trigger={<Button variant="outline" size="sm" aria-label="Goals"><Target className="size-4" /><span className="hidden sm:inline">Goals</span></Button>} />
-            <SplitManager data={split} trigger={<Button variant="outline" size="sm" aria-label="Shared expenses"><Handshake className="size-4" /><span className="hidden sm:inline">Split</span></Button>} />
+            <GoalsManager goals={goals} trigger={<Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground" aria-label="Goals"><Target className="size-4" />Goals</Button>} />
+            <SplitManager data={split} trigger={<Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground" aria-label="Shared expenses"><Handshake className="size-4" />Split</Button>} />
             <MembersManager
               members={members}
               invites={invites}
               currentEmail={userEmail}
               workspaceName={workspaceName}
               isOwner={isOwner}
-              trigger={<Button variant="outline" size="sm" aria-label="Sharing"><Users className="size-4" /><span className="hidden sm:inline">Sharing</span></Button>}
+              trigger={<Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground" aria-label="Sharing"><Users className="size-4" />Sharing</Button>}
             />
-            <Button variant="outline" size="sm" aria-label="Export to Excel" onClick={() => window.location.assign("/api/export")}>
-              <Download className="size-4" /><span className="hidden sm:inline">Export</span>
-            </Button>
+
             {canEdit && (
-              <div className="flex items-center gap-1">
-                <TransactionDialog
-                  accounts={liveAccounts} categories={categories} defaultType="income"
-                  trigger={<Button size="sm" variant="outline" className="text-positive hover:bg-positive/10 hover:text-positive"><Plus className="size-4" /> Income</Button>}
-                />
-                <TransactionDialog
-                  accounts={liveAccounts} categories={categories} defaultType="expense"
-                  trigger={<Button size="sm" variant="outline" className="text-negative hover:bg-negative/10 hover:text-negative"><Minus className="size-4" /> Expense</Button>}
-                />
-                <TransactionDialog
-                  accounts={liveAccounts} categories={categories} defaultType="transfer"
-                  trigger={<Button size="sm" variant="outline"><ArrowRightLeft className="size-4" /> Transfer</Button>}
-                />
-              </div>
+              <>
+                <span aria-hidden className="mx-1.5 h-5 w-px bg-border" />
+                {/* The primary action: capture money movement, as one segmented control. */}
+                <div className="flex items-center overflow-hidden rounded-md border shadow-xs">
+                  <TransactionDialog
+                    accounts={liveAccounts} categories={categories} defaultType="income"
+                    trigger={<button type="button" className="flex h-8 items-center gap-1.5 px-2.5 text-sm font-medium text-positive transition-colors hover:bg-positive/10"><Plus className="size-4" /> Income</button>}
+                  />
+                  <TransactionDialog
+                    accounts={liveAccounts} categories={categories} defaultType="expense"
+                    trigger={<button type="button" className="flex h-8 items-center gap-1.5 border-l px-2.5 text-sm font-medium text-negative transition-colors hover:bg-negative/10"><Minus className="size-4" /> Expense</button>}
+                  />
+                  <TransactionDialog
+                    accounts={liveAccounts} categories={categories} defaultType="transfer"
+                    trigger={<button type="button" className="flex h-8 items-center gap-1.5 border-l px-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"><ArrowRightLeft className="size-4" /> Transfer</button>}
+                  />
+                </div>
+              </>
             )}
+
+            <span aria-hidden className="mx-1.5 h-5 w-px bg-border" />
+            <Button variant="ghost" size="icon" aria-label="Export to Excel" title="Export to Excel" onClick={() => window.location.assign("/api/export")}>
+              <Download className="size-4" />
+            </Button>
             <SettingsDialog
               currencyCode={currencyCode}
               userEmail={userEmail}

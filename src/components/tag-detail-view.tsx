@@ -125,7 +125,7 @@ export function TagDetailView({
       </div>
 
       <div className="rounded-xl border bg-card p-4">
-        <TransactionRows transactions={pageItems} accounts={accounts} categories={categories} canEdit={canEdit} emptyMessage="No transactions with this tag yet." />
+        <TransactionRows transactions={pageItems} allTransactions={transactions} accounts={accounts} categories={categories} canEdit={canEdit} emptyMessage="No transactions with this tag yet." />
 
         {total > pageSize && (
           <div className="mt-4 flex flex-col items-stretch gap-3 border-t pt-3 text-sm sm:flex-row sm:items-center sm:justify-between">
