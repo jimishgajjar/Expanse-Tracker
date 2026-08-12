@@ -2,45 +2,55 @@
 
 import { useActionState } from "react";
 import Link from "next/link";
-import { Wallet } from "lucide-react";
 import { login } from "@/lib/auth";
+import { AuthHeading } from "@/components/auth-shell";
+import { FormError } from "@/components/form-error";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export function LoginForm({ next }: { next: string }) {
   const [error, action, pending] = useActionState(login, undefined);
   return (
-    <Card className="w-full max-w-sm">
-      <CardHeader>
-        <div className="grid size-10 place-items-center rounded-xl bg-primary text-primary-foreground">
-          <Wallet className="size-5" />
+    <>
+      <AuthHeading
+        title="Welcome back"
+        sub={
+          <>
+            New here?{" "}
+            <Link href="/signup" className="font-medium text-brand underline-offset-4 hover:underline">
+              Create an account
+            </Link>
+          </>
+        }
+      />
+      <form action={action} className="grid gap-4">
+        <input type="hidden" name="next" value={next} />
+        <div className="grid gap-1.5">
+          <Label htmlFor="email">Email</Label>
+          <Input id="email" name="email" type="email" autoComplete="email" className="h-10" autoFocus required />
         </div>
-        <CardTitle className="mt-1 text-lg">Welcome back</CardTitle>
-        <p className="text-sm text-muted-foreground">Sign in to your Expense Tracker.</p>
-      </CardHeader>
-      <CardContent>
-        <form action={action} className="grid gap-3">
-          <input type="hidden" name="next" value={next} />
-          <div className="grid gap-1.5">
-            <Label htmlFor="email">Email</Label>
-            <Input id="email" name="email" type="email" autoComplete="email" autoFocus required />
+        <div className="grid gap-1.5">
+          <div className="flex items-center justify-between">
+            <Label htmlFor="password">Password</Label>
+            <Link href="/forgot" className="text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">
+              Forgot?
+            </Link>
           </div>
-          <div className="grid gap-1.5">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="password">Password</Label>
-              <Link href="/forgot" className="text-xs text-muted-foreground hover:text-foreground">Forgot?</Link>
-            </div>
-            <Input id="password" name="password" type="password" autoComplete="current-password" required />
-          </div>
-          {error && <p className="text-sm text-negative">{error}</p>}
-          <Button type="submit" disabled={pending}>{pending ? "Signing in…" : "Sign in"}</Button>
-          <p className="text-center text-sm text-muted-foreground">
-            No account? <Link href="/signup" className="font-medium text-foreground hover:underline">Sign up</Link>
-          </p>
-        </form>
-      </CardContent>
-    </Card>
+          <Input
+            id="password"
+            name="password"
+            type="password"
+            autoComplete="current-password"
+            className="h-10"
+            required
+          />
+        </div>
+        <FormError>{error}</FormError>
+        <Button type="submit" className="mt-1 h-10 w-full font-semibold" disabled={pending}>
+          {pending ? "Signing in…" : "Sign in"}
+        </Button>
+      </form>
+    </>
   );
 }

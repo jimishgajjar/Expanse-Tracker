@@ -1,3 +1,4 @@
+import { AuthShell } from "@/components/auth-shell";
 import { LoginForm } from "@/components/login-form";
 
 export default async function LoginPage({
@@ -7,8 +8,11 @@ export default async function LoginPage({
 }) {
   const { next } = await searchParams;
   return (
-    <div className="grid min-h-svh place-items-center p-6">
+    <AuthShell
+      headline="Pick up where your ledger left off."
+      sub="Balances, budgets and shared splits — exactly as you left them, on every device."
+    >
       <LoginForm next={next || "/"} />
-    </div>
+    </AuthShell>
   );
 }
