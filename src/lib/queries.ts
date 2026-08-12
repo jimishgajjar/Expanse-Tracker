@@ -1,5 +1,5 @@
 import { and, asc, desc, eq, gte, inArray, isNull, lt, sql } from "drizzle-orm";
-import { addMonths, addWeeks, addYears, differenceInCalendarDays, format, parseISO } from "date-fns";
+import { addMonths, addWeeks, addYears, differenceInCalendarDays, format, parseISO, startOfMonth } from "date-fns";
 import { getDb } from "./db";
 import { accounts, appSettings, budgets, categories, goals, invitations, recurring, splits, tags, transactionTags, transactions, transfers, users, workspaceMembers } from "./db/schema";
 import { CURRENCIES, DEFAULT_CURRENCY_CODE, findCurrencyByCode } from "./currencies";
@@ -431,6 +431,25 @@ export async function getNetWorthSeries(): Promise<NetWorthPoint[]> {
     .where(eq(transactions.workspaceId, wid))
     .groupBy(sql`to_char(${transactions.date}, 'YYYY-MM')`)
     .orderBy(sql`to_char(${transactions.date}, 'YYYY-MM')`);
+  if (!rows.length) return [];
+
+  // Walk every calendar month from the first with activity through to the
+  // current one. Grouping alone only yields months that *have* transactions, so
+  // a quiet month used to vanish — compressing the axis and making the line
+  // misreport its own slope.
+  const deltas = new Map(rows.map((r) => [r.ym, Number(r.delta)]));
+  const lastActive = rows[rows.length - 1].ym;
+  const thisMonth = format(startOfMonth(new Date()), "yyyy-MM");
+  const stop = parseISO(`${lastActive > thisMonth ? lastActive : thisMonth}-01`);
+
+  const out: NetWorthPoint[] = [];
+  let cursor = parseISO(`${rows[0].ym}-01`);
   let running = base;
-  return rows.map((r) => ({ key: r.ym, value: (running += Number(r.delta)) }));
+  for (let guard = 0; cursor <= stop && guard < 1200; guard++) {
+    const key = format(cursor, "yyyy-MM");
+    running += deltas.get(key) ?? 0;
+    out.push({ key, value: running });
+    cursor = addMonths(cursor, 1);
+  }
+  return out;
 }

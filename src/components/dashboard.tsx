@@ -42,6 +42,7 @@ import { PeriodBar } from "@/components/period-bar";
 import { OverviewTab } from "@/components/overview-tab";
 import { TransactionsTab } from "@/components/transactions-tab";
 import { AnalyticsTab, type Comparison } from "@/components/analytics-tab";
+import type { AnalyticsData } from "@/lib/analytics";
 import type { RangeType } from "@/lib/dates";
 import type { AccountDTO, BudgetProgressDTO, CategoryDTO, GoalDTO, MemberDTO, NetWorthPoint, RecurringDTO, SplitData, TransactionDTO, TransferDTO } from "@/lib/queries";
 import type { WorkspaceSummary } from "@/lib/workspace";
@@ -104,6 +105,7 @@ export function Dashboard({
   budgetProgress,
   netWorth,
   comparison,
+  analytics,
   recurring,
   goals,
   split,
@@ -135,6 +137,7 @@ export function Dashboard({
   budgetProgress: BudgetProgressDTO[];
   netWorth: NetWorthPoint[];
   comparison: Comparison;
+  analytics: AnalyticsData;
   recurring: RecurringDTO[];
   goals: GoalDTO[];
   split: SplitData;
@@ -289,10 +292,16 @@ export function Dashboard({
             rangeType={rangeType}
             rangeStart={rangeStart}
             rangeEnd={rangeEnd}
+            rangeLabel={rangeLabel}
             budgets={budgetProgress}
             categories={categories}
+            accounts={liveAccounts}
+            recurring={recurring}
             netWorth={netWorth}
             comparison={comparison}
+            analytics={analytics}
+            canEdit={canEdit}
+            showAuthors={showAuthors}
           />
         )}
       </div>

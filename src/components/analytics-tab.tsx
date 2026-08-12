@@ -1,16 +1,33 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { TrendChart } from "@/components/trend-chart";
 import { NetWorthChart } from "@/components/net-worth-chart";
 import { BudgetsCard } from "@/components/budgets-card";
 import { Icon } from "@/components/icon";
 import { useFormat } from "@/components/settings-provider";
+import { TrendsSection } from "@/components/insights/trends-section";
+import { BudgetsSection } from "@/components/insights/budgets-section";
+import { CommitmentsSection } from "@/components/insights/commitments-section";
+import { PatternsSection } from "@/components/insights/patterns-section";
 import { colorFor } from "@/lib/colors";
 import { cn } from "@/lib/utils";
+import type { AnalyticsData } from "@/lib/analytics";
 import type { RangeType } from "@/lib/dates";
-import type { BudgetProgressDTO, CategoryDTO, NetWorthPoint, TransactionDTO } from "@/lib/queries";
+import type { AccountDTO, BudgetProgressDTO, CategoryDTO, NetWorthPoint, RecurringDTO, TransactionDTO } from "@/lib/queries";
+
+/** The Insights tab is deep enough now that showing everything at once would be
+ *  the "ten widgets competing on one screen" the design system rules out. Each
+ *  view answers one question and owns one hero figure. */
+const VIEWS = [
+  { key: "summary", label: "Summary" },
+  { key: "trends", label: "Trends" },
+  { key: "budgets", label: "Budgets" },
+  { key: "commitments", label: "Commitments" },
+  { key: "patterns", label: "Patterns" },
+] as const;
+type View = (typeof VIEWS)[number]["key"];
 
 type Item = { name: string; value: number; count: number; color: string; icon: string };
 export type Comparison = { prevIncome: number; prevExpense: number } | null;
@@ -37,7 +54,83 @@ function pctChange(cur: number, prev: number): number | null {
   return Math.round(((cur - prev) / Math.abs(prev)) * 100);
 }
 
-export function AnalyticsTab({
+type AnalyticsTabProps = {
+  transactions: TransactionDTO[];
+  rangeType: RangeType;
+  rangeStart: string;
+  rangeEnd: string;
+  rangeLabel: string;
+  budgets: BudgetProgressDTO[];
+  categories: CategoryDTO[];
+  accounts: AccountDTO[];
+  recurring: RecurringDTO[];
+  netWorth: NetWorthPoint[];
+  comparison: Comparison;
+  analytics: AnalyticsData;
+  canEdit: boolean;
+  showAuthors: boolean;
+};
+
+export function AnalyticsTab(props: AnalyticsTabProps) {
+  const [view, setView] = useState<View>("summary");
+  const { analytics, transactions, recurring, accounts, categories, budgets, rangeLabel, showAuthors, canEdit } = props;
+
+  return (
+    <div className="space-y-4">
+      {/* Horizontally scrollable on phones so five views never wrap or squeeze. */}
+      <div className="-mx-3 overflow-x-auto px-3 sm:mx-0 sm:px-0">
+        <div className="inline-flex gap-1 rounded-lg bg-muted p-1">
+          {VIEWS.map((v) => (
+            <button
+              key={v.key}
+              type="button"
+              onClick={() => setView(v.key)}
+              aria-current={view === v.key ? "page" : undefined}
+              className={cn(
+                "press rounded-md px-3 py-1.5 text-sm font-medium whitespace-nowrap transition-colors",
+                view === v.key ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {v.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {view === "summary" && <SummaryView {...props} />}
+      {view === "trends" && (
+        <TrendsSection
+          data={analytics}
+          transactions={transactions}
+          rangeLabel={rangeLabel}
+          rangeStart={props.rangeStart}
+          rangeEnd={props.rangeEnd}
+        />
+      )}
+      {view === "budgets" && <BudgetsSection data={analytics} budgets={budgets} categories={categories} />}
+      {view === "commitments" && (
+        <CommitmentsSection
+          data={analytics}
+          recurring={recurring}
+          accounts={accounts}
+          categories={categories}
+          canEdit={canEdit}
+        />
+      )}
+      {view === "patterns" && (
+        <PatternsSection
+          data={analytics}
+          transactions={transactions}
+          recurring={recurring}
+          rangeLabel={rangeLabel}
+          showAuthors={showAuthors}
+        />
+      )}
+    </div>
+  );
+}
+
+function SummaryView({
   transactions,
   rangeType,
   rangeStart,
@@ -46,16 +139,7 @@ export function AnalyticsTab({
   categories,
   netWorth,
   comparison,
-}: {
-  transactions: TransactionDTO[];
-  rangeType: RangeType;
-  rangeStart: string;
-  rangeEnd: string;
-  budgets: BudgetProgressDTO[];
-  categories: CategoryDTO[];
-  netWorth: NetWorthPoint[];
-  comparison: Comparison;
-}) {
+}: AnalyticsTabProps) {
   const { money } = useFormat();
 
   const a = useMemo(() => {
@@ -95,7 +179,7 @@ export function AnalyticsTab({
         <NetWorthChart series={netWorth} />
         <Card>
           <CardContent className="py-16 text-center text-sm text-muted-foreground">
-            No transactions in this period — widen the range to see analytics.
+            No transactions in this period — widen the range, or try Trends and Patterns above, which always look back a full year.
           </CardContent>
         </Card>
       </div>

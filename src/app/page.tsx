@@ -1,4 +1,5 @@
 import { Dashboard } from "@/components/dashboard";
+import { getAnalytics } from "@/lib/analytics";
 import { getRange, RANGE_TYPES, shiftAnchor, todayISO, type RangeType } from "@/lib/dates";
 import {
   getAccountsWithBalances, getBudgetProgress, getCategories,
@@ -31,7 +32,7 @@ export default async function Page({
   // Materialise any due recurring rules before reading data.
   await processRecurring();
 
-  const [accounts, categories, transactions, transfers, settings, budgetProgress, netWorth, recurring, goals, split, members, invites, prevTotals] = await Promise.all([
+  const [accounts, categories, transactions, transfers, settings, budgetProgress, netWorth, recurring, goals, split, members, invites, prevTotals, analytics] = await Promise.all([
     getAccountsWithBalances(),
     getCategories(),
     getTransactionsInRange(range.start, range.end),
@@ -45,6 +46,10 @@ export default async function Page({
     getMembers(),
     getInvites(),
     prevRange ? getRangeTotals(prevRange.start, prevRange.end) : Promise.resolve(null),
+    // Deeper Insights aggregates. The tab switcher is client-side (no server
+    // round-trip), so this has to load with the rest — hence every query in
+    // here returns grouped rows rather than raw transactions.
+    getAnalytics({ start: range.start, end: range.end }, prevRange),
   ]);
 
   const totalBalance = accounts.reduce((s, a) => s + a.balance, 0);
@@ -69,6 +74,7 @@ export default async function Page({
       budgetProgress={budgetProgress}
       netWorth={netWorth}
       comparison={comparison}
+      analytics={analytics}
       recurring={recurring}
       goals={goals}
       split={split}

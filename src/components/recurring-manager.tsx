@@ -13,6 +13,7 @@ import { Icon } from "@/components/icon";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useFormat } from "@/components/settings-provider";
 import { createRecurring, deleteRecurring, updateRecurring } from "@/lib/actions";
+import { commitmentTotals, perMonth } from "@/lib/commitments";
 import { todayISO } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 import type { AccountDTO, CategoryDTO, RecurringDTO } from "@/lib/queries";
@@ -30,8 +31,8 @@ const KINDS = [
   { value: "other", label: "Other" },
 ];
 
-/** Normalise any cadence to a monthly figure for the commitment total. */
-const perMonth = (amt: number, freq: string) => (freq === "weekly" ? (amt * 52) / 12 : freq === "yearly" ? amt / 12 : amt);
+// Cadence normalisation and the "still charging" test live in lib/commitments
+// so this sheet and the Insights tab can never quote different totals.
 
 export function RecurringManager({
   trigger,
@@ -49,8 +50,9 @@ export function RecurringManager({
   const onAdded = (r: RecurringDTO) => setItems((x) => [...x, r]);
   const onRemoved = (id: string) => setItems((x) => x.filter((r) => r.id !== id));
   const onUpdated = (r: RecurringDTO) => setItems((x) => x.map((it) => (it.id === r.id ? r : it)));
-  const expenses = items.filter((r) => r.type === "expense");
-  const monthly = expenses.reduce((s, r) => s + perMonth(r.amount, r.frequency), 0);
+  // Ended rules (past their end date or out of repeats) still list below for
+  // reference, but they no longer cost anything so they stay out of the total.
+  const { expenses, monthly } = commitmentTotals(items, todayISO());
 
   const known = ["subscription", "bill", "emi"];
   const groups = [
