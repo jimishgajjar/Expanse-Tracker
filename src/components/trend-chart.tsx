@@ -75,7 +75,7 @@ export function TrendChart({
             </div>
             <div className="mt-1 flex gap-1">
               {data.map((d, i) => (
-                <span key={d.key} className="h-3 min-w-0 flex-1 truncate text-center text-[9px] leading-3 text-muted-foreground">
+                <span key={d.key} className="h-3 min-w-0 flex-1 truncate text-center text-[10px] leading-3 text-muted-foreground">
                   {i % labelStep === 0 ? d.label : ""}
                 </span>
               ))}

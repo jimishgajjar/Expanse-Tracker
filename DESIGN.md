@@ -46,6 +46,26 @@ typography:
     fontSize: "0.75rem"
     fontWeight: 500
     lineHeight: 1.35
+  lead:
+    fontFamily: "Geist, system-ui, sans-serif"
+    fontSize: "0.9375rem"
+    fontWeight: 500
+    lineHeight: 1.4
+  dense:
+    fontFamily: "Geist, system-ui, sans-serif"
+    fontSize: "13px"
+    fontWeight: 400
+    lineHeight: 1.45
+  meta:
+    fontFamily: "Geist, system-ui, sans-serif"
+    fontSize: "11px"
+    fontWeight: 400
+    lineHeight: 1.35
+  micro:
+    fontFamily: "Geist, system-ui, sans-serif"
+    fontSize: "10px"
+    fontWeight: 400
+    lineHeight: 1.2
   amount:
     fontFamily: "Geist, system-ui, sans-serif"
     fontSize: "1.5rem"
@@ -140,13 +160,17 @@ A restrained cool-neutral family with one committed emerald and a strict semanti
 - **Display** (600, 1.875rem, 1.15): the one hero money figure per screen (net position, account balance).
 - **Headline** (600, 1.125rem, 1.3): page/card titles ("Expense Tracker", dialog titles).
 - **Title** (600, 0.875rem, 1.4): card section headers, list group labels.
-- **Body** (400, 0.875rem, 1.5): rows, descriptions, forms. Dense data may run 0.8125rem.
+- **Body** (400, 0.875rem, 1.5): rows, descriptions, forms.
+- **Dense** (400, 13px ≡ 0.8125rem): the compact Body variant for data-heavy rows. Written as `13px` in code.
 - **Label** (500, 0.75rem): field labels, stat captions, tab labels (10.5px on the mobile bar).
+- **Lead** (500, 0.9375rem): the step between Body and Headline — the primary line of a dense row, the wordmark, marketing CTAs. Use it when a line must read as the subject of its row without becoming a heading.
+- **Micro** (400–500, 11px / 10px): the two steps below Label, for chrome that must not compete with the figures it annotates. **11px** carries dense row metadata — the second line of a transaction row, delta percentages, counts, caveats. **10px** is chart furniture only: axis ticks, legends, heatmap keys. Nothing below 10px ships; 9px was in use for axis labels and was raised because it stopped being comfortably readable.
 - **Amount** (600, tabular-nums, -0.01em): any money figure; scales from row (0.875rem) to hero (1.875rem+).
 
 ### Named Rules
 **The Tabular Rule.** Every numeral in the product renders tabular (`font-variant-numeric: tabular-nums`, global on body); money columns must align digit-for-digit.
 **The One Hero Rule.** Exactly one Display-scale figure per screen. Everything else steps down the scale.
+**The 10px Floor.** 10px is the smallest type that ships, and only as chart furniture (axis ticks, legends, keys). Anything a reader needs to *read* rather than glance at sits at 11px or above.
 
 ## 4. Elevation
 

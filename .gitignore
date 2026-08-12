@@ -70,6 +70,7 @@ Desktop.ini
 # agent design skills (local tooling — reinstall via `npx skills` / `npx impeccable`)
 /.agents/
 /.claude/skills/
+/.codex/
 /.impeccable/
 /skills-lock.json
 
