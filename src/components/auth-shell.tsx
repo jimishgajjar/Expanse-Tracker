@@ -32,7 +32,10 @@ export function AuthShell({
   sub: string;
 }) {
   return (
-    <div className="grid min-h-svh lg:grid-cols-[1.1fr_1fr]">
+    // Below lg the panel is a compact bar, so its row must size to content —
+    // min-h-svh on a single-column grid would otherwise hand it half the
+    // viewport while its pitch is hidden, leaving a dead emerald slab.
+    <div className="grid min-h-svh grid-rows-[auto_1fr] lg:grid-cols-[1.1fr_1fr] lg:grid-rows-1">
       {/* ── Brand panel ── */}
       <aside className="relative flex flex-col justify-between bg-brand-deep px-6 py-6 text-brand-deep-foreground sm:px-10 lg:px-14 lg:py-12">
         <Link href="/" className="flex w-fit items-center gap-2.5" aria-label="Expense Tracker home">

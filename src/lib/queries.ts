@@ -7,7 +7,7 @@ import { todayISO } from "./dates";
 import { getActiveWorkspaceId } from "./workspace";
 import { getCurrentUser } from "./session";
 import { computeBalances } from "./split-math";
-import { notifyWorkspace } from "./notify";
+import { notifyWorkspace, type Notice } from "./notify";
 
 export type AccountDTO = {
   id: string; name: string; type: string; icon: string; color: string;
@@ -123,11 +123,26 @@ async function lookupName(db: Awaited<ReturnType<typeof getDb>>, cache: Map<stri
   return row?.name ?? null;
 }
 
+/** A notification that materialising produced, ready to be sent. */
+export type PendingNotice = { workspaceId: string; notice: Notice };
+
+/** Send queued notifications. Sequential and best-effort — notifyWorkspace
+ *  swallows its own failures, so one bad address can't stop the rest. */
+export async function flushNotices(notices: PendingNotice[]): Promise<void> {
+  for (const n of notices) await notifyWorkspace(n.workspaceId, n.notice);
+}
+
 /** Post any due occurrences of these rules (respecting end date + repeat count),
- *  send a confirmation alert when one posts, and fire an "upcoming" reminder ahead
- *  of the next due date. Shared by the on-load and cron entry points. */
-async function materialize(rules: RecurringRow[]): Promise<number> {
-  if (!rules.length) return 0;
+ *  queue a confirmation alert when one posts, and queue an "upcoming" reminder
+ *  ahead of the next due date. Shared by the on-load and cron entry points.
+ *
+ *  Notifications are RETURNED rather than sent: each one fans out to email and
+ *  web-push over the network, and on the dashboard render path that would block
+ *  the page behind SMTP and FCM. Callers decide when to flush — the cron awaits
+ *  them, the page defers them past the response with `after()`. */
+async function materialize(rules: RecurringRow[]): Promise<{ created: number; notices: PendingNotice[] }> {
+  const notices: PendingNotice[] = [];
+  if (!rules.length) return { created: 0, notices };
   const db = await getDb();
   const today = todayISO();
   const symCache = new Map<string, string>();
@@ -161,7 +176,7 @@ async function materialize(rules: RecurringRow[]): Promise<number> {
         const catName = await lookupName(db, nameCache, r.categoryId, "category");
         const amountStr = `${sym}${Number(r.amount).toFixed(2)}`;
         const lastDate = format(parseISO(toCreate[toCreate.length - 1].date as string), "MMM d, yyyy");
-        await notifyWorkspace(r.workspaceId, {
+        notices.push({ workspaceId: r.workspaceId, notice: {
           title: `${r.type === "income" ? "Income added" : "Payment added"}: ${amountStr}`,
           body: toCreate.length > 1 ? `${label} — ${toCreate.length} entries were added.` : `${label} was added to your tracker.`,
           heading: r.type === "income" ? "Income added" : "Payment added",
@@ -181,7 +196,7 @@ async function materialize(rules: RecurringRow[]): Promise<number> {
           ctaLabel: "View transaction",
           url: "/?tab=transactions",
           tag: `posted-${r.id}`,
-        });
+        } });
       }
     }
 
@@ -199,7 +214,7 @@ async function materialize(rules: RecurringRow[]): Promise<number> {
         const amountStr = `${sym}${Number(r.amount).toFixed(2)}`;
         const prettyNext = format(parseISO(next), "MMM d, yyyy");
         const remindOnly = !r.autoPost;
-        await notifyWorkspace(r.workspaceId, {
+        notices.push({ workspaceId: r.workspaceId, notice: {
           title: remindOnly ? `Bill due: ${label}` : `Upcoming ${r.type}: ${amountStr}`,
           body: remindOnly ? `${label} is due ${prettyNext} (${when}) — log the amount you paid.` : `${label} is scheduled for ${prettyNext} (${when}).`,
           heading: remindOnly ? "Bill due — log it" : r.type === "income" ? "Upcoming income" : "Upcoming payment",
@@ -219,25 +234,33 @@ async function materialize(rules: RecurringRow[]): Promise<number> {
           ctaLabel: remindOnly ? "Log payment" : "Review in app",
           url: remindOnly ? "/?tab=transactions" : "/",
           tag: `remind-${r.id}`,
-        });
+        } });
       }
     }
   }
-  return created;
+  return { created, notices };
 }
 
-/** Materialise the active workspace's due recurring rules (called on dashboard load). */
-export async function processRecurring(): Promise<void> {
+/** Materialise the active workspace's due recurring rules (called on dashboard
+ *  load). The DB writes stay on the render path so a charge that posts today is
+ *  visible immediately; the returned notices are the caller's to send. */
+export async function processRecurring(): Promise<PendingNotice[]> {
   const wid = await getActiveWorkspaceId();
-  if (!wid) return;
+  if (!wid) return [];
   const db = await getDb();
-  await materialize(await db.select().from(recurring).where(eq(recurring.workspaceId, wid)));
+  const { notices } = await materialize(
+    await db.select().from(recurring).where(eq(recurring.workspaceId, wid)),
+  );
+  return notices;
 }
 
-/** Materialise every due recurring rule across all workspaces — for the cron job. */
+/** Materialise every due recurring rule across all workspaces — for the cron
+ *  job, which has no response to block, so it sends the notices itself. */
 export async function processAllRecurring(): Promise<number> {
   const db = await getDb();
-  return materialize(await db.select().from(recurring));
+  const { created, notices } = await materialize(await db.select().from(recurring));
+  await flushNotices(notices);
+  return created;
 }
 
 export async function getRecurring(): Promise<RecurringDTO[]> {
