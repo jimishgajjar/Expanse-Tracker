@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { Wallet } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { getVisitorMoney } from "@/lib/visitor-currency";
 
 /**
  * Shared chrome for every auth screen (login, signup, forgot, reset).
@@ -15,13 +16,13 @@ import { ThemeToggle } from "@/components/theme-toggle";
  * would just push the form below the fold on a phone.
  */
 
-const PROOF = [
-  { name: "Salary", amount: "+₹85,000.00", strong: true },
-  { name: "Rent", amount: "−₹28,000.00", strong: false },
-  { name: "Groceries", amount: "−₹3,240.00", strong: false },
+const PROOF_ROWS = [
+  { name: "Salary", strong: true },
+  { name: "Rent", strong: false },
+  { name: "Groceries", strong: false },
 ];
 
-export function AuthShell({
+export async function AuthShell({
   children,
   headline,
   sub,
@@ -31,6 +32,14 @@ export function AuthShell({
   headline: string;
   sub: string;
 }) {
+  // Same ledger motif as the landing hero, in the visitor's own currency.
+  const { format, sample } = await getVisitorMoney();
+  const [salary, rent, groceries] = sample;
+  const PROOF = PROOF_ROWS.map((r, i) => ({
+    ...r,
+    amount: format([salary, -rent, -groceries][i], { signed: true }),
+  }));
+
   return (
     // Below lg the panel is a compact bar, so its row must size to content —
     // min-h-svh on a single-column grid would otherwise hand it half the
@@ -89,12 +98,3 @@ export function AuthShell({
   );
 }
 
-/** Consistent heading block above each auth form. */
-export function AuthHeading({ title, sub }: { title: string; sub: ReactNode }) {
-  return (
-    <div className="mb-7">
-      <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
-      <p className="mt-1.5 text-sm text-muted-foreground">{sub}</p>
-    </div>
-  );
-}

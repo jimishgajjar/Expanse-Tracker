@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { ArrowRight, Wallet } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getVisitorMoney } from "@/lib/visitor-currency";
 import { buttonVariants } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
 
@@ -23,21 +24,24 @@ const ctaLight = cn(
 const ctaGhostLight =
   "inline-flex h-11 items-center rounded-md border border-white/25 px-5 text-[0.9375rem] font-medium text-white transition-colors hover:bg-white/10";
 
-/** A believable month, and the figures reconcile — on a money product, a hero
- *  whose numbers don't add up is a credibility bug. 85000−28000−3240−1890. */
-const LEDGER = [
-  { name: "Salary", meta: "1 Aug · HDFC", amount: 85000, kind: "in" as const },
-  { name: "Rent", meta: "2 Aug · Housing", amount: -28000, kind: "out" as const },
-  { name: "Groceries", meta: "4 Aug · Cards", amount: -3240, kind: "out" as const },
-  { name: "Electricity", meta: "5 Aug · Utilities", amount: -1890, kind: "out" as const },
+/** Row labels for the hero ledger. The amounts come from the visitor's own
+ *  currency (lib/visitor-currency) rather than one hardcoded market, and the
+ *  net is summed from them — on a money product, a hero whose figures don't
+ *  add up is a credibility bug, so it is never written by hand. */
+const ROWS = [
+  { name: "Salary", meta: "1 Aug · Bank", kind: "in" as const },
+  { name: "Rent", meta: "2 Aug · Housing", kind: "out" as const },
+  { name: "Groceries", meta: "4 Aug · Cards", kind: "out" as const },
+  { name: "Electricity", meta: "5 Aug · Utilities", kind: "out" as const },
 ];
-const NET = LEDGER.reduce((s, r) => s + r.amount, 0);
 
-const inr = (n: number) =>
-  `₹${new Intl.NumberFormat("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Math.abs(n))}`;
-const signed = (n: number) => `${n < 0 ? "−" : "+"}${inr(n)}`;
+export async function Landing() {
+  const { format, sample, noun } = await getVisitorMoney();
+  const [salary, rent, groceries, power] = sample;
+  const LEDGER = ROWS.map((r, i) => ({ ...r, amount: [salary, -rent, -groceries, -power][i] }));
+  const NET = LEDGER.reduce((s, r) => s + r.amount, 0);
+  const signed = (n: number) => format(n, { signed: true });
 
-export function Landing() {
   return (
     <div className="flex min-h-dvh flex-col bg-background text-foreground">
       {/* ── Hero: the one drenched surface. Nav lives inside it so the fold is
@@ -75,7 +79,7 @@ export function Landing() {
                 second line measures ~560px against a ~620px column, so the
                 deliberate two-line break survives instead of re-wrapping. */}
             <h1 className="animate-in fade-in slide-in-from-bottom-3 text-[clamp(2rem,5.5vw,3.5rem)] leading-[1.03] font-semibold tracking-[-0.03em] text-white duration-700">
-              Every rupee,
+              Every {noun},
               <br />
               clearly accounted for.
             </h1>

@@ -3,7 +3,7 @@
 import { useActionState } from "react";
 import Link from "next/link";
 import { login } from "@/lib/auth";
-import { AuthHeading } from "@/components/auth-shell";
+import { AuthHeading } from "@/components/auth-heading";
 import { FormError } from "@/components/form-error";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

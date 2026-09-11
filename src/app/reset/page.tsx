@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { AuthShell, AuthHeading } from "@/components/auth-shell";
+import { AuthShell } from "@/components/auth-shell";
+import { AuthHeading } from "@/components/auth-heading";
 import { ResetForm } from "@/components/reset-form";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";

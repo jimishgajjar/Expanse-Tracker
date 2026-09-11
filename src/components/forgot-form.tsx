@@ -4,7 +4,7 @@ import { useActionState } from "react";
 import Link from "next/link";
 import { MailCheck } from "lucide-react";
 import { requestPasswordReset } from "@/lib/reset";
-import { AuthHeading } from "@/components/auth-shell";
+import { AuthHeading } from "@/components/auth-heading";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
