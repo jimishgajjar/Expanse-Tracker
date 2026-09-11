@@ -173,16 +173,16 @@ export function Dashboard({
   return (
     <SettingsProvider currency={currency} locale={locale}>
       {/* ── App bar: a clean full-width sticky bar on mobile, inline on desktop ── */}
-      <header className="sticky top-0 z-30 border-b border-border/70 bg-background/80 pt-safe backdrop-blur-md sm:static sm:z-auto sm:border-0 sm:bg-transparent sm:backdrop-blur-none">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-2.5 px-3 py-2.5 sm:gap-3 sm:px-6 sm:pt-6 sm:pb-0">
-          <div className="flex min-w-0 items-center gap-2.5 sm:mr-auto">
-            <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-brand text-brand-foreground shadow-sm shadow-brand/25">
-              <Wallet className="size-5" />
+      {/* ── Topbar: Notion's 45px strip — a breadcrumb on the left, quiet
+             controls on the right. The page's own title lives in the canvas
+             below, not here. ── */}
+      <header className="sticky top-0 z-30 border-b border-border bg-background/95 pt-safe backdrop-blur-md">
+        <div className="mx-auto flex h-11 max-w-6xl items-center gap-2 px-3 sm:px-6">
+          <div className="flex min-w-0 items-center gap-1.5 sm:mr-auto">
+            <span className="grid size-5 shrink-0 place-items-center rounded-sm bg-brand text-brand-foreground">
+              <Wallet className="size-3" />
             </span>
-            <div className="min-w-0">
-              <h1 className="truncate text-lg font-semibold tracking-tight sm:text-xl">Expense Tracker</h1>
-              <p className="hidden text-xs text-muted-foreground sm:block">Your money, clearly accounted for.</p>
-            </div>
+            <span className="truncate text-sm font-medium">{workspaceName}</span>
             {workspaces.length > 1 && (
               <WorkspaceSwitcher workspaces={workspaces} activeId={activeWorkspaceId} currentUserId={currentUserId} />
             )}
@@ -194,11 +194,11 @@ export function Dashboard({
           {/* Desktop action row — on mobile these live in the "More" sheet.
               Three visual clusters instead of one long strip of equal buttons:
               quiet manage links · one attached "add" group · utility icons. */}
-          <div className="hidden items-center gap-1 sm:flex sm:flex-wrap sm:justify-end">
+          <div className="hidden items-center gap-0.5 sm:flex sm:flex-wrap sm:justify-end">
             {canEdit && (
               <CategoryManager
                 categories={categories}
-                trigger={<Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground" aria-label="Categories"><Tags className="size-4" />Categories</Button>}
+                trigger={<Button variant="ghost" size="sm" className="text-muted-foreground hover:bg-hover hover:text-foreground" aria-label="Categories"><Tags className="size-4" />Categories</Button>}
               />
             )}
             {canEdit && (
@@ -206,18 +206,18 @@ export function Dashboard({
                 recurring={recurring}
                 accounts={liveAccounts}
                 categories={categories}
-                trigger={<Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground" aria-label="Subscriptions"><Repeat className="size-4" />Subscriptions</Button>}
+                trigger={<Button variant="ghost" size="sm" className="text-muted-foreground hover:bg-hover hover:text-foreground" aria-label="Subscriptions"><Repeat className="size-4" />Subscriptions</Button>}
               />
             )}
-            <GoalsManager goals={goals} trigger={<Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground" aria-label="Goals"><Target className="size-4" />Goals</Button>} />
-            <SplitManager data={split} trigger={<Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground" aria-label="Shared expenses"><Handshake className="size-4" />Split</Button>} />
+            <GoalsManager goals={goals} trigger={<Button variant="ghost" size="sm" className="text-muted-foreground hover:bg-hover hover:text-foreground" aria-label="Goals"><Target className="size-4" />Goals</Button>} />
+            <SplitManager data={split} trigger={<Button variant="ghost" size="sm" className="text-muted-foreground hover:bg-hover hover:text-foreground" aria-label="Shared expenses"><Handshake className="size-4" />Split</Button>} />
             <MembersManager
               members={members}
               invites={invites}
               currentEmail={userEmail}
               workspaceName={workspaceName}
               isOwner={isOwner}
-              trigger={<Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground" aria-label="Sharing"><Users className="size-4" />Sharing</Button>}
+              trigger={<Button variant="ghost" size="sm" className="text-muted-foreground hover:bg-hover hover:text-foreground" aria-label="Sharing"><Users className="size-4" />Sharing</Button>}
             />
 
             {canEdit && (
@@ -255,18 +255,32 @@ export function Dashboard({
         </div>
       </header>
 
-      <div className="mx-auto max-w-6xl space-y-4 px-3 pt-4 pb-28 sm:space-y-5 sm:px-6 sm:pt-5 sm:pb-6">
+      <div className="mx-auto max-w-6xl space-y-4 px-3 pt-4 pb-28 sm:space-y-5 sm:px-6 sm:pt-8 sm:pb-6">
         {!emailVerified && <VerifyBanner email={userEmail} />}
 
-        <PeriodBar rangeType={rangeType} anchor={anchor} rangeLabel={rangeLabel} />
+        {/* ── Page title, the Notion way: an icon, then the name large and
+               bold, sitting directly on the canvas with no chrome around it. ── */}
+        <div className="hidden sm:block">
+          <span className="grid size-10 place-items-center rounded-md bg-brand/10 text-brand">
+            <Wallet className="size-5" />
+          </span>
+          <h1 className="mt-2.5 text-[2.25rem] leading-[1.15] font-bold tracking-[-0.02em]">{workspaceName}</h1>
+        </div>
 
-        <Tabs value={tab} onValueChange={(v) => changeTab(v as Tab)}>
-          <TabsList className="hidden w-full sm:inline-flex sm:w-auto">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="transactions">Transactions</TabsTrigger>
-            <TabsTrigger value="analytics">Analytics</TabsTrigger>
-          </TabsList>
-        </Tabs>
+        {/* View switcher + period, on one line like a database's view tabs and
+            its filter bar. Underlined tabs, not a segmented pill. */}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between sm:border-b sm:border-border">
+          <Tabs value={tab} onValueChange={(v) => changeTab(v as Tab)}>
+            <TabsList variant="line" className="hidden h-9 sm:inline-flex">
+              <TabsTrigger value="overview" className="px-2 text-sm text-muted-foreground hover:bg-hover data-active:text-foreground">Overview</TabsTrigger>
+              <TabsTrigger value="transactions" className="px-2 text-sm text-muted-foreground hover:bg-hover data-active:text-foreground">Transactions</TabsTrigger>
+              <TabsTrigger value="analytics" className="px-2 text-sm text-muted-foreground hover:bg-hover data-active:text-foreground">Insights</TabsTrigger>
+            </TabsList>
+          </Tabs>
+          <div className="sm:pb-1.5">
+            <PeriodBar rangeType={rangeType} anchor={anchor} rangeLabel={rangeLabel} />
+          </div>
+        </div>
 
         {tab === "overview" && (
           <OverviewTab

@@ -87,7 +87,7 @@ export function TransactionRows({ transactions, accounts, categories, canEdit = 
               <span className="font-medium">{format(parseISO(date), "EEE, d MMM yyyy")}</span>
               <span className="amount">{net < 0 ? "−" : "+"}{money(Math.abs(net))}</span>
             </div>
-            <div className="divide-y overflow-hidden rounded-lg border">
+            <div className="divide-y divide-border">
               {rows.map((t) => (
                 <Row key={t.id} t={t} accounts={accounts} categories={categories} onDelete={remove} money={money} canEdit={canEdit} showAuthors={showAuthors} />
               ))}
@@ -119,7 +119,7 @@ function Row({
   const isIncome = t.type === "income";
   const color = t.category?.color ?? "#9b9a97";
   return (
-    <div className="group flex items-center gap-2.5 px-2.5 py-1.5">
+    <div className="group -mx-2 flex items-center gap-2.5 rounded-sm px-2 py-1.5 transition-colors hover:bg-hover">
       <span className="grid size-7 shrink-0 place-items-center rounded-md" style={{ backgroundColor: `${color}22`, color }}>
         <Icon name={t.category?.icon ?? "circle-help"} size={14} />
       </span>
@@ -220,12 +220,12 @@ export function TransferRows({ transfers, accounts, canEdit = true }: { transfer
       {groups.map(([date, rows]) => (
         <div key={date}>
           <div className="mb-1 px-0.5 text-[11px] font-medium text-muted-foreground">{format(parseISO(date), "EEE, d MMM yyyy")}</div>
-          <div className="divide-y overflow-hidden rounded-lg border">
+          <div className="divide-y divide-border">
             {rows.map((t) => {
               const from = nameOf(t.fromAccountId);
               const to = nameOf(t.toAccountId);
               return (
-                <div key={t.id} className="group flex items-center gap-2.5 px-2.5 py-1.5">
+                <div key={t.id} className="group -mx-2 flex items-center gap-2.5 rounded-sm px-2 py-1.5 transition-colors hover:bg-hover">
                   <span className="grid size-7 shrink-0 place-items-center rounded-md bg-muted text-muted-foreground">
                     <ArrowRightLeft className="size-3.5" />
                   </span>

@@ -1,10 +1,18 @@
 "use client";
 
-import { Wallet } from "lucide-react";
-import { Card } from "@/components/ui/card";
+import { ArrowDownLeft, ArrowUpRight, Scale } from "lucide-react";
 import { useFormat } from "@/components/settings-provider";
 import { cn } from "@/lib/utils";
 
+/**
+ * The page's figures, the Notion way.
+ *
+ * A Notion page opens with its title, then a block of *properties* — quiet
+ * rows of "label · value" with a small type icon — and only then the content.
+ * The total balance is the one Display-scale figure (One Hero Rule) and sits
+ * directly on the canvas with no card around it; this period's income,
+ * expenses and net read as the page's properties beneath it.
+ */
 export function SummaryCards({
   totalBalance,
   income,
@@ -28,11 +36,12 @@ export function SummaryCards({
   const expDelta = comparison ? pct(expense, comparison.prevExpense) : null;
   const netDelta = comparison ? pct(net, comparison.prevIncome - comparison.prevExpense) : null;
 
-  const stats = [
-    { k: "Income", v: money(income), tone: "text-positive", delta: incDelta, good: (incDelta ?? 0) >= 0, sub: rangeLabel },
-    { k: "Expenses", v: money(expense), tone: "text-negative", delta: expDelta, good: (expDelta ?? 0) <= 0, sub: rangeLabel },
+  const props = [
+    { k: "Income", icon: ArrowDownLeft, v: money(income), tone: "text-positive", delta: incDelta, good: (incDelta ?? 0) >= 0, sub: rangeLabel },
+    { k: "Expenses", icon: ArrowUpRight, v: money(expense), tone: "text-negative", delta: expDelta, good: (expDelta ?? 0) <= 0, sub: rangeLabel },
     {
       k: "Net",
+      icon: Scale,
       v: signedMoney(net),
       tone: net < 0 ? "text-negative" : "text-positive",
       delta: netDelta,
@@ -42,41 +51,37 @@ export function SummaryCards({
   ];
 
   return (
-    <div className="space-y-3">
-      {/* The one hero figure on this screen (The One Hero Rule): total balance
-          on a faint emerald wash — the brand carries the number, not chrome. */}
-      <Card className="gap-0 bg-[color-mix(in_oklch,var(--brand)_4.5%,var(--card))] p-4 sm:p-5">
-        <div className="flex items-center justify-between gap-3">
-          <span className="text-[13px] font-medium text-muted-foreground">Total balance</span>
-          <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-brand text-brand-foreground shadow-sm shadow-brand/25">
-            <Wallet className="size-4" />
-          </span>
-        </div>
-        <div className={cn("amount mt-1.5 text-[2rem] leading-none font-semibold tracking-tight sm:text-4xl", totalBalance < 0 && "text-negative")}>
-          {balanceMoney(totalBalance)}
-        </div>
-        <div className="mt-2 text-xs text-muted-foreground">
-          across {accountsCount} account{accountsCount === 1 ? "" : "s"}
-        </div>
-      </Card>
+    <div>
+      <div className="text-sm text-muted-foreground">Total balance</div>
+      <div className={cn("amount mt-1 text-3xl leading-none font-semibold tracking-tight sm:text-4xl", totalBalance < 0 && "text-negative")}>
+        {balanceMoney(totalBalance)}
+      </div>
+      <div className="mt-1.5 text-xs text-muted-foreground">
+        across {accountsCount} account{accountsCount === 1 ? "" : "s"}
+      </div>
 
-      {/* This period, as one ledger strip — three figures separated by hairlines. */}
-      <Card className="grid grid-cols-3 gap-0 divide-x divide-border p-0">
-        {stats.map((s) => (
-          <div key={s.k} className="min-w-0 px-3 py-3 sm:px-4">
-            <div className="truncate text-xs font-medium text-muted-foreground">{s.k}</div>
-            <div className={cn("amount mt-1 truncate text-[0.95rem] font-semibold tracking-tight sm:text-xl", s.tone)}>{s.v}</div>
-            <div className="mt-1 flex items-center gap-1 truncate text-[11px] text-muted-foreground sm:text-xs">
-              {s.delta != null && (
-                <span className={cn("shrink-0 font-medium", s.good ? "text-positive" : "text-negative")}>
-                  {s.delta >= 0 ? "▲" : "▼"}{Math.abs(s.delta)}%
+      <dl className="mt-5 border-y border-border">
+        {props.map((p) => (
+          <div
+            key={p.k}
+            className="-mx-2 flex min-h-9 items-center gap-3 rounded-sm px-2 py-1.5 transition-colors hover:bg-hover sm:py-0"
+          >
+            <dt className="flex w-28 shrink-0 items-center gap-1.5 text-sm text-muted-foreground sm:w-32">
+              <p.icon className="size-3.5" />
+              {p.k}
+            </dt>
+            <dd className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-2 gap-y-0.5">
+              <span className={cn("amount text-sm font-medium tabular-nums", p.tone)}>{p.v}</span>
+              {p.delta != null && (
+                <span className={cn("text-[11px] font-medium tabular-nums", p.good ? "text-positive" : "text-negative")}>
+                  {p.delta >= 0 ? "▲" : "▼"}{Math.abs(p.delta)}%
                 </span>
               )}
-              <span className="truncate">{s.sub}</span>
-            </div>
+              <span className="truncate text-xs text-muted-foreground">{p.sub}</span>
+            </dd>
           </div>
         ))}
-      </Card>
+      </dl>
     </div>
   );
 }

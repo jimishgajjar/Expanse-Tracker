@@ -1,6 +1,6 @@
 ---
 name: Expense Tracker
-description: A quiet premium ledger for household money — white paper, near-black ink, one committed emerald.
+description: A household ledger in the Notion register — Inter on white paper, near-black ink, hover-wash interaction, one committed emerald.
 colors:
   paper: "#ffffff"
   ink: "#37352f"
@@ -17,67 +17,76 @@ colors:
   plum: "#6940a5"
   night: "#191919"
   night-card: "#202020"
-  night-ink: "#e9e9e7"
+  night-ink: "#d3d3d3"
+  hover: "#37352f14"
+  hover-dark: "#ffffff0e"
+  canvas-muted: "#37352f08"
 typography:
+  page-title:
+    fontFamily: "Inter, system-ui, sans-serif"
+    fontSize: "2.25rem"
+    fontWeight: 700
+    lineHeight: 1.15
+    letterSpacing: "-0.02em"
   display:
-    fontFamily: "Geist, system-ui, sans-serif"
+    fontFamily: "Inter, system-ui, sans-serif"
     fontSize: "1.875rem"
     fontWeight: 600
     lineHeight: 1.15
     letterSpacing: "-0.018em"
   headline:
-    fontFamily: "Geist, system-ui, sans-serif"
+    fontFamily: "Inter, system-ui, sans-serif"
     fontSize: "1.125rem"
     fontWeight: 600
     lineHeight: 1.3
     letterSpacing: "-0.018em"
   title:
-    fontFamily: "Geist, system-ui, sans-serif"
+    fontFamily: "Inter, system-ui, sans-serif"
     fontSize: "0.875rem"
     fontWeight: 600
     lineHeight: 1.4
   body:
-    fontFamily: "Geist, system-ui, sans-serif"
+    fontFamily: "Inter, system-ui, sans-serif"
     fontSize: "0.875rem"
     fontWeight: 400
     lineHeight: 1.5
   label:
-    fontFamily: "Geist, system-ui, sans-serif"
+    fontFamily: "Inter, system-ui, sans-serif"
     fontSize: "0.75rem"
     fontWeight: 500
     lineHeight: 1.35
   lead:
-    fontFamily: "Geist, system-ui, sans-serif"
+    fontFamily: "Inter, system-ui, sans-serif"
     fontSize: "0.9375rem"
     fontWeight: 500
     lineHeight: 1.4
   dense:
-    fontFamily: "Geist, system-ui, sans-serif"
+    fontFamily: "Inter, system-ui, sans-serif"
     fontSize: "13px"
     fontWeight: 400
     lineHeight: 1.45
   meta:
-    fontFamily: "Geist, system-ui, sans-serif"
+    fontFamily: "Inter, system-ui, sans-serif"
     fontSize: "11px"
     fontWeight: 400
     lineHeight: 1.35
   micro:
-    fontFamily: "Geist, system-ui, sans-serif"
+    fontFamily: "Inter, system-ui, sans-serif"
     fontSize: "10px"
     fontWeight: 400
     lineHeight: 1.2
   amount:
-    fontFamily: "Geist, system-ui, sans-serif"
+    fontFamily: "Inter, system-ui, sans-serif"
     fontSize: "1.5rem"
     fontWeight: 600
     letterSpacing: "-0.01em"
     fontVariation: "tabular-nums"
 rounded:
-  sm: "0.225rem"
-  md: "0.3rem"
-  lg: "0.375rem"
-  xl: "0.506rem"
-  2xl: "0.6375rem"
+  sm: "0.15rem"
+  md: "0.2rem"
+  lg: "0.25rem"
+  xl: "0.3375rem"
+  2xl: "0.425rem"
   pill: "9999px"
 spacing:
   xs: "4px"
@@ -110,18 +119,20 @@ components:
 
 ## 1. Overview
 
-**Creative North Star: "The Quiet Premium Ledger"**
+**Creative North Star: "A Notion page that happens to be a ledger"**
 
-This interface is a ledger you trust: white paper, warm near-black ink, hairline rules, and tabular numerals that line up to the pixel. It borrows Notion's calm (soft gray surfaces, small radii, restrained color) and adds one committed voice: a deep emerald that means *money, positive, primary*. Everything else stays out of the way so the figures can speak.
+This interface is a ledger you trust, set in Notion's product register: Inter on white paper, warm near-black ink, hairline rules, tabular numerals that line up to the pixel, and structure that comes from whitespace and a soft hover wash rather than from borders on everything. The signed-in app reads as a Notion *page* — a topbar breadcrumb, a large bold page title, a block of properties, underlined database-view tabs, rows that light up under the pointer. The one committed voice on top is a deep emerald that means *money, positive, primary*.
+
+The tokens are Notion's own (`#37352f` ink, `#191919` night, `rgba(55,53,47,0.09)` hairlines, `rgba(55,53,47,0.08)` hover); the register is applied through structure and interaction, not by re-tinting.
 
 The system explicitly rejects fintech-SaaS theatre: no gradient hero metrics, no glassmorphism-by-default, no AI-purple dark modes, no warm cream parchment. Personality arrives in committed moments (a bold net-position figure, an emerald-tinted chart fill, the active tab pill) rather than ambient decoration.
 
 **Key Characteristics:**
-- White paper / near-black ink (`#ffffff` / `#37352f`); true Notion-dark (`#191919` / `#e9e9e7`) in dark mode.
+- White paper / near-black ink (`#ffffff` / `#37352f`); true Notion-dark (`#191919` / `#d3d3d3`, Notion's 81% white) in dark mode.
 - One brand accent: emerald `#0f7b6c` (light) / `#2f9e89` (dark) for primary actions, active states, and positive money.
-- Hairline borders (`rgba(55,53,47,0.09)`) instead of shadows for in-flow structure.
+- Hairline borders (`rgba(55,53,47,0.09)`) and the hover wash (`rgba(55,53,47,0.08)`) instead of shadows for in-flow structure.
 - Tabular numerals everywhere; money is the typography hero.
-- Small radii (base 0.375rem) on controls; pills reserved for chips, badges, and the mobile tab bar.
+- Notion radii (base 0.25rem: 3–4px controls, ~6px popovers); pills reserved for chips, badges, and the mobile tab bar.
 
 ## 2. Colors
 
@@ -140,7 +151,9 @@ A restrained cool-neutral family with one committed emerald and a strict semanti
 - **Paper** (#ffffff): page and card background (light).
 - **Ink** (#37352f): body text (light). **Night Ink** (#e9e9e7) on **Night** (#191919) in dark.
 - **Muted Ink** (#787774 / #9b9a97 dark): secondary text, labels, captions.
-- **Mist** (#f7f6f3) and **Pressed** (#f1f1ef): muted fills, hover states, skeletons.
+- **Mist** (#f7f6f3) and **Pressed** (#f1f1ef): muted fills and skeletons.
+- **Hover wash** (rgba(55,53,47,0.08) / rgba(255,255,255,0.055) dark): the interaction state on rows, chips, ghost controls and property lines. Exposed as `bg-hover`.
+- **Canvas muted** (rgba(55,53,47,0.03) / rgba(255,255,255,0.03) dark): one step below Paper for inset panels; never a second card border.
 - **Hairline** (rgba(55,53,47,0.09) / rgba(255,255,255,0.094) dark): every border and divider.
 
 ### Named Rules
@@ -150,14 +163,15 @@ A restrained cool-neutral family with one committed emerald and a strict semanti
 
 ## 3. Typography
 
-**Display Font:** Geist (system-ui fallback)
-**Body Font:** Geist — one family carries the whole product
+**Display Font:** Inter (system-ui fallback)
+**Body Font:** Inter — one family carries the whole product
 **Mono:** Geist Mono (pagination counters, code-like values)
 
-**Character:** A single modern grotesk tuned by weight and size, never by family-switching. Headings sit at -0.018em; large money figures at -0.01em with tabular numerals.
+**Character:** Notion's typeface, tuned by weight and size, never by family-switching. Headings sit at -0.018em; the page title at -0.02em; large money figures at -0.01em with tabular numerals. Inter's tabular figures are native, so money aligns without a mono fallback.
 
 ### Hierarchy
-- **Display** (600, 1.875rem, 1.15): the one hero money figure per screen (net position, account balance).
+- **Page title** (700, 2.25rem, 1.15): the workspace name at the top of the canvas, under its icon — the one Notion-page heading per screen. Marketing headlines use a fluid clamp up to 4rem at -0.04em.
+- **Display** (600, 1.875rem, 1.15; steps up to the Page-title size from `sm`): the one hero money figure per screen (net position, account balance).
 - **Headline** (600, 1.125rem, 1.3): page/card titles ("Expense Tracker", dialog titles).
 - **Title** (600, 0.875rem, 1.4): card section headers, list group labels.
 - **Body** (400, 0.875rem, 1.5): rows, descriptions, forms.
@@ -192,12 +206,18 @@ Flat by default: structure comes from hairline borders and the Mist/Paper two-la
 - **Ghost:** borderless; hover Mist. Destructive uses Spend Red fill or red-text outline.
 - **Focus:** 3px emerald ring at 50% (`outline-ring/50`).
 
+### Page canvas (signature layout)
+The signed-in app is one Notion page: a 44px sticky **topbar** with a breadcrumb (brand mark + workspace name) and quiet ghost controls; then, on the canvas, a 40px icon tile and the **page title**; then a **properties block** (hairline-bounded `dl`, 36px rows, icon + muted label + value, hover wash); then **view tabs** (underlined, `variant="line"`) sharing a hairline with the period filter bar; then content. Nothing on the canvas wears a card unless it contains a chart.
+
 ### Cards / Containers
-- **Corner Style:** rounded-xl (0.506rem) to rounded-2xl for hero cards.
-- **Background:** Paper; Mist for inset/nested panels (never card-on-card borders).
-- **Shadow Strategy:** none (Hairline Rule).
-- **Border:** 1px Hairline.
+- **Corner Style:** rounded-md (0.2rem); hero panels no larger than rounded-lg.
+- **Background:** Paper; Canvas-muted for inset panels (never card-on-card borders).
+- **Shadow Strategy:** none (Hairline Rule). Gallery cards respond with the hover wash, not lift.
+- **Border:** 1px Hairline, no ring.
 - **Internal Padding:** 16px (p-4); dense lists run p-0 with row dividers.
+
+### Rows (tables, lists, properties)
+Rows sit directly on the canvas separated by hairlines, with a small negative margin so the **hover wash** reaches the gutter (`-mx-2 px-2 rounded-sm hover:bg-hover`). Row actions stay hidden until hover on desktop and visible on touch.
 
 ### Inputs / Fields
 - **Style:** 32px height on desktop (`h-8`; raise to 40px on touch layouts), hairline stroke (`--input` at 16% ink), Paper fill, small radius.
@@ -205,7 +225,7 @@ Flat by default: structure comes from hairline borders and the Mist/Paper two-la
 - **Error:** Spend Red border + caption text.
 
 ### Navigation
-- **Desktop:** inline header with brand tile, workspace switcher, an outline-button action row, and a segmented tab list (Overview / Transactions / Analytics).
+- **Desktop:** the topbar breadcrumb plus underlined view tabs (Overview / Transactions / Insights) in the canvas — Notion's database-view tabs, not a sunken segmented pill. Range chips are ghost buttons; the active one sits on the hover wash.
 - **Mobile (<640px):** a fixed, always-visible labeled tab bar — five items (Home, Activity, Add, Insights, More), icon over 10.5px label, active tab in a soft emerald pill (`bg-brand/15 text-brand`); frosted `bg-background/90 backdrop-blur` over content; safe-area padding. "More" opens a bottom sheet of secondary tools as rows (tinted icon square + label + chevron).
 - **States:** active = emerald pill; inactive = muted ink; press = scale-95.
 
@@ -220,6 +240,8 @@ A 44px+ row: tinted category icon square (category color at 13% alpha background
 - **Do** give every screen exactly one Display-scale hero figure (The One Hero Rule).
 - **Do** keep the mobile web experience app-like: fixed labeled tab bar, bottom sheets, `.press` feedback, safe-area insets, no tap-highlight flash.
 - **Do** use the category color system (13% alpha tile + full-color glyph) for all category/account iconography.
+- **Do** make interaction visible with the hover wash (`bg-hover`) rather than borders, lifts or shadows (The Hover Wash Rule).
+- **Do** let the marketing page follow notion.com's structure — white, centred headline with one pill-lifted word, ink doodle badges, a product frame — while keeping emerald as the accent.
 
 ### Don't:
 - **Don't** ship gradient hero metrics, glassmorphism-by-default, or purple-on-dark AI aesthetics (PRODUCT.md anti-references).

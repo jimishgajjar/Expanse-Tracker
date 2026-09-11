@@ -2,99 +2,41 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { Wallet } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { getVisitorMoney } from "@/lib/visitor-currency";
 
 /**
  * Shared chrome for every auth screen (login, signup, forgot, reset).
  *
- * A two-panel split: the brand ground on the left carries the same deep emerald
- * and the same ledger motif as the landing hero, so arriving from a CTA feels
- * continuous rather than like a different product. The form sits on paper at
- * the right, where the app's own input vocabulary applies unchanged.
- *
- * Below `lg` the panel collapses to a compact brand bar — a decorative half-screen
- * would just push the form below the fold on a phone.
+ * Notion's login is almost nothing: a small wordmark top-left, one narrow
+ * centred column, and a quiet footer. No side panel, no pitch — the person
+ * here has already decided. `headline` / `sub` are accepted so the four pages
+ * keep their signatures, but this register has nowhere honest to put them.
  */
-
-const PROOF_ROWS = [
-  { name: "Salary", strong: true },
-  { name: "Rent", strong: false },
-  { name: "Groceries", strong: false },
-];
-
-export async function AuthShell({
+export function AuthShell({
   children,
-  headline,
-  sub,
 }: {
   children: ReactNode;
-  /** Brand-panel headline. Varies per screen so the panel isn't dead weight. */
   headline: string;
   sub: string;
 }) {
-  // Same ledger motif as the landing hero, in the visitor's own currency.
-  const { format, sample } = await getVisitorMoney();
-  const [salary, rent, groceries] = sample;
-  const PROOF = PROOF_ROWS.map((r, i) => ({
-    ...r,
-    amount: format([salary, -rent, -groceries][i], { signed: true }),
-  }));
-
   return (
-    // Below lg the panel is a compact bar, so its row must size to content —
-    // min-h-svh on a single-column grid would otherwise hand it half the
-    // viewport while its pitch is hidden, leaving a dead emerald slab.
-    <div className="grid min-h-svh grid-rows-[auto_1fr] lg:grid-cols-[1.1fr_1fr] lg:grid-rows-1">
-      {/* ── Brand panel ── */}
-      <aside className="relative flex flex-col justify-between bg-brand-deep px-6 py-6 text-brand-deep-foreground sm:px-10 lg:px-14 lg:py-12">
-        <Link href="/" className="flex w-fit items-center gap-2.5" aria-label="Expense Tracker home">
-          <span className="grid size-8 place-items-center rounded-lg bg-white/15 text-white">
-            <Wallet className="size-4" />
+    <div className="flex min-h-svh flex-col bg-background text-foreground">
+      <header className="flex h-16 items-center justify-between px-5 sm:px-8">
+        <Link href="/" className="flex items-center gap-2" aria-label="Expense Tracker home">
+          <span className="grid size-6 place-items-center rounded-sm bg-foreground text-background">
+            <Wallet className="size-3.5" />
           </span>
-          <span className="text-[0.9375rem] font-semibold tracking-tight text-white">Expense Tracker</span>
+          <span className="text-sm font-semibold">Expense Tracker</span>
         </Link>
+        <ThemeToggle />
+      </header>
 
-        {/* The pitch + ledger motif is the panel's reason to exist; on phones it
-            would only delay the form, so it's desktop-only. */}
-        <div className="hidden lg:block">
-          <h2 className="max-w-md text-[clamp(1.75rem,2.6vw,2.5rem)] leading-[1.08] font-semibold tracking-[-0.025em] text-white">
-            {headline}
-          </h2>
-          <p className="mt-4 max-w-sm leading-relaxed text-white/75">{sub}</p>
-
-          <div className="mt-10 max-w-sm">
-            <div className="flex items-baseline justify-between border-b border-white/20 pb-2">
-              <span className="text-xs font-medium text-white/80">August</span>
-              <span className="text-xs text-white/80">3 of 24 entries</span>
-            </div>
-            <ul>
-              {PROOF.map((r) => (
-                <li key={r.name} className="flex items-center justify-between border-b border-white/12 py-2.5">
-                  <span className="text-sm text-white/90">{r.name}</span>
-                  <span
-                    className={`amount text-sm tabular-nums ${r.strong ? "font-semibold text-white" : "text-white/75"}`}
-                  >
-                    {r.amount}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-
-        <p className="hidden text-sm text-white/80 lg:block">
-          Free to start · No card required · Web, iOS &amp; Android
-        </p>
-      </aside>
-
-      {/* ── Form panel ── */}
-      <main className="relative flex items-center justify-center px-6 py-12 sm:px-10">
-        <div className="absolute top-4 right-4 sm:top-6 sm:right-6">
-          <ThemeToggle />
-        </div>
-        <div className="w-full max-w-sm">{children}</div>
+      <main className="flex flex-1 items-start justify-center px-5 pt-10 pb-16 sm:items-center sm:pt-0">
+        <div className="w-full max-w-[340px]">{children}</div>
       </main>
+
+      <footer className="px-5 pb-6 text-center text-xs text-muted-foreground">
+        Free to start · No card required · Web, iOS &amp; Android
+      </footer>
     </div>
   );
 }
-

@@ -96,8 +96,10 @@ function AccountCard({
   onArchive: (id: string, value: boolean) => void;
 }) {
   return (
-    <Card className={cn("group relative gap-0 overflow-hidden p-0 transition-[transform,box-shadow] duration-200 ease-out-quart hover:-translate-y-0.5 hover:ring-foreground/20", a.archived && "opacity-65 hover:opacity-100")}>
-      <Link href={`/accounts/${a.id}`} className="flex w-full flex-col items-start p-4 text-left transition-colors hover:bg-muted/40">
+    // Notion gallery card: a hairline, a hover wash, and no lift — the page
+    // stays flat, the row just lights up under the pointer.
+    <Card className={cn("group relative gap-0 overflow-hidden p-0 transition-colors hover:bg-hover", a.archived && "opacity-65 hover:opacity-100")}>
+      <Link href={`/accounts/${a.id}`} className="flex w-full flex-col items-start p-4 text-left">
         <div className="flex w-full items-center gap-2.5">
           <span className="grid size-9 shrink-0 place-items-center rounded-lg" style={{ backgroundColor: `${a.color}22`, color: a.color }}>
             <Icon name={a.icon} size={18} />

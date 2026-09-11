@@ -29,7 +29,9 @@ export function PeriodBar({
     // Mobile reads top-down: the period you're looking at first (arrows at the
     // screen edges for thumb reach), then the range switcher. Desktop is one row.
     <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-between">
-      <div className="flex overflow-x-auto rounded-lg bg-muted p-0.5">
+      {/* Notion's filter-bar controls: ghost chips, the active one on a soft
+          wash — no sunken segmented pill. */}
+      <div className="flex gap-0.5 overflow-x-auto">
         {RANGE_TYPES.map((rt) => (
           <button
             key={rt}
@@ -37,20 +39,20 @@ export function PeriodBar({
             onClick={() => push({ range: rt })}
             aria-pressed={rangeType === rt}
             className={cn(
-              "flex-1 rounded-md px-2.5 py-1.5 text-xs font-medium whitespace-nowrap transition-colors sm:flex-none sm:py-1",
-              rangeType === rt ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
+              "flex-1 rounded-sm px-2 py-1.5 text-xs font-medium whitespace-nowrap transition-colors sm:flex-none sm:py-1",
+              rangeType === rt ? "bg-hover text-foreground" : "text-muted-foreground hover:bg-hover hover:text-foreground",
             )}
           >
             {RANGE_LABELS[rt]}
           </button>
         ))}
       </div>
-      <div className="flex items-center justify-between gap-1 sm:justify-center">
-        <Button size="icon-sm" variant="outline" disabled={!canNavigate(rangeType)} onClick={() => push({ date: shiftAnchor(rangeType, anchor, -1) })} aria-label="Previous period">
+      <div className="flex items-center justify-between gap-0.5 sm:justify-center">
+        <Button size="icon-sm" variant="ghost" className="hover:bg-hover" disabled={!canNavigate(rangeType)} onClick={() => push({ date: shiftAnchor(rangeType, anchor, -1) })} aria-label="Previous period">
           <ChevronLeft className="size-4" />
         </Button>
-        <span className="min-w-[9.5rem] text-center text-sm font-semibold">{rangeLabel}</span>
-        <Button size="icon-sm" variant="outline" disabled={!canNavigate(rangeType)} onClick={() => push({ date: shiftAnchor(rangeType, anchor, 1) })} aria-label="Next period">
+        <span className="min-w-[9.5rem] text-center text-sm font-medium">{rangeLabel}</span>
+        <Button size="icon-sm" variant="ghost" className="hover:bg-hover" disabled={!canNavigate(rangeType)} onClick={() => push({ date: shiftAnchor(rangeType, anchor, 1) })} aria-label="Next period">
           <ChevronRight className="size-4" />
         </Button>
       </div>
