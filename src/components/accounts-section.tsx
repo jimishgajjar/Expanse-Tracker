@@ -2,9 +2,20 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Archive, ArchiveRestore, ArrowRightLeft, ChevronDown, Minus, Pencil, Plus, Trash2 } from "lucide-react";
+import {
+  Archive,
+  ArchiveRestore,
+  ArrowRightLeft,
+  ChevronDown,
+  Minus,
+  Pencil,
+  Plus,
+  Trash2,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { MoreActions } from "./more-actions";
+import { DropdownMenuItem, DropdownMenuSeparator } from "./ui/dropdown-menu";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/icon";
@@ -36,30 +47,57 @@ export function AccountsSection({
 
   async function remove(id: string) {
     const res = await deleteAccount(id);
-    if (res.ok) { toast.success("Account deleted"); router.refresh(); }
-    else toast.error(res.error);
+    if (res.ok) {
+      toast.success("Account deleted");
+      router.refresh();
+    } else toast.error(res.error);
   }
   async function setArchived(id: string, value: boolean) {
     const res = await setAccountArchived(id, value);
-    if (res.ok) { toast.success(value ? "Account archived" : "Account restored"); router.refresh(); }
-    else toast.error(res.error);
+    if (res.ok) {
+      toast.success(value ? "Account archived" : "Account restored");
+      router.refresh();
+    } else toast.error(res.error);
   }
 
-  const shared = { accounts, categories, canEdit, balanceMoney, onRemove: remove, onArchive: setArchived };
+  const shared = {
+    accounts,
+    categories,
+    canEdit,
+    balanceMoney,
+    onRemove: remove,
+    onArchive: setArchived,
+  };
 
   return (
     <section className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="flex items-baseline gap-2 text-sm font-semibold text-muted-foreground">
           All accounts
-          <span className="amount text-base font-semibold text-foreground">{balanceMoney(total)}</span>
+          <span className="amount text-base font-semibold text-foreground">
+            {balanceMoney(total)}
+          </span>
         </h2>
-        {canEdit && <AccountDialog trigger={<Button variant="outline" size="sm"><Plus className="size-4" /> Add account</Button>} />}
+        {canEdit && (
+          <AccountDialog
+            trigger={
+              <Button variant="outline" size="sm">
+                <Plus className="size-4" /> Add account
+              </Button>
+            }
+          />
+        )}
       </div>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-        {active.map((a) => <AccountCard key={a.id} account={a} {...shared} />)}
-        {accounts.length === 0 && <p className="text-sm text-muted-foreground">No accounts yet — add one to get started.</p>}
+        {active.map((a) => (
+          <AccountCard key={a.id} account={a} {...shared} />
+        ))}
+        {accounts.length === 0 && (
+          <p className="text-sm text-muted-foreground">
+            No accounts yet — add one to get started.
+          </p>
+        )}
       </div>
 
       {archived.length > 0 && (
@@ -67,15 +105,25 @@ export function AccountsSection({
           <button
             type="button"
             onClick={() => setShowArchived((v) => !v)}
-            className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+            aria-expanded={showArchived}
+            className="flex min-h-11 items-center gap-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
           >
-            <ChevronDown className={cn("size-3.5 transition-transform", showArchived ? "" : "-rotate-90")} />
+            <ChevronDown
+              className={cn(
+                "size-3.5 transition-transform",
+                showArchived ? "" : "-rotate-90",
+              )}
+            />
             Archived · {archived.length}
-            <span className="amount text-foreground/70">{balanceMoney(archivedTotal)}</span>
+            <span className="amount text-foreground/70">
+              {balanceMoney(archivedTotal)}
+            </span>
           </button>
           {showArchived && (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              {archived.map((a) => <AccountCard key={a.id} account={a} {...shared} />)}
+              {archived.map((a) => (
+                <AccountCard key={a.id} account={a} {...shared} />
+              ))}
             </div>
           )}
         </div>
@@ -85,7 +133,13 @@ export function AccountsSection({
 }
 
 function AccountCard({
-  account: a, accounts, categories, canEdit, balanceMoney, onRemove, onArchive,
+  account: a,
+  accounts,
+  categories,
+  canEdit,
+  balanceMoney,
+  onRemove,
+  onArchive,
 }: {
   account: AccountDTO;
   accounts: AccountDTO[];
@@ -97,59 +151,144 @@ function AccountCard({
 }) {
   return (
     // Keep account management separate from the linked balance and title.
-    <Card className={cn("group relative gap-0 overflow-hidden p-0 transition-colors hover:bg-hover", a.archived && "opacity-65 hover:opacity-100")}>
-      <Link href={`/accounts/${a.id}`} className="flex w-full flex-col items-start p-4 text-left">
+    <Card
+      className={cn(
+        "group relative gap-0 overflow-hidden p-0 transition-colors hover:bg-hover",
+        a.archived && "opacity-65 hover:opacity-100",
+      )}
+    >
+      <Link
+        href={`/accounts/${a.id}`}
+        className={cn(
+          "flex w-full flex-col items-start p-4 text-left",
+          canEdit && "pr-14",
+        )}
+      >
         <div className="flex w-full items-center gap-2.5">
-          <span className="grid size-9 shrink-0 place-items-center rounded-lg" style={{ backgroundColor: `${a.color}22`, color: a.color }}>
+          <span
+            className="grid size-9 shrink-0 place-items-center rounded-lg"
+            style={{ backgroundColor: `${a.color}22`, color: a.color }}
+          >
             <Icon name={a.icon} size={18} />
           </span>
           <div className="min-w-0">
             <div className="flex items-center gap-1.5">
               <span className="truncate font-medium">{a.name}</span>
-              {a.archived && <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">Archived</span>}
+              {a.archived && (
+                <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                  Archived
+                </span>
+              )}
             </div>
-            <div className="text-xs text-muted-foreground capitalize">{a.type}</div>
+            <div className="text-xs text-muted-foreground capitalize">
+              {a.type}
+            </div>
           </div>
         </div>
-        <div className={cn("amount mt-3 text-xl font-semibold", a.balance < 0 && "text-negative")}>
+        <div
+          className={cn(
+            "amount mt-3 break-all text-xl font-semibold",
+            a.balance < 0 && "text-negative",
+          )}
+        >
           {balanceMoney(a.balance)}
         </div>
       </Link>
       {canEdit && (
-        <div className="flex justify-end border-t px-2 py-1 text-muted-foreground">
-          {a.archived ? (
-            <Button size="icon-sm" variant="ghost" aria-label="Restore account" title="Restore" onClick={() => onArchive(a.id, false)}>
-              <ArchiveRestore className="size-3.5" />
-            </Button>
-          ) : (
-            <>
-              <AccountDialog account={a} trigger={<Button size="icon-sm" variant="ghost" aria-label="Edit account"><Pencil className="size-3.5" /></Button>} />
-              <Button size="icon-sm" variant="ghost" aria-label="Archive account" title="Archive (hide, keep history)" onClick={() => onArchive(a.id, true)}>
-                <Archive className="size-3.5" />
-              </Button>
-            </>
-          )}
-          <ConfirmDialog
-            trigger={<Button size="icon-sm" variant="ghost" aria-label="Delete account"><Trash2 className="size-3.5" /></Button>}
-            title={`Delete "${a.name}"?`}
-            description="Its transactions and transfers will be deleted too. This can't be undone. (Tip: Archive instead to keep the history.)"
-            onConfirm={() => onRemove(a.id)}
-          />
+        <div className="absolute top-2 right-2">
+          <MoreActions label={`More actions for ${a.name}`}>
+            {a.archived ? (
+              <DropdownMenuItem onClick={() => onArchive(a.id, false)}>
+                <ArchiveRestore />
+                Restore account
+              </DropdownMenuItem>
+            ) : (
+              <>
+                <AccountDialog
+                  account={a}
+                  trigger={
+                    <DropdownMenuItem
+                      closeOnClick={false}
+                      nativeButton
+                      render={<button type="button" />}
+                    >
+                      <Pencil />
+                      Edit account
+                    </DropdownMenuItem>
+                  }
+                />
+                <DropdownMenuItem onClick={() => onArchive(a.id, true)}>
+                  <Archive />
+                  Archive account
+                </DropdownMenuItem>
+              </>
+            )}
+            <DropdownMenuSeparator />
+            <ConfirmDialog
+              trigger={
+                <DropdownMenuItem
+                  variant="destructive"
+                  closeOnClick={false}
+                  nativeButton
+                  render={<button type="button" />}
+                >
+                  <Trash2 />
+                  Delete account
+                </DropdownMenuItem>
+              }
+              title={`Delete "${a.name}"?`}
+              description="Its transactions and transfers will be deleted too. This can't be undone. Archive instead to keep the history."
+              onConfirm={() => onRemove(a.id)}
+            />
+          </MoreActions>
         </div>
       )}
       {canEdit && !a.archived && (
         <div className="flex border-t text-xs font-medium">
           <TransactionDialog
-            accounts={accounts} categories={categories} defaultAccountId={a.id} defaultType="income"
-            trigger={<button type="button" aria-label={`Add income to ${a.name}`} className="flex min-h-11 flex-1 items-center justify-center gap-1.5 py-2 text-positive transition-colors hover:bg-positive/10"><Plus className="size-3.5" /> Income</button>}
+            accounts={accounts}
+            categories={categories}
+            defaultAccountId={a.id}
+            defaultType="income"
+            trigger={
+              <button
+                type="button"
+                aria-label={`Add income to ${a.name}`}
+                className="flex min-h-11 flex-1 items-center justify-center gap-1.5 py-2 text-positive transition-colors hover:bg-positive/10"
+              >
+                <Plus className="size-3.5" /> Income
+              </button>
+            }
           />
           <TransactionDialog
-            accounts={accounts} categories={categories} defaultAccountId={a.id} defaultType="expense"
-            trigger={<button type="button" aria-label={`Add expense to ${a.name}`} className="flex min-h-11 flex-1 items-center justify-center gap-1.5 border-l py-2 text-negative transition-colors hover:bg-negative/10"><Minus className="size-3.5" /> Expense</button>}
+            accounts={accounts}
+            categories={categories}
+            defaultAccountId={a.id}
+            defaultType="expense"
+            trigger={
+              <button
+                type="button"
+                aria-label={`Add expense to ${a.name}`}
+                className="flex min-h-11 flex-1 items-center justify-center gap-1.5 border-l py-2 text-negative transition-colors hover:bg-negative/10"
+              >
+                <Minus className="size-3.5" /> Expense
+              </button>
+            }
           />
           <TransactionDialog
-            accounts={accounts} categories={categories} defaultAccountId={a.id} defaultType="transfer"
-            trigger={<button type="button" aria-label={`Transfer from ${a.name}`} className="flex min-h-11 flex-1 items-center justify-center gap-1.5 border-l py-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"><ArrowRightLeft className="size-3.5" /> Transfer</button>}
+            accounts={accounts}
+            categories={categories}
+            defaultAccountId={a.id}
+            defaultType="transfer"
+            trigger={
+              <button
+                type="button"
+                aria-label={`Transfer from ${a.name}`}
+                className="flex min-h-11 flex-1 items-center justify-center gap-1.5 border-l py-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              >
+                <ArrowRightLeft className="size-3.5" /> Transfer
+              </button>
+            }
           />
         </div>
       )}

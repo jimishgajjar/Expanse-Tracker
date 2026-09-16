@@ -50,14 +50,14 @@ export function SummaryCards({
       aria-label="Balance and cash flow"
       className="overflow-hidden rounded-2xl border bg-card"
     >
-      <div className="flex flex-wrap items-end justify-between gap-4 px-5 py-6 sm:px-7 sm:py-7">
+      <div className="flex flex-wrap items-end justify-between gap-2 px-4 py-4 sm:px-5">
         <div>
           <p className="text-sm font-medium text-muted-foreground">
             Total balance
           </p>
           <p
             className={cn(
-              "amount mt-2 break-all text-4xl font-semibold leading-tight tracking-tight sm:text-[2.75rem]",
+              "amount mt-1 break-all text-3xl font-semibold leading-tight tracking-tight sm:text-4xl",
               totalBalance < 0 && "text-negative",
             )}
           >
@@ -68,24 +68,21 @@ export function SummaryCards({
             {accountsCount === 1 ? "" : "s"}
           </p>
         </div>
-        <p className="rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground">
-          Cash flow below · {rangeLabel}
+        <p className="text-xs text-muted-foreground">
+          Cash flow · {rangeLabel}
         </p>
       </div>
-      <dl className="grid grid-cols-1 divide-y border-t bg-canvas-muted sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+      <dl className="grid grid-cols-3 divide-x border-t bg-canvas-muted">
         {items.map((item) => (
-          <div
-            key={item.label}
-            className="flex items-center justify-between gap-4 px-5 py-4 sm:block sm:px-7 sm:py-5"
-          >
-            <dt className="flex items-center gap-2 text-sm text-muted-foreground">
-              <item.icon className="size-4" />
+          <div key={item.label} className="min-w-0 px-3 py-3 sm:px-5">
+            <dt className="flex items-center gap-2 text-xs text-muted-foreground">
+              <item.icon className="hidden size-3.5 sm:block" />
               {item.label}
             </dt>
-            <dd className="text-right sm:mt-2 sm:text-left">
+            <dd className="mt-1.5">
               <span
                 className={cn(
-                  "amount break-all text-lg font-semibold sm:text-xl",
+                  "amount break-all text-sm font-semibold sm:text-lg",
                   item.tone,
                 )}
               >
@@ -94,7 +91,11 @@ export function SummaryCards({
               {item.change !== null && (
                 <p className="mt-1 text-xs text-muted-foreground">
                   {item.change > 0 ? "+" : ""}
-                  {item.change}% vs previous period
+                  {item.change}%
+                  <span className="sr-only sm:not-sr-only">
+                    {" "}
+                    vs previous period
+                  </span>
                 </p>
               )}
             </dd>

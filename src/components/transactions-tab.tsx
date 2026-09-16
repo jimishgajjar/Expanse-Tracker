@@ -2,14 +2,30 @@
 
 import { useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, Search, X } from "lucide-react";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { FilterChips, type FilterChip } from "./filter-chips";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { mergeActivity } from "@/lib/activity";
-import { ActivityRows, TransactionRows, TransferRows } from "@/components/transactions-list";
+import {
+  ActivityRows,
+  TransactionRows,
+  TransferRows,
+} from "@/components/transactions-list";
 import { useFormat } from "@/components/settings-provider";
 import { cn } from "@/lib/utils";
-import type { AccountDTO, CategoryDTO, TransactionDTO, TransferDTO } from "@/lib/queries";
+import type {
+  AccountDTO,
+  CategoryDTO,
+  TransactionDTO,
+  TransferDTO,
+} from "@/lib/queries";
 
 const PAGE_SIZES = [10, 25, 50, 100];
 type Tab = "all" | "expense" | "income" | "transfer";
@@ -52,7 +68,8 @@ export function TransactionsTab({
       if (accountId !== "all" && t.accountId !== accountId) return false;
       if (categoryId !== "all" && t.categoryId !== categoryId) return false;
       if (q) {
-        const hay = `${t.note} ${t.category?.name ?? ""} ${t.account?.name ?? ""} ${t.tags.map((tg) => tg.name).join(" ")}`.toLowerCase();
+        const hay =
+          `${t.note} ${t.category?.name ?? ""} ${t.account?.name ?? ""} ${t.tags.map((tg) => tg.name).join(" ")}`.toLowerCase();
         if (!hay.includes(q)) return false;
       }
       return true;
@@ -61,11 +78,18 @@ export function TransactionsTab({
 
   const filteredTransfers = useMemo(() => {
     const q = search.trim().toLowerCase();
-    const nameOf = (id: string) => accounts.find((a) => a.id === id)?.name ?? "";
+    const nameOf = (id: string) =>
+      accounts.find((a) => a.id === id)?.name ?? "";
     return transfers.filter((t) => {
-      if (accountId !== "all" && t.fromAccountId !== accountId && t.toAccountId !== accountId) return false;
+      if (
+        accountId !== "all" &&
+        t.fromAccountId !== accountId &&
+        t.toAccountId !== accountId
+      )
+        return false;
       if (q) {
-        const hay = `${t.note} ${nameOf(t.fromAccountId)} ${nameOf(t.toAccountId)}`.toLowerCase();
+        const hay =
+          `${t.note} ${nameOf(t.fromAccountId)} ${nameOf(t.toAccountId)}`.toLowerCase();
         if (!hay.includes(q)) return false;
       }
       return true;
@@ -74,7 +98,12 @@ export function TransactionsTab({
 
   // Any filter change starts the list over on page 1. Done in the setters
   // rather than an effect, so React never paints a stale page first.
-  const withReset = <T,>(set: (v: T) => void) => (v: T) => { set(v); setPage(1); };
+  const withReset =
+    <T,>(set: (v: T) => void) =>
+    (v: T) => {
+      set(v);
+      setPage(1);
+    };
   const pickTab = withReset(setTab);
   const pickAccount = withReset(setAccountId);
   const pickCategory = withReset(setCategoryId);
@@ -91,15 +120,30 @@ export function TransactionsTab({
     }
     return { inc, exp, net: inc - exp };
   }, [filteredTx]);
-  const transferTotal = useMemo(() => filteredTransfers.reduce((s, t) => s + t.amount, 0), [filteredTransfers]);
+  const transferTotal = useMemo(
+    () => filteredTransfers.reduce((s, t) => s + t.amount, 0),
+    [filteredTransfers],
+  );
 
-  const activity = mergeActivity(filteredTx, categoryId === "all" ? filteredTransfers : []);
-  const total = tab === "all" ? activity.length : isTransfer ? filteredTransfers.length : filteredTx.length;
+  const activity = mergeActivity(
+    filteredTx,
+    categoryId === "all" ? filteredTransfers : [],
+  );
+  const total =
+    tab === "all"
+      ? activity.length
+      : isTransfer
+        ? filteredTransfers.length
+        : filteredTx.length;
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
   const curPage = Math.min(page, pageCount);
   const start = (curPage - 1) * pageSize;
 
-  const filtersActive = tab !== "all" || accountId !== "all" || categoryId !== "all" || search.trim() !== "";
+  const filtersActive =
+    tab !== "all" ||
+    accountId !== "all" ||
+    categoryId !== "all" ||
+    search.trim() !== "";
   function clearFilters() {
     pickTab("all");
     pickAccount("all");
@@ -107,14 +151,48 @@ export function TransactionsTab({
     pickSearch("");
   }
 
-  const accountItems = [{ value: "all", label: "All accounts" }, ...accounts.map((a) => ({ value: a.id, label: a.name }))];
-  const categoryItems = [{ value: "all", label: "All categories" }, ...categories.map((c) => ({ value: c.id, label: c.name }))];
+  const accountItems = [
+    { value: "all", label: "All accounts" },
+    ...accounts.map((a) => ({ value: a.id, label: a.name })),
+  ];
+  const categoryItems = [
+    { value: "all", label: "All categories" },
+    ...categories.map((c) => ({ value: c.id, label: c.name })),
+  ];
 
+  const chips: FilterChip[] = [];
+  if (tab !== "all")
+    chips.push({
+      key: "type",
+      label: TYPE_TABS.find((t) => t.value === tab)!.label,
+      onRemove: () => pickTab("all"),
+    });
+  if (accountId !== "all")
+    chips.push({
+      key: "account",
+      label: accounts.find((a) => a.id === accountId)?.name ?? "Account",
+      onRemove: () => pickAccount("all"),
+    });
+  if (categoryId !== "all")
+    chips.push({
+      key: "category",
+      label: categories.find((c) => c.id === categoryId)?.name ?? "Category",
+      onRemove: () => pickCategory("all"),
+    });
+  if (search.trim())
+    chips.push({
+      key: "search",
+      label: `Search: ${search.trim()}`,
+      onRemove: () => pickSearch(""),
+    });
   return (
-    // A Notion database, not a card: view tabs, a filter bar, then rows on the
-    // canvas. The totals strip is the "calculate" row — what the view adds up to.
     <div className="space-y-4">
-      <div className={cn("grid divide-x divide-border rounded-md border border-border bg-canvas-muted", isTransfer ? "grid-cols-2" : "grid-cols-3")}>
+      <div
+        className={cn(
+          "grid divide-x divide-border rounded-md border border-border bg-canvas-muted",
+          isTransfer ? "grid-cols-2" : "grid-cols-3",
+        )}
+      >
         {isTransfer ? (
           <>
             <StripCell label="Transfers" value={String(total)} />
@@ -122,9 +200,21 @@ export function TransactionsTab({
           </>
         ) : (
           <>
-            <StripCell label="In" value={money(totals.inc)} tone="text-positive" />
-            <StripCell label="Out" value={money(totals.exp)} tone="text-negative" />
-            <StripCell label="Net" value={signedMoney(totals.net)} tone={totals.net < 0 ? "text-negative" : "text-positive"} />
+            <StripCell
+              label="In"
+              value={money(totals.inc)}
+              tone="text-positive"
+            />
+            <StripCell
+              label="Out"
+              value={money(totals.exp)}
+              tone="text-negative"
+            />
+            <StripCell
+              label="Net"
+              value={signedMoney(totals.net)}
+              tone={totals.net < 0 ? "text-negative" : "text-positive"}
+            />
           </>
         )}
       </div>
@@ -137,19 +227,27 @@ export function TransactionsTab({
               <button
                 key={t.value}
                 type="button"
-                onClick={() => pickTab(t.value)}
+                onClick={() => {
+                  pickTab(t.value);
+                  if (t.value === "transfer") pickCategory("all");
+                }}
                 aria-pressed={tab === t.value}
                 className={cn(
-                  "relative flex-1 rounded-sm px-2 py-1.5 text-sm font-medium whitespace-nowrap transition-colors hover:bg-hover sm:flex-none",
+                  "relative min-h-11 flex-1 rounded-sm px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors hover:bg-hover sm:flex-none",
                   "after:absolute after:inset-x-0 after:-bottom-px after:h-0.5 after:bg-foreground after:opacity-0 after:transition-opacity",
-                  tab === t.value ? "text-foreground after:opacity-100" : "text-muted-foreground hover:text-foreground",
+                  tab === t.value
+                    ? "text-foreground after:opacity-100"
+                    : "text-muted-foreground hover:text-foreground",
                 )}
               >
                 {t.label}
               </button>
             ))}
           </div>
-          <span aria-live="polite" className="hidden shrink-0 text-xs text-muted-foreground sm:block">
+          <span
+            aria-live="polite"
+            className="hidden shrink-0 text-xs text-muted-foreground sm:block"
+          >
             {total} result{total === 1 ? "" : "s"}
           </span>
         </div>
@@ -162,7 +260,7 @@ export function TransactionsTab({
               onChange={(e) => pickSearch(e.target.value)}
               aria-label="Search transactions"
               placeholder="Search note, category, tag, account…"
-              className="h-10 pr-8 pl-8 sm:h-8"
+              className="min-h-11 pr-11 pl-9"
             />
             {search !== "" && (
               <button
@@ -176,21 +274,55 @@ export function TransactionsTab({
             )}
           </div>
           <div className="flex gap-2">
-            <Select value={accountId} onValueChange={(v) => pickAccount(v as string)} items={accountItems}>
-              <SelectTrigger aria-label="Filter by account" className="h-10 flex-1 sm:h-8 sm:w-[150px]"><SelectValue /></SelectTrigger>
-              <SelectContent>{accountItems.map((i) => <SelectItem key={i.value} value={i.value}>{i.label}</SelectItem>)}</SelectContent>
+            <Select
+              value={accountId}
+              onValueChange={(v) => pickAccount(v as string)}
+              items={accountItems}
+            >
+              <SelectTrigger
+                aria-label="Filter by account"
+                className="min-h-11 flex-1 sm:w-[150px]"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {accountItems.map((i) => (
+                  <SelectItem key={i.value} value={i.value}>
+                    {i.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
             </Select>
-            <Select value={categoryId} onValueChange={(v) => pickCategory(v as string)} items={categoryItems} disabled={isTransfer}>
-              <SelectTrigger aria-label="Filter by category" className="h-10 flex-1 sm:h-8 sm:w-[160px]"><SelectValue /></SelectTrigger>
-              <SelectContent>{categoryItems.map((i) => <SelectItem key={i.value} value={i.value}>{i.label}</SelectItem>)}</SelectContent>
+            <Select
+              value={categoryId}
+              onValueChange={(v) => pickCategory(v as string)}
+              items={categoryItems}
+              disabled={isTransfer}
+            >
+              <SelectTrigger
+                aria-label="Filter by category"
+                className="min-h-11 flex-1 sm:w-[160px]"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {categoryItems.map((i) => (
+                  <SelectItem key={i.value} value={i.value}>
+                    {i.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
             </Select>
           </div>
         </div>
 
+        <FilterChips chips={chips} onClear={clearFilters} />
         {total === 0 ? (
           <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed py-12 text-center">
             <p className="text-sm text-muted-foreground">
-              {filtersActive ? "Nothing matches your filters." : "Nothing logged in this period yet."}
+              {filtersActive
+                ? "Nothing matches your filters."
+                : "Nothing logged in this period yet."}
             </p>
             {filtersActive && (
               <Button variant="outline" size="sm" onClick={clearFilters}>
@@ -199,9 +331,19 @@ export function TransactionsTab({
             )}
           </div>
         ) : tab === "all" ? (
-          <ActivityRows entries={activity.slice(start, start + pageSize)} accounts={accounts} categories={categories} canEdit={canEdit} showAuthors={showAuthors} />
+          <ActivityRows
+            entries={activity.slice(start, start + pageSize)}
+            accounts={accounts}
+            categories={categories}
+            canEdit={canEdit}
+            showAuthors={showAuthors}
+          />
         ) : isTransfer ? (
-          <TransferRows transfers={filteredTransfers.slice(start, start + pageSize)} accounts={accounts} canEdit={canEdit} />
+          <TransferRows
+            transfers={filteredTransfers.slice(start, start + pageSize)}
+            accounts={accounts}
+            canEdit={canEdit}
+          />
         ) : (
           <TransactionRows
             transactions={filteredTx.slice(start, start + pageSize)}
@@ -217,19 +359,56 @@ export function TransactionsTab({
           <div className="flex flex-col items-stretch gap-3 border-t pt-3 text-sm sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center justify-center gap-2 text-muted-foreground sm:justify-start">
               <span>Per page</span>
-              <Select value={String(pageSize)} onValueChange={(v) => pickPageSize(Number(v))} items={PAGE_SIZES.map((n) => ({ value: String(n), label: String(n) }))}>
-                <SelectTrigger size="sm" aria-label="Rows per page" className="h-9 w-[4.5rem] sm:h-7"><SelectValue /></SelectTrigger>
-                <SelectContent>{PAGE_SIZES.map((n) => <SelectItem key={n} value={String(n)}>{n}</SelectItem>)}</SelectContent>
+              <Select
+                value={String(pageSize)}
+                onValueChange={(v) => pickPageSize(Number(v))}
+                items={PAGE_SIZES.map((n) => ({
+                  value: String(n),
+                  label: String(n),
+                }))}
+              >
+                <SelectTrigger
+                  size="sm"
+                  aria-label="Rows per page"
+                  className="h-9 w-[4.5rem] sm:h-7"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {PAGE_SIZES.map((n) => (
+                    <SelectItem key={n} value={String(n)}>
+                      {n}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
               </Select>
             </div>
             <div className="flex items-center justify-center gap-3">
-              <span className="text-muted-foreground">{start + 1}–{Math.min(start + pageSize, total)} of {total}</span>
+              <span className="text-muted-foreground">
+                {start + 1}–{Math.min(start + pageSize, total)} of {total}
+              </span>
               <div className="flex items-center gap-1">
-                <Button size="icon-sm" variant="outline" className="size-9 sm:size-7" disabled={curPage <= 1} onClick={() => setPage(curPage - 1)} aria-label="Previous page">
+                <Button
+                  size="icon-sm"
+                  variant="outline"
+                  className="size-9 sm:size-7"
+                  disabled={curPage <= 1}
+                  onClick={() => setPage(curPage - 1)}
+                  aria-label="Previous page"
+                >
                   <ChevronLeft className="size-4" />
                 </Button>
-                <span className="min-w-[3.5rem] text-center font-mono text-xs">{curPage} / {pageCount}</span>
-                <Button size="icon-sm" variant="outline" className="size-9 sm:size-7" disabled={curPage >= pageCount} onClick={() => setPage(curPage + 1)} aria-label="Next page">
+                <span className="min-w-[3.5rem] text-center font-mono text-xs">
+                  {curPage} / {pageCount}
+                </span>
+                <Button
+                  size="icon-sm"
+                  variant="outline"
+                  className="size-9 sm:size-7"
+                  disabled={curPage >= pageCount}
+                  onClick={() => setPage(curPage + 1)}
+                  aria-label="Next page"
+                >
                   <ChevronRight className="size-4" />
                 </Button>
               </div>
@@ -241,11 +420,28 @@ export function TransactionsTab({
   );
 }
 
-function StripCell({ label, value, tone }: { label: string; value: string; tone?: string }) {
+function StripCell({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: string;
+  tone?: string;
+}) {
   return (
     <div className="min-w-0 px-3 py-3 sm:px-4">
-      <div className="truncate text-xs font-medium text-muted-foreground">{label}</div>
-      <div className={cn("amount mt-1 truncate text-[0.95rem] font-semibold tracking-tight sm:text-lg", tone)}>{value}</div>
+      <div className="truncate text-xs font-medium text-muted-foreground">
+        {label}
+      </div>
+      <div
+        className={cn(
+          "amount mt-1 truncate text-[0.95rem] font-semibold tracking-tight sm:text-lg",
+          tone,
+        )}
+      >
+        {value}
+      </div>
     </div>
   );
 }

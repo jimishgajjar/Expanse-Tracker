@@ -1,10 +1,23 @@
 "use client";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "./ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { canNavigate, RANGE_LABELS, RANGE_TYPES, shiftAnchor, type RangeType } from "@/lib/dates";
+import {
+  todayISO,
+  canNavigate,
+  RANGE_LABELS,
+  RANGE_TYPES,
+  shiftAnchor,
+  type RangeType,
+} from "@/lib/dates";
 
 export function PeriodBar({
   rangeType,
@@ -39,19 +52,91 @@ export function PeriodBar({
             aria-pressed={rangeType === rt}
             className={cn(
               "min-h-11 flex-1 rounded-lg px-2 py-1.5 text-xs font-medium whitespace-nowrap transition-colors sm:flex-none sm:py-2",
-              rangeType === rt ? "bg-hover text-foreground" : "text-muted-foreground hover:bg-hover hover:text-foreground",
+              rangeType === rt
+                ? "bg-hover text-foreground"
+                : "text-muted-foreground hover:bg-hover hover:text-foreground",
             )}
           >
             {RANGE_LABELS[rt]}
           </button>
         ))}
       </div>
-      <div className="flex items-center justify-between gap-0.5 sm:justify-center">
-        <Button size="icon-sm" variant="ghost" className="size-11 hover:bg-hover" disabled={!canNavigate(rangeType)} onClick={() => push({ date: shiftAnchor(rangeType, anchor, -1) })} aria-label="Previous period">
+      <div className="flex flex-wrap items-center justify-between gap-0.5 sm:justify-center">
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            render={
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-11"
+                aria-label="Choose a date preset"
+              />
+            }
+          >
+            <CalendarDays className="size-4" />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            align="end"
+            className="min-w-44 [&_[role=menuitem]]:min-h-11"
+          >
+            <DropdownMenuItem
+              onClick={() => push({ range: "day", date: todayISO() })}
+            >
+              Today
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => push({ range: "week", date: todayISO() })}
+            >
+              This week
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => push({ range: "month", date: todayISO() })}
+            >
+              This month
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() =>
+                push({
+                  range: "month",
+                  date: shiftAnchor("month", todayISO(), -1),
+                })
+              }
+            >
+              Last month
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => push({ range: "year", date: todayISO() })}
+            >
+              This year
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => push({ range: "all", date: todayISO() })}
+            >
+              All time
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+        <Button
+          size="icon-sm"
+          variant="ghost"
+          className="size-11 hover:bg-hover"
+          disabled={!canNavigate(rangeType)}
+          onClick={() => push({ date: shiftAnchor(rangeType, anchor, -1) })}
+          aria-label="Previous period"
+        >
           <ChevronLeft className="size-4" />
         </Button>
-        <span className="min-w-[9.5rem] text-center text-sm font-medium">{rangeLabel}</span>
-        <Button size="icon-sm" variant="ghost" className="hover:bg-hover" disabled={!canNavigate(rangeType)} onClick={() => push({ date: shiftAnchor(rangeType, anchor, 1) })} aria-label="Next period">
+        <span className="min-w-0 flex-1 text-center sm:min-w-[9.5rem] text-sm font-medium">
+          {rangeLabel}
+        </span>
+        <Button
+          size="icon-sm"
+          variant="ghost"
+          className="hover:bg-hover"
+          disabled={!canNavigate(rangeType)}
+          onClick={() => push({ date: shiftAnchor(rangeType, anchor, 1) })}
+          aria-label="Next period"
+        >
           <ChevronRight className="size-4" />
         </Button>
       </div>

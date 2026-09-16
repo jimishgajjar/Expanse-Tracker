@@ -8,6 +8,9 @@ import {
   Search,
   SlidersHorizontal,
 } from "lucide-react";
+import { FilterChips, type FilterChip } from "./filter-chips";
+import { DATE_PRESETS, presetDates } from "@/lib/date-presets";
+import { todayISO } from "@/lib/dates";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import {
@@ -111,6 +114,72 @@ export function DetailActivity({
     { value: "expense", label: "Expenses" },
     ...(accountId ? [{ value: "transfer", label: "Transfers" }] : []),
   ];
+  const chips: FilterChip[] = [];
+  if (filters.type !== "all")
+    chips.push({
+      key: "type",
+      label:
+        filters.type === "income"
+          ? "Income"
+          : filters.type === "expense"
+            ? "Expenses"
+            : "Transfers",
+      onRemove: () => update({ type: "all", direction: "all" }),
+    });
+  if (filters.account !== "all")
+    chips.push({
+      key: "account",
+      label: accounts.find((a) => a.id === filters.account)?.name ?? "Account",
+      onRemove: () => update({ account: "all" }),
+    });
+  if (filters.category !== "all")
+    chips.push({
+      key: "category",
+      label:
+        categories.find((c) => c.id === filters.category)?.name ??
+        "Uncategorized",
+      onRemove: () => update({ category: "all" }),
+    });
+  if (filters.search.trim())
+    chips.push({
+      key: "search",
+      label: `Search: ${filters.search.trim()}`,
+      onRemove: () => update({ search: "" }),
+    });
+  if (filters.from || filters.to)
+    chips.push({
+      key: "dates",
+      label: `${filters.from || "Any start"} to ${filters.to || "Any end"}`,
+      onRemove: () => update({ from: "", to: "" }),
+    });
+  if (filters.min)
+    chips.push({
+      key: "min",
+      label: `At least ${money(Number(filters.min))}`,
+      onRemove: () => update({ min: "" }),
+    });
+  if (filters.max)
+    chips.push({
+      key: "max",
+      label: `Up to ${money(Number(filters.max))}`,
+      onRemove: () => update({ max: "" }),
+    });
+  if (filters.direction !== "all")
+    chips.push({
+      key: "direction",
+      label: filters.direction === "in" ? "Transfers in" : "Transfers out",
+      onRemove: () => update({ direction: "all" }),
+    });
+  if (filters.sort !== "newest")
+    chips.push({
+      key: "sort",
+      label: {
+        oldest: "Oldest first",
+        highest: "Highest amount",
+        lowest: "Lowest amount",
+      }[filters.sort],
+      onRemove: () => update({ sort: "newest" }),
+    });
   return (
     <section
       className="overflow-hidden rounded-xl border bg-card"
@@ -209,11 +278,29 @@ export function DetailActivity({
             )}
           </Button>
         </div>
+        <FilterChips chips={chips} onClear={clear} />
         {expanded && (
           <div
             id={`${id}-filters`}
             className="grid gap-4 rounded-lg border bg-muted/20 p-4 sm:grid-cols-2 xl:grid-cols-4"
           >
+            <div
+              className="flex flex-wrap gap-2 sm:col-span-2 xl:col-span-4"
+              role="group"
+              aria-label="Date presets"
+            >
+              {DATE_PRESETS.map((preset) => (
+                <Button
+                  key={preset.value}
+                  type="button"
+                  variant="outline"
+                  className="min-h-11"
+                  onClick={() => update(presetDates(preset.value, todayISO()))}
+                >
+                  {preset.label}
+                </Button>
+              ))}
+            </div>
             {(
               [
                 { key: "from", label: "From date", type: "date" },
