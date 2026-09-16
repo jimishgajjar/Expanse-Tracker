@@ -24,6 +24,7 @@ import { Input } from "@/components/ui/input";
 import { FormError } from "./form-error";
 import { Label } from "@/components/ui/label";
 import { Icon } from "@/components/icon";
+import { CategoryPicker } from "./category-picker";
 import { TagInput } from "@/components/tag-input";
 import { cn } from "@/lib/utils";
 import { todayISO } from "@/lib/dates";
@@ -105,10 +106,6 @@ export function TransactionDialog({
 
   const cats = categories.filter((c) => c.kind === f.type);
   const accountItems = accounts.map((a) => ({ value: a.id, label: a.name }));
-  const categoryItems = [
-    { value: NONE, label: "No category" },
-    ...cats.map((c) => ({ value: c.id, label: c.name })),
-  ];
   const types: TxType[] = isEdit
     ? ["expense", "income"]
     : ["expense", "income", "transfer"];
@@ -179,7 +176,12 @@ export function TransactionDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogTrigger render={trigger} />
-      <DialogContent className="transaction-sheet sm:max-w-lg">
+      <DialogContent
+        className="transaction-sheet sm:max-w-lg"
+        // Edit dialogs are launched inside a menu. Keep typing in this portal
+        // from reaching the parent menu's keyboard navigation/typeahead.
+        onKeyDown={(event) => event.stopPropagation()}
+      >
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
@@ -223,9 +225,10 @@ export function TransactionDialog({
                 min="0.01"
                 inputMode="decimal"
                 value={f.amount}
-                onChange={(e) =>
-                  setF((s) => ({ ...s, amount: e.target.value }))
-                }
+                onChange={(e) => {
+                  const amount = e.currentTarget.value;
+                  setF((s) => ({ ...s, amount }));
+                }}
                 placeholder="0.00"
                 autoFocus
                 required
@@ -237,7 +240,10 @@ export function TransactionDialog({
                 id={fieldId + "-date"}
                 type="date"
                 value={f.date}
-                onChange={(e) => setF((s) => ({ ...s, date: e.target.value }))}
+                onChange={(e) => {
+                  const date = e.currentTarget.value;
+                  setF((s) => ({ ...s, date }));
+                }}
                 required
               />
             </div>
@@ -317,30 +323,18 @@ export function TransactionDialog({
                   </SelectContent>
                 </Select>
               </div>
-              <div className="grid gap-1.5">
+              <div className="grid gap-1.5 sm:col-span-2">
                 <Label htmlFor={fieldId + "-categoryId"}>Category</Label>
-                <Select
-                  value={f.categoryId}
-                  onValueChange={(v) =>
-                    setF((s) => ({ ...s, categoryId: v as string }))
+                <CategoryPicker
+                  key={f.type}
+                  id={fieldId + "-categoryId"}
+                  categories={cats}
+                  kind={f.type}
+                  value={f.categoryId === NONE ? null : f.categoryId}
+                  onChange={(categoryId) =>
+                    setF((s) => ({ ...s, categoryId: categoryId ?? NONE }))
                   }
-                  items={categoryItems}
-                >
-                  <SelectTrigger
-                    id={fieldId + "-categoryId"}
-                    className="w-full"
-                  >
-                    <SelectValue placeholder="Category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={NONE}>No category</SelectItem>
-                    {cats.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>
-                        <Icon name={c.icon} color={c.color} /> {c.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                />
               </div>
             </div>
           )}
@@ -370,9 +364,10 @@ export function TransactionDialog({
                   id={fieldId + "-note"}
                   maxLength={200}
                   value={f.note}
-                  onChange={(e) =>
-                    setF((s) => ({ ...s, note: e.target.value }))
-                  }
+                  onChange={(e) => {
+                    const note = e.currentTarget.value;
+                    setF((s) => ({ ...s, note }));
+                  }}
                   placeholder="Optional description"
                 />
               </div>
