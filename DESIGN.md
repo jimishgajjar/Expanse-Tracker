@@ -52,6 +52,8 @@ Account balances and all-time summaries remain independent of activity filters. 
 
 Overview places the full Accounts card grid directly after the balance summary, before charts and recent activity. It shares AccountsSection with the Accounts page, including direct detail links, transaction shortcuts, account management, and archived-account access.
 
+Below accounts, the left column reads Recent transactions, Income vs expense, then Spending by category. On your radar stays at the top of the right column. On narrower screens these columns stack in the same DOM order.
+
 Account cards keep income, expense, and transfer shortcuts visible; account management lives in a labeled More menu. Transaction rows use signed, aligned amounts with directional icons, wrapping notes, account links, and touch-accessible action menus. Active filters appear as individually removable chips. Global date shortcuts change the selected reporting period; detail date shortcuts filter the full account/category/tag history.
 
 Cash-flow charts offer labeled axes, keyboard and touch selection, and exact amounts in a persistent detail area. Category legends link to full category history. Empty charts explain how to populate them. Account, transaction, and settings forms share spacing, touch targets, inline errors, and mobile sheets. Budget changes require an explicit Save or Remove action; invalid numbers never remove an existing limit.

@@ -116,12 +116,6 @@ export function OverviewTab({
       />
       <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1.7fr)_minmax(280px,1fr)]">
         <div className="min-w-0 space-y-6">
-          <TrendChart
-            transactions={transactions}
-            rangeType={rangeType}
-            start={rangeStart}
-            end={rangeEnd}
-          />
           <section className="rounded-2xl border bg-card p-5 sm:p-6">
             <div className="mb-5 flex items-center justify-between gap-2">
               <div>
@@ -154,6 +148,13 @@ export function OverviewTab({
               </button>
             )}
           </section>
+          <TrendChart
+            transactions={transactions}
+            rangeType={rangeType}
+            start={rangeStart}
+            end={rangeEnd}
+          />
+          <CategoryDonut transactions={transactions} />
         </div>
         <div className="min-w-0 space-y-6">
           <section className="rounded-2xl border bg-card p-5 sm:p-6">
@@ -233,7 +234,6 @@ export function OverviewTab({
           </section>
         </div>
       </div>
-      <CategoryDonut transactions={transactions} />
     </div>
   );
 }
