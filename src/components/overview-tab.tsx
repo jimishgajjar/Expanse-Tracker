@@ -1,5 +1,13 @@
 "use client";
-import { ArrowRight, CalendarDays, Check, Plus, Wallet } from "lucide-react";
+import Link from "next/link";
+import {
+  ChevronRight,
+  ArrowRight,
+  CalendarDays,
+  Check,
+  Plus,
+  Wallet,
+} from "lucide-react";
 import { SummaryCards } from "./summary-cards";
 import { CategoryDonut } from "./category-donut";
 import { TrendChart } from "./trend-chart";
@@ -227,19 +235,19 @@ export function OverviewTab({
               <h2 className="font-semibold">Your accounts</h2>
               <Wallet className="size-[18px] text-muted-foreground" />
             </div>
-            <div className="divide-y">
-              {activeAccounts.slice(0, 4).map((a) => (
-                <button
-                  type="button"
+            <div className="max-h-80 divide-y overflow-y-auto">
+              {activeAccounts.map((a) => (
+                <Link
                   key={a.id}
-                  onClick={onAccounts}
-                  className="flex min-h-12 w-full items-center justify-between gap-3 py-3 text-left text-sm"
+                  href={`/accounts/${a.id}`}
+                  className="group flex min-h-12 w-full items-center justify-between gap-3 rounded-lg px-2 py-3 text-left text-sm transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   <span className="truncate">{a.name}</span>
                   <span className="amount shrink-0 font-medium">
                     {balanceMoney(a.balance)}
                   </span>
-                </button>
+                  <ChevronRight className="size-4 shrink-0 text-muted-foreground group-hover:text-brand" />
+                </Link>
               ))}
             </div>
             <Button

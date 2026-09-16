@@ -1,18 +1,18 @@
 "use client";
-
-import { useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, Plus, Search } from "lucide-react";
+import { Pencil, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Icon } from "@/components/icon";
-import { TransactionRows, TransferRows } from "@/components/transactions-list";
 import { TransactionDialog } from "@/components/transaction-dialog";
+import { AccountDialog } from "@/components/account-dialog";
+import { DetailActivity, DetailStat } from "@/components/detail-activity";
 import { useFormat } from "@/components/settings-provider";
 import { cn } from "@/lib/utils";
-import type { AccountDTO, CategoryDTO, TransactionDTO, TransferDTO } from "@/lib/queries";
-
-const PAGE_SIZES = [10, 25, 50, 100];
+import type {
+  AccountDTO,
+  CategoryDTO,
+  TransactionDTO,
+  TransferDTO,
+} from "@/lib/queries";
 
 export function AccountDetailView({
   account,
@@ -30,109 +30,99 @@ export function AccountDetailView({
   canEdit: boolean;
 }) {
   const { money, balanceMoney } = useFormat();
-  const [search, setSearch] = useState("");
-  const [pageSize, setPageSize] = useState(25);
-  const [page, setPage] = useState(1);
-
-
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return transactions;
-    return transactions.filter((t) =>
-      `${t.note} ${t.category?.name ?? ""} ${t.tags.map((tg) => tg.name).join(" ")}`.toLowerCase().includes(q),
-    );
-  }, [transactions, search]);
-
-  const total = filtered.length;
-  const pageCount = Math.max(1, Math.ceil(total / pageSize));
-  const curPage = Math.min(page, pageCount);
-  const start = (curPage - 1) * pageSize;
-  const pageItems = useMemo(() => filtered.slice(start, start + pageSize), [filtered, start, pageSize]);
-
+  const transferNet =
+    account.balance - account.initialBalance - account.income + account.expense;
   return (
-    <div className="space-y-4">
-      <div className="rounded-xl border bg-card p-4">
-        <div className="flex items-center gap-3">
-          <span className="grid size-11 shrink-0 place-items-center rounded-lg" style={{ backgroundColor: `${account.color}22`, color: account.color }}>
-            <Icon name={account.icon} size={22} />
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex min-w-0 items-center gap-4">
+          <span
+            className="grid size-12 shrink-0 place-items-center rounded-xl"
+            style={{
+              backgroundColor: `${account.color}22`,
+              color: account.color,
+            }}
+          >
+            <Icon name={account.icon} size={24} />
           </span>
           <div className="min-w-0">
-            <h1 className="truncate text-lg font-semibold">{account.name}</h1>
-            <div className="text-xs text-muted-foreground capitalize">{account.type} account</div>
+            <p className="mb-1 text-xs font-medium text-muted-foreground capitalize">
+              {account.type} account{account.archived ? " · Archived" : ""}
+            </p>
+            <h1 className="break-words text-3xl font-semibold tracking-tight">
+              {account.name}
+            </h1>
           </div>
-          <span className={cn("amount ml-auto shrink-0 text-2xl font-semibold", account.balance < 0 && "text-negative")}>
-            {balanceMoney(account.balance)}
-          </span>
         </div>
-        <div className="mt-4 grid grid-cols-3 gap-2">
-          <Stat label="Opening" value={money(account.initialBalance)} />
-          <Stat label="In (all-time)" value={money(account.income)} tone="text-positive" />
-          <Stat label="Out (all-time)" value={money(account.expense)} tone="text-negative" />
-        </div>
+        {canEdit && (
+          <AccountDialog
+            account={account}
+            trigger={
+              <Button variant="outline" className="min-h-11">
+                <Pencil className="size-4" />
+                Edit account
+              </Button>
+            }
+          />
+        )}
       </div>
-
-      <div className="rounded-xl border bg-card p-4">
-        <div className="mb-3 flex items-center justify-between gap-2">
-          <h2 className="text-sm font-semibold">
-            Transactions <span className="font-normal text-muted-foreground">· {total}</span>
-          </h2>
-          {canEdit && (
+      <section
+        aria-label="Account balance"
+        className="rounded-xl border bg-card p-5 sm:p-7"
+      >
+        <p className="text-sm text-muted-foreground">Current balance</p>
+        <p
+          className={cn(
+            "amount mt-2 break-all text-4xl font-semibold tracking-tight sm:text-5xl",
+            account.balance < 0 && "text-negative",
+          )}
+        >
+          {balanceMoney(account.balance)}
+        </p>
+        <p className="mt-3 text-xs text-muted-foreground">
+          All-time balance, including transfers. Activity filters apply below.
+        </p>
+        <dl className="mt-6 grid grid-cols-2 gap-x-4 gap-y-6 border-t pt-5 xl:grid-cols-4">
+          <DetailStat
+            label="Opening balance"
+            value={money(account.initialBalance)}
+          />
+          <DetailStat
+            label="Total income"
+            value={money(account.income)}
+            tone="text-positive"
+          />
+          <DetailStat
+            label="Total expenses"
+            value={money(account.expense)}
+            tone="text-negative"
+          />
+          <DetailStat label="Net transfers" value={balanceMoney(transferNet)} />
+        </dl>
+      </section>
+      <DetailActivity
+        transactions={transactions}
+        transfers={transfers}
+        accounts={accounts}
+        categories={categories}
+        accountId={account.id}
+        canEdit={canEdit}
+        action={
+          canEdit && (
             <TransactionDialog
               accounts={accounts}
               categories={categories}
               defaultAccountId={account.id}
-              trigger={<Button size="sm"><Plus className="size-4" /> Add transaction</Button>}
+              trigger={
+                <Button className="min-h-11">
+                  <Plus className="size-4" />
+                  Add transaction
+                </Button>
+              }
             />
-          )}
-        </div>
-
-        <div className="relative mb-3">
-          <Search className="absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} placeholder="Search this account — note, category, tag…" className="pl-8" />
-        </div>
-
-        <TransactionRows transactions={pageItems} allTransactions={filtered} accounts={accounts} categories={categories} canEdit={canEdit} emptyMessage={search ? "No transactions match your search." : "No transactions for this account yet."} />
-
-        {total > pageSize && (
-          <div className="mt-4 flex flex-col items-stretch gap-3 border-t pt-3 text-sm sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center justify-center gap-2 text-muted-foreground sm:justify-start">
-              <span>Rows per page</span>
-              <Select value={String(pageSize)} onValueChange={(v) => { setPageSize(Number(v)); setPage(1); }} items={PAGE_SIZES.map((n) => ({ value: String(n), label: String(n) }))}>
-                <SelectTrigger size="sm" className="w-[4.5rem]"><SelectValue /></SelectTrigger>
-                <SelectContent>{PAGE_SIZES.map((n) => <SelectItem key={n} value={String(n)}>{n}</SelectItem>)}</SelectContent>
-              </Select>
-            </div>
-            <div className="flex items-center justify-center gap-3">
-              <span className="text-muted-foreground">{start + 1}–{Math.min(start + pageSize, total)} of {total}</span>
-              <div className="flex items-center gap-1">
-                <Button size="icon-sm" variant="outline" disabled={curPage <= 1} onClick={() => setPage(curPage - 1)} aria-label="Previous page">
-                  <ChevronLeft className="size-4" />
-                </Button>
-                <span className="min-w-[3.5rem] text-center font-mono text-xs">{curPage} / {pageCount}</span>
-                <Button size="icon-sm" variant="outline" disabled={curPage >= pageCount} onClick={() => setPage(curPage + 1)} aria-label="Next page">
-                  <ChevronRight className="size-4" />
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {transfers.length > 0 && (
-        <div className="rounded-xl border bg-card p-4">
-          <h2 className="mb-3 text-sm font-semibold">Transfers</h2>
-          <TransferRows transfers={transfers} accounts={accounts} canEdit={canEdit} />
-        </div>
-      )}
-    </div>
-  );
-}
-
-function Stat({ label, value, tone }: { label: string; value: string; tone?: string }) {
-  return (
-    <div className="rounded-lg border p-2 text-center">
-      <div className="text-[10px] tracking-wide text-muted-foreground uppercase">{label}</div>
-      <div className={cn("amount mt-0.5 text-sm font-semibold", tone)}>{value}</div>
+          )
+        }
+      />
     </div>
   );
 }
