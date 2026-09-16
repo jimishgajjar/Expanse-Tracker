@@ -222,7 +222,7 @@ export function TransactionsTab({
       <div className="space-y-4">
         <div className="flex items-center justify-between gap-2 border-b border-border">
           {/* Database view tabs: underlined, not a sunken pill. */}
-          <div className="flex w-full gap-0.5 overflow-x-auto sm:w-fit">
+          <div className="grid min-w-0 w-full grid-cols-4 gap-0.5 sm:flex sm:w-auto">
             {TYPE_TABS.map((t) => (
               <button
                 key={t.value}
@@ -233,8 +233,8 @@ export function TransactionsTab({
                 }}
                 aria-pressed={tab === t.value}
                 className={cn(
-                  "relative min-h-11 flex-1 rounded-sm px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors hover:bg-hover sm:flex-none",
-                  "after:absolute after:inset-x-0 after:-bottom-px after:h-0.5 after:bg-foreground after:opacity-0 after:transition-opacity",
+                  "relative min-h-11 min-w-0 rounded-sm px-2 py-2 text-xs font-medium transition-colors hover:bg-hover sm:px-3 sm:text-sm",
+                  "after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:bg-foreground after:opacity-0 after:transition-opacity",
                   tab === t.value
                     ? "text-foreground after:opacity-100"
                     : "text-muted-foreground hover:text-foreground",
