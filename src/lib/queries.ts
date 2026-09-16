@@ -1,5 +1,6 @@
 import { and, asc, desc, eq, gte, inArray, isNull, lt, sql } from "drizzle-orm";
 import { addMonths, addWeeks, addYears, differenceInCalendarDays, format, parseISO, startOfMonth } from "date-fns";
+import { postRecurringOccurrences } from "./recurring-posting";
 import { getDb } from "./db";
 import { accounts, appSettings, budgets, categories, goals, invitations, recurring, splits, tags, transactionTags, transactions, transfers, users, workspaceMembers } from "./db/schema";
 import { CURRENCIES, DEFAULT_CURRENCY_CODE, findCurrencyByCode } from "./currencies";
@@ -166,8 +167,8 @@ async function materialize(rules: RecurringRow[]): Promise<{ created: number; no
       next = advanceDate(next, r.frequency);
     }
     if (advanced) {
-      if (toCreate.length) await db.insert(transactions).values(toCreate);
-      await db.update(recurring).set({ nextDate: next, occurrenceCount: count }).where(eq(recurring.id, r.id));
+      const claimed = await postRecurringOccurrences(db, r, next, count, toCreate);
+      if (!claimed) continue;
       created += toCreate.length;
       if (r.alertsEnabled && toCreate.length) {
         const sym = await workspaceSymbol(db, symCache, r.workspaceId);
@@ -205,7 +206,9 @@ async function materialize(rules: RecurringRow[]): Promise<{ created: number; no
     if (r.alertsEnabled && !ended && r.lastRemindedFor !== next) {
       const daysUntil = differenceInCalendarDays(parseISO(next), parseISO(today));
       if (daysUntil >= 0 && daysUntil <= r.remindDaysBefore) {
-        await db.update(recurring).set({ lastRemindedFor: next }).where(eq(recurring.id, r.id));
+        const claimed = await db.update(recurring).set({ lastRemindedFor: next })
+          .where(and(eq(recurring.id, r.id), sql`${recurring.lastRemindedFor} IS DISTINCT FROM ${next}::date`)).returning({ id: recurring.id });
+        if (!claimed.length) continue;
         const sym = await workspaceSymbol(db, symCache, r.workspaceId);
         const when = daysUntil === 0 ? "today" : daysUntil === 1 ? "tomorrow" : `in ${daysUntil} days`;
         const label = r.note || (r.type === "income" ? "Recurring income" : "Recurring payment");

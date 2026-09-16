@@ -62,19 +62,19 @@ function AddForm({ onAdded }: { onAdded: (g: GoalDTO) => void }) {
     if (!name.trim() || !target) return;
     start(async () => {
       const res = await createGoal({ name, targetAmount: Number(target), deadline: deadline || null });
-      if (res.ok) {
+      if (res.ok && res.data) {
         toast.success("Goal added");
-        onAdded({ id: crypto.randomUUID(), name: name.trim(), targetAmount: Number(target), savedAmount: 0, deadline: deadline || null, color: "#047857" });
+        onAdded({ id: res.data.id, name: name.trim(), targetAmount: Number(target), savedAmount: 0, deadline: deadline || null, color: "#047857" });
         setName(""); setTarget(""); setDeadline(""); router.refresh();
-      } else toast.error(res.error);
+      } else if (!res.ok) toast.error(res.error);
     });
   }
   return (
     <form onSubmit={add} className="space-y-2.5 rounded-lg border p-2.5">
-      <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Goal name (e.g. India trip, Emergency fund)" required />
+      <label className="grid gap-1.5 text-xs font-medium">Goal name<Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Emergency fund" required /></label>
       <div className="grid grid-cols-2 gap-2">
-        <Input type="number" inputMode="decimal" value={target} onChange={(e) => setTarget(e.target.value)} placeholder="Target amount" required />
-        <Input type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} />
+        <label className="grid gap-1.5 text-xs font-medium">Target amount<Input type="number" min="0.01" step="0.01" inputMode="decimal" value={target} onChange={(e) => setTarget(e.target.value)} placeholder="0.00" required /></label>
+        <label className="grid gap-1.5 text-xs font-medium">Target date (optional)<Input type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} /></label>
       </div>
       <Button type="submit" size="sm" className="w-full" disabled={pending}><Plus className="size-4" /> Add goal</Button>
     </form>
@@ -127,7 +127,7 @@ function GoalCard({ goal, onContributed, onRemoved }: { goal: GoalDTO; onContrib
       </div>
       {adding && (
         <form onSubmit={contribute} className="mt-2 flex gap-2">
-          <Input type="number" inputMode="decimal" value={amt} onChange={(e) => setAmt(e.target.value)} placeholder="Add amount (− to withdraw)" className="h-7" autoFocus />
+          <Input aria-label="Contribution amount" type="number" step="0.01" inputMode="decimal" value={amt} onChange={(e) => setAmt(e.target.value)} placeholder="Add amount (− to withdraw)" className="h-7" autoFocus />
           <Button type="submit" size="sm" disabled={pending}>Save</Button>
         </form>
       )}

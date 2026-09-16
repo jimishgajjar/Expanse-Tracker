@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, type ReactElement } from "react";
+import { useId, useState, useTransition, type ReactElement } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
@@ -35,6 +35,7 @@ function initial(a?: AccountDTO) {
 }
 
 export function AccountDialog({ trigger, account }: { trigger: ReactElement; account?: AccountDTO }) {
+  const fieldId = useId();
   const isEdit = !!account;
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -70,10 +71,11 @@ export function AccountDialog({ trigger, account }: { trigger: ReactElement; acc
         </DialogHeader>
         <form onSubmit={submit} className="grid gap-3">
           <div className="grid gap-1.5">
-            <Label>Name</Label>
+            <Label htmlFor={fieldId + "-name"}>Name</Label>
             <div className="flex gap-2">
               <IconPicker value={f.icon} color={f.color} onChange={(icon) => setF((s) => ({ ...s, icon }))} />
               <Input
+                id={fieldId + "-name"}
                 value={f.name}
                 onChange={(e) => setF((s) => ({ ...s, name: e.target.value }))}
                 placeholder="e.g. HDFC Bank"
@@ -84,17 +86,18 @@ export function AccountDialog({ trigger, account }: { trigger: ReactElement; acc
           </div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="grid gap-1.5">
-              <Label>Type</Label>
+              <Label htmlFor={fieldId + "-type"}>Type</Label>
               <Select value={f.type} onValueChange={(v) => setF((s) => ({ ...s, type: v as string }))} items={TYPES}>
-                <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                <SelectTrigger id={fieldId + "-type"} className="w-full"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {TYPES.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
             <div className="grid gap-1.5">
-              <Label>{isEdit ? "Opening balance" : "Starting balance"}</Label>
+              <Label htmlFor={fieldId + "-balance"}>{isEdit ? "Opening balance" : "Starting balance"}</Label>
               <Input
+                id={fieldId + "-balance"}
                 type="number"
                 step="0.01"
                 inputMode="decimal"

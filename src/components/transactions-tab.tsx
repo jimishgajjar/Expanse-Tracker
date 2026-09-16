@@ -5,7 +5,8 @@ import { ChevronLeft, ChevronRight, Search, X } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { TransactionRows, TransferRows } from "@/components/transactions-list";
+import { mergeActivity } from "@/lib/activity";
+import { ActivityRows, TransactionRows, TransferRows } from "@/components/transactions-list";
 import { useFormat } from "@/components/settings-provider";
 import { cn } from "@/lib/utils";
 import type { AccountDTO, CategoryDTO, TransactionDTO, TransferDTO } from "@/lib/queries";
@@ -92,7 +93,8 @@ export function TransactionsTab({
   }, [filteredTx]);
   const transferTotal = useMemo(() => filteredTransfers.reduce((s, t) => s + t.amount, 0), [filteredTransfers]);
 
-  const total = isTransfer ? filteredTransfers.length : filteredTx.length;
+  const activity = mergeActivity(filteredTx, categoryId === "all" ? filteredTransfers : []);
+  const total = tab === "all" ? activity.length : isTransfer ? filteredTransfers.length : filteredTx.length;
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
   const curPage = Math.min(page, pageCount);
   const start = (curPage - 1) * pageSize;
@@ -196,6 +198,8 @@ export function TransactionsTab({
               </Button>
             )}
           </div>
+        ) : tab === "all" ? (
+          <ActivityRows entries={activity.slice(start, start + pageSize)} accounts={accounts} categories={categories} canEdit={canEdit} showAuthors={showAuthors} />
         ) : isTransfer ? (
           <TransferRows transfers={filteredTransfers.slice(start, start + pageSize)} accounts={accounts} canEdit={canEdit} />
         ) : (

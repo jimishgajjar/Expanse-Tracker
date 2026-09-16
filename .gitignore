@@ -78,3 +78,6 @@ Desktop.ini
 backups/
 _backup.mjs
 _verifycol.mjs
+
+# Isolated demo used for design validation
+/.pglite-preview/

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Check, ChevronLeft, ChevronRight, Pencil, Trash2, X } from "lucide-react";
@@ -33,7 +33,6 @@ export function TagDetailView({
   const router = useRouter();
   const [pageSize, setPageSize] = useState(25);
   const [page, setPage] = useState(1);
-  useEffect(() => setPage(1), [pageSize]);
 
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(tag.name);
@@ -131,7 +130,7 @@ export function TagDetailView({
           <div className="mt-4 flex flex-col items-stretch gap-3 border-t pt-3 text-sm sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center justify-center gap-2 text-muted-foreground sm:justify-start">
               <span>Rows per page</span>
-              <Select value={String(pageSize)} onValueChange={(v) => setPageSize(Number(v))} items={PAGE_SIZES.map((n) => ({ value: String(n), label: String(n) }))}>
+              <Select value={String(pageSize)} onValueChange={(v) => { setPageSize(Number(v)); setPage(1); }} items={PAGE_SIZES.map((n) => ({ value: String(n), label: String(n) }))}>
                 <SelectTrigger size="sm" className="w-[4.5rem]"><SelectValue /></SelectTrigger>
                 <SelectContent>{PAGE_SIZES.map((n) => <SelectItem key={n} value={String(n)}>{n}</SelectItem>)}</SelectContent>
               </Select>

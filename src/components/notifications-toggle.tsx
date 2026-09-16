@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { toast } from "sonner";
 import { Bell, BellOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -17,14 +17,16 @@ function urlBase64ToUint8Array(base64: string): Uint8Array {
   return out;
 }
 
+const subscribeSupport = () => () => {};
+const getSupport = () => "serviceWorker" in navigator && "PushManager" in window && "Notification" in window && !!VAPID;
+
 export function NotificationsToggle() {
-  const [supported, setSupported] = useState<boolean | null>(null);
+  const supported = useSyncExternalStore(subscribeSupport, getSupport, () => null);
   const [enabled, setEnabled] = useState(false);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     const ok = "serviceWorker" in navigator && "PushManager" in window && "Notification" in window && !!VAPID;
-    setSupported(ok);
     if (!ok) return;
     navigator.serviceWorker.register("/sw.js")
       .then((reg) => reg.pushManager.getSubscription())

@@ -1,20 +1,17 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import {
-  ArrowRightLeft,
-  ChevronRight,
+  CalendarDays,
   Download,
   Handshake,
   House,
   Menu,
-  Minus,
-  Moon,
   Plus,
   Receipt,
   Repeat,
   Settings,
-  Sun,
   Tags,
   Target,
   TrendingUp,
@@ -22,11 +19,14 @@ import {
   Wallet,
   type LucideIcon,
 } from "lucide-react";
-import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { SettingsProvider } from "@/components/settings-provider";
 import { SettingsDialog } from "@/components/settings-dialog";
@@ -40,54 +40,91 @@ import { VerifyBanner } from "@/components/verify-banner";
 import { TransactionDialog } from "@/components/transaction-dialog";
 import { PeriodBar } from "@/components/period-bar";
 import { OverviewTab } from "@/components/overview-tab";
-import { TransactionsTab } from "@/components/transactions-tab";
-import { AnalyticsTab, type Comparison } from "@/components/analytics-tab";
+import { AccountsSection } from "@/components/accounts-section";
+import { PlanningTab } from "@/components/planning-tab";
+import type { Comparison } from "@/components/analytics-tab";
 import type { AnalyticsData } from "@/lib/analytics";
 import type { RangeType } from "@/lib/dates";
-import type { AccountDTO, BudgetProgressDTO, CategoryDTO, GoalDTO, MemberDTO, NetWorthPoint, RecurringDTO, SplitData, TransactionDTO, TransferDTO } from "@/lib/queries";
+import type {
+  AccountDTO,
+  BudgetProgressDTO,
+  CategoryDTO,
+  GoalDTO,
+  MemberDTO,
+  NetWorthPoint,
+  RecurringDTO,
+  SplitData,
+  TransactionDTO,
+  TransferDTO,
+} from "@/lib/queries";
 import type { WorkspaceSummary } from "@/lib/workspace";
 
-type Tab = "overview" | "transactions" | "analytics";
-
-/** Full-width row for the mobile "More" sheet. Returns a raw <button> so Base
-    UI's <SheetTrigger render={...}> can clone it and wire up the open handler. */
-/** One tab in the always-visible bottom bar: an icon over a label, with a soft
-    emerald pill behind the active section. */
-function tabItem(active: boolean, Icon: LucideIcon, label: string, onClick: () => void) {
+const AnalyticsTab = dynamic(
+  () => import("@/components/analytics-tab").then((m) => m.AnalyticsTab),
+  {
+    loading: () => (
+      <p className="py-12 text-muted-foreground" role="status">
+        Loading insights…
+      </p>
+    ),
+  },
+);
+const TransactionsTab = dynamic(
+  () => import("@/components/transactions-tab").then((m) => m.TransactionsTab),
+  {
+    loading: () => (
+      <p className="py-12 text-muted-foreground" role="status">
+        Loading activity…
+      </p>
+    ),
+  },
+);
+type Tab = "overview" | "transactions" | "analytics" | "accounts" | "planning";
+const pages: {
+  id: Tab;
+  label: string;
+  icon: LucideIcon;
+  description: string;
+}[] = [
+  {
+    id: "overview",
+    label: "Overview",
+    icon: House,
+    description: "A little clarity for your everyday money.",
+  },
+  {
+    id: "transactions",
+    label: "Activity",
+    icon: Receipt,
+    description: "Every expense, income and transfer, together.",
+  },
+  {
+    id: "accounts",
+    label: "Accounts",
+    icon: Wallet,
+    description: "Your balances, with the full picture behind them.",
+  },
+  {
+    id: "planning",
+    label: "Planning",
+    icon: CalendarDays,
+    description: "Make room for what is coming next.",
+  },
+  {
+    id: "analytics",
+    label: "Insights",
+    icon: TrendingUp,
+    description: "Understand what changed and where your money goes.",
+  },
+];
+function toolButton(Icon: LucideIcon, label: string) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-label={label}
-      aria-current={active ? "page" : undefined}
-      className="flex flex-1 flex-col items-center justify-center transition-transform active:scale-95"
-    >
-      <span
-        className={cn(
-          "flex flex-col items-center gap-1 rounded-2xl px-3 py-1.5 transition-colors",
-          active ? "bg-brand/15 text-brand" : "text-muted-foreground",
-        )}
-      >
-        <Icon className="size-[1.4rem]" strokeWidth={active ? 2.3 : 2} />
-        <span className="text-[10.5px] font-medium">{label}</span>
-      </span>
+    <button type="button" className="nav-item">
+      <Icon className="size-[18px] shrink-0" />
+      <span>{label}</span>
     </button>
   );
 }
-
-/** One row in the "More" sheet: a tinted icon square, a label, and a chevron. */
-function moreRow(Icon: LucideIcon, label: string, tint: string) {
-  return (
-    <button type="button" className="press flex w-full items-center gap-3 rounded-xl px-2 py-2.5 text-left hover:bg-accent">
-      <span className="grid size-9 shrink-0 place-items-center rounded-[10px] text-white" style={{ backgroundColor: tint }}>
-        <Icon className="size-[18px]" />
-      </span>
-      <span className="flex-1 text-[15px] font-medium">{label}</span>
-      <ChevronRight className="size-4 text-muted-foreground" />
-    </button>
-  );
-}
-
 export function Dashboard({
   accounts,
   categories,
@@ -155,246 +192,352 @@ export function Dashboard({
 }) {
   const [tab, setTab] = useState<Tab>(initialTab);
   const [moreOpen, setMoreOpen] = useState(false);
-  const { resolvedTheme, setTheme } = useTheme();
   const showAuthors = members.length > 1;
   const liveAccounts = accounts.filter((a) => !a.archived);
+  const page = pages.find((p) => p.id === tab)!;
 
-  // Persist the active tab in the URL without a server round-trip.
-  function changeTab(t: Tab) {
-    setTab(t);
-    if (typeof window !== "undefined") {
-      const url = new URL(window.location.href);
-      if (t === "overview") url.searchParams.delete("tab");
-      else url.searchParams.set("tab", t);
-      window.history.replaceState(null, "", url);
-    }
+  function changeTab(value: Tab) {
+    setTab(value);
+    setMoreOpen(false);
+    const url = new URL(window.location.href);
+    if (value === "overview") url.searchParams.delete("tab");
+    else url.searchParams.set("tab", value);
+    window.history.replaceState(null, "", url);
   }
+
+  const tools = (
+    <>
+      {canEdit && (
+        <CategoryManager
+          categories={categories}
+          trigger={toolButton(Tags, "Categories")}
+        />
+      )}
+      {canEdit && (
+        <RecurringManager
+          recurring={recurring}
+          accounts={liveAccounts}
+          categories={categories}
+          trigger={toolButton(Repeat, "Subscriptions & bills")}
+        />
+      )}
+      {canEdit && (
+        <GoalsManager
+          goals={goals}
+          trigger={toolButton(Target, "Savings goals")}
+        />
+      )}
+      {canEdit && (
+        <SplitManager
+          data={split}
+          trigger={toolButton(Handshake, "Shared expenses")}
+        />
+      )}
+      <MembersManager
+        members={members}
+        invites={invites}
+        currentEmail={userEmail}
+        workspaceName={workspaceName}
+        isOwner={isOwner}
+        trigger={toolButton(Users, "Members & sharing")}
+      />
+    </>
+  );
+  const navigation = (
+    <nav aria-label="Main navigation" className="grid gap-1">
+      {pages.map((item) => (
+        <button
+          key={item.id}
+          type="button"
+          onClick={() => changeTab(item.id)}
+          aria-current={tab === item.id ? "page" : undefined}
+          className={cn("nav-item", tab === item.id && "nav-item-active")}
+        >
+          <item.icon className="size-[18px]" />
+          <span>{item.label}</span>
+          {tab === item.id && (
+            <span className="ml-auto size-1.5 rounded-full bg-brand" />
+          )}
+        </button>
+      ))}
+    </nav>
+  );
 
   return (
     <SettingsProvider currency={currency} locale={locale}>
-      {/* ── App bar: a clean full-width sticky bar on mobile, inline on desktop ── */}
-      {/* ── Topbar: Notion's 45px strip — a breadcrumb on the left, quiet
-             controls on the right. The page's own title lives in the canvas
-             below, not here. ── */}
-      <header className="sticky top-0 z-30 border-b border-border bg-background/95 pt-safe backdrop-blur-md">
-        <div className="mx-auto flex h-11 max-w-6xl items-center gap-2 px-3 sm:px-6">
-          <div className="flex min-w-0 items-center gap-1.5 sm:mr-auto">
-            <span className="grid size-5 shrink-0 place-items-center rounded-sm bg-brand text-brand-foreground">
-              <Wallet className="size-3" />
+      <div key={activeWorkspaceId} className="app-shell min-h-dvh">
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:rounded-md focus:bg-background focus:p-3"
+        >
+          Skip to content
+        </a>
+        <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 flex-col overflow-y-auto border-r bg-sidebar px-4 py-6 lg:flex">
+          <div className="mb-9 flex items-center gap-3 px-3">
+            <span className="grid size-9 place-items-center rounded-xl bg-brand text-brand-foreground">
+              <Wallet className="size-5" />
             </span>
-            <span className="truncate text-sm font-medium">{workspaceName}</span>
-            {workspaces.length > 1 && (
-              <WorkspaceSwitcher workspaces={workspaces} activeId={activeWorkspaceId} currentUserId={currentUserId} />
-            )}
-            {!canEdit && (
-              <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-medium text-amber-600 dark:text-amber-400">View only</span>
-            )}
+            <span className="text-base font-semibold tracking-tight">
+              Expense Tracker
+            </span>
           </div>
-
-          {/* Desktop action row — on mobile these live in the "More" sheet.
-              Three visual clusters instead of one long strip of equal buttons:
-              quiet manage links · one attached "add" group · utility icons. */}
-          <div className="hidden items-center gap-0.5 sm:flex sm:flex-wrap sm:justify-end">
-            {canEdit && (
-              <CategoryManager
-                categories={categories}
-                trigger={<Button variant="ghost" size="sm" className="text-muted-foreground hover:bg-hover hover:text-foreground" aria-label="Categories"><Tags className="size-4" />Categories</Button>}
-              />
-            )}
-            {canEdit && (
-              <RecurringManager
-                recurring={recurring}
-                accounts={liveAccounts}
-                categories={categories}
-                trigger={<Button variant="ghost" size="sm" className="text-muted-foreground hover:bg-hover hover:text-foreground" aria-label="Subscriptions"><Repeat className="size-4" />Subscriptions</Button>}
-              />
-            )}
-            <GoalsManager goals={goals} trigger={<Button variant="ghost" size="sm" className="text-muted-foreground hover:bg-hover hover:text-foreground" aria-label="Goals"><Target className="size-4" />Goals</Button>} />
-            <SplitManager data={split} trigger={<Button variant="ghost" size="sm" className="text-muted-foreground hover:bg-hover hover:text-foreground" aria-label="Shared expenses"><Handshake className="size-4" />Split</Button>} />
-            <MembersManager
-              members={members}
-              invites={invites}
-              currentEmail={userEmail}
-              workspaceName={workspaceName}
-              isOwner={isOwner}
-              trigger={<Button variant="ghost" size="sm" className="text-muted-foreground hover:bg-hover hover:text-foreground" aria-label="Sharing"><Users className="size-4" />Sharing</Button>}
-            />
-
-            {canEdit && (
-              <>
-                <span aria-hidden className="mx-1.5 h-5 w-px bg-border" />
-                {/* The primary action: capture money movement, as one segmented control. */}
-                <div className="flex items-center overflow-hidden rounded-md border shadow-xs">
-                  <TransactionDialog
-                    accounts={liveAccounts} categories={categories} defaultType="income"
-                    trigger={<button type="button" className="flex h-8 items-center gap-1.5 px-2.5 text-sm font-medium text-positive transition-colors hover:bg-positive/10"><Plus className="size-4" /> Income</button>}
-                  />
-                  <TransactionDialog
-                    accounts={liveAccounts} categories={categories} defaultType="expense"
-                    trigger={<button type="button" className="flex h-8 items-center gap-1.5 border-l px-2.5 text-sm font-medium text-negative transition-colors hover:bg-negative/10"><Minus className="size-4" /> Expense</button>}
-                  />
-                  <TransactionDialog
-                    accounts={liveAccounts} categories={categories} defaultType="transfer"
-                    trigger={<button type="button" className="flex h-8 items-center gap-1.5 border-l px-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"><ArrowRightLeft className="size-4" /> Transfer</button>}
-                  />
-                </div>
-              </>
-            )}
-
-            <span aria-hidden className="mx-1.5 h-5 w-px bg-border" />
-            <Button variant="ghost" size="icon" aria-label="Export to Excel" title="Export to Excel" onClick={() => window.location.assign("/api/export")}>
-              <Download className="size-4" />
-            </Button>
+          {navigation}
+          <div className="mt-7 border-t pt-5">
+            <p className="px-3 pb-2 text-xs font-medium text-muted-foreground">
+              Your workspace
+            </p>
+            <div className="grid gap-1">{tools}</div>
+          </div>
+          <div className="mt-auto shrink-0 space-y-1 border-t pt-4">
             <SettingsDialog
               currencyCode={currencyCode}
               userEmail={userEmail}
-              trigger={<Button variant="ghost" size="icon" aria-label="Settings"><Settings className="size-4" /></Button>}
+              canEdit={canEdit}
+              trigger={toolButton(Settings, "Settings")}
             />
-            <ThemeToggle />
+            <a href="/api/export" className="nav-item">
+              <Download className="size-[18px]" />
+              Export data
+            </a>
+            <div className="mt-4 flex items-center gap-2 px-3 py-2">
+              <span className="grid size-8 shrink-0 place-items-center rounded-full bg-brand/10 text-xs font-semibold text-brand">
+                {userEmail[0]?.toUpperCase()}
+              </span>
+              <span
+                className="min-w-0 truncate text-xs text-muted-foreground"
+                title={userEmail}
+              >
+                {userEmail}
+              </span>
+            </div>
           </div>
-        </div>
-      </header>
-
-      <div className="mx-auto max-w-6xl space-y-4 px-3 pt-4 pb-28 sm:space-y-5 sm:px-6 sm:pt-8 sm:pb-6">
-        {!emailVerified && <VerifyBanner email={userEmail} />}
-
-        {/* ── Page title, the Notion way: an icon, then the name large and
-               bold, sitting directly on the canvas with no chrome around it. ── */}
-        <div className="hidden sm:block">
-          <span className="grid size-10 place-items-center rounded-md bg-brand/10 text-brand">
-            <Wallet className="size-5" />
-          </span>
-          <h1 className="mt-2.5 text-[2.25rem] leading-[1.15] font-bold tracking-[-0.02em]">{workspaceName}</h1>
-        </div>
-
-        {/* View switcher + period, on one line like a database's view tabs and
-            its filter bar. Underlined tabs, not a segmented pill. */}
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between sm:border-b sm:border-border">
-          <Tabs value={tab} onValueChange={(v) => changeTab(v as Tab)}>
-            <TabsList variant="line" className="hidden h-9 sm:inline-flex">
-              <TabsTrigger value="overview" className="px-2 text-sm text-muted-foreground hover:bg-hover data-active:text-foreground">Overview</TabsTrigger>
-              <TabsTrigger value="transactions" className="px-2 text-sm text-muted-foreground hover:bg-hover data-active:text-foreground">Transactions</TabsTrigger>
-              <TabsTrigger value="analytics" className="px-2 text-sm text-muted-foreground hover:bg-hover data-active:text-foreground">Insights</TabsTrigger>
-            </TabsList>
-          </Tabs>
-          <div className="sm:pb-1.5">
-            <PeriodBar rangeType={rangeType} anchor={anchor} rangeLabel={rangeLabel} />
-          </div>
-        </div>
-
-        {tab === "overview" && (
-          <OverviewTab
-            accounts={accounts}
-            transactions={transactions}
-            transfers={transfers}
-            categories={categories}
-            totalBalance={totalBalance}
-            rangeLabel={rangeLabel}
-            rangeType={rangeType}
-            rangeStart={rangeStart}
-            rangeEnd={rangeEnd}
-            comparison={comparison}
-            canEdit={canEdit}
-          />
-        )}
-        {tab === "transactions" && (
-          <TransactionsTab transactions={transactions} transfers={transfers} accounts={accounts} categories={categories} canEdit={canEdit} showAuthors={showAuthors} />
-        )}
-        {tab === "analytics" && (
-          <AnalyticsTab
-            transactions={transactions}
-            rangeType={rangeType}
-            rangeStart={rangeStart}
-            rangeEnd={rangeEnd}
-            rangeLabel={rangeLabel}
-            budgets={budgetProgress}
-            categories={categories}
-            accounts={liveAccounts}
-            recurring={recurring}
-            netWorth={netWorth}
-            comparison={comparison}
-            analytics={analytics}
-            canEdit={canEdit}
-            showAuthors={showAuthors}
-          />
-        )}
-      </div>
-
-      {/* ── Mobile nav: a clean, always-visible labeled tab bar — one tap to any
-          section. "More" opens a sheet with the secondary tools. Mobile only; the
-          desktop action row + tab list above cover navigation on larger screens. ── */}
-      <div className="fixed inset-x-0 bottom-0 z-40 sm:hidden">
-        <nav
-          className="flex items-stretch justify-around border-t border-border bg-background/90 px-1 pt-1.5 backdrop-blur-lg"
-          style={{ paddingBottom: "max(0.4rem, env(safe-area-inset-bottom))" }}
-        >
-          {tabItem(tab === "overview", House, "Home", () => changeTab("overview"))}
-          {tabItem(tab === "transactions", Receipt, "Activity", () => changeTab("transactions"))}
-          {canEdit ? (
-            <TransactionDialog
-              accounts={liveAccounts}
-              categories={categories}
-              defaultType="expense"
-              trigger={
+        </aside>
+        <div className="min-w-0 lg:pl-60">
+          <header className="border-b bg-background pt-safe">
+            <div className="mx-auto flex h-16 max-w-[1440px] items-center justify-between gap-3 px-4 sm:px-7 xl:px-10">
+              <div className="flex min-w-0 items-center gap-2.5">
+                <Wallet className="size-[18px] shrink-0 text-brand lg:hidden" />
+                <span className="truncate text-sm font-medium">
+                  {workspaceName}
+                </span>
+                {workspaces.length > 1 && (
+                  <WorkspaceSwitcher
+                    workspaces={workspaces}
+                    activeId={activeWorkspaceId}
+                    currentUserId={currentUserId}
+                  />
+                )}
+                {!canEdit && (
+                  <span className="shrink-0 rounded-md bg-muted px-2 py-1 text-xs text-muted-foreground">
+                    View only
+                  </span>
+                )}
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
+                <ThemeToggle />
                 <button
                   type="button"
-                  aria-label="Add transaction"
-                  className="flex flex-1 flex-col items-center justify-center transition-transform active:scale-95"
+                  className="grid size-11 place-items-center rounded-lg hover:bg-muted lg:hidden"
+                  onClick={() => setMoreOpen(true)}
+                  aria-label="Open navigation"
                 >
-                  <span className="flex flex-col items-center gap-1 rounded-2xl px-3 py-1.5 text-muted-foreground">
-                    <Plus className="size-[1.4rem]" />
-                    <span className="text-[10.5px] font-medium">Add</span>
-                  </span>
+                  <Menu className="size-5" />
                 </button>
-              }
-            />
-          ) : (
-            <span className="flex-1" />
-          )}
-          {tabItem(tab === "analytics", TrendingUp, "Insights", () => changeTab("analytics"))}
-          {tabItem(false, Menu, "More", () => setMoreOpen(true))}
-        </nav>
-      </div>
-
-      <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
-        <SheetContent side="bottom" className="rounded-t-2xl sm:hidden" style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}>
-          <SheetHeader className="pb-1">
-            <SheetTitle>More</SheetTitle>
-          </SheetHeader>
-          <div className="grid gap-0.5 px-2 pb-2">
-            {canEdit && <CategoryManager categories={categories} trigger={moreRow(Tags, "Categories", "#0b6e99")} />}
-            {canEdit && (
-              <RecurringManager recurring={recurring} accounts={liveAccounts} categories={categories} trigger={moreRow(Repeat, "Subscriptions & bills", "#6940a5")} />
+              </div>
+            </div>
+          </header>
+          <main
+            id="main-content"
+            className="mx-auto max-w-[1440px] space-y-6 px-4 pt-6 pb-28 sm:px-7 sm:pt-8 lg:pb-10 xl:px-10"
+          >
+            {!emailVerified && <VerifyBanner email={userEmail} />}
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div>
+                <h1 className="text-[1.75rem] font-semibold tracking-tight sm:text-[2rem]">
+                  {page.label}
+                </h1>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {page.description}
+                </p>
+              </div>
+              {canEdit && (
+                <TransactionDialog
+                  accounts={liveAccounts}
+                  categories={categories}
+                  trigger={
+                    <Button className="hidden h-11 px-4 sm:inline-flex">
+                      <Plus className="size-4" />
+                      Add transaction
+                    </Button>
+                  }
+                />
+              )}
+            </div>
+            {(tab === "overview" ||
+              tab === "transactions" ||
+              tab === "analytics") && (
+              <PeriodBar
+                rangeType={rangeType}
+                anchor={anchor}
+                rangeLabel={rangeLabel}
+              />
             )}
-            <GoalsManager goals={goals} trigger={moreRow(Target, "Savings goals", "#0f7b6c")} />
-            <SplitManager data={split} trigger={moreRow(Handshake, "Split expenses", "#dd6b20")} />
-            <MembersManager members={members} invites={invites} currentEmail={userEmail} workspaceName={workspaceName} isOwner={isOwner} trigger={moreRow(Users, "Sharing", "#d53f8c")} />
-            <SettingsDialog currencyCode={currencyCode} userEmail={userEmail} trigger={moreRow(Settings, "Settings", "#787774")} />
-            <button
-              type="button"
-              onClick={() => {
-                setMoreOpen(false);
-                window.location.assign("/api/export");
-              }}
-              className="press flex w-full items-center gap-3 rounded-xl px-2 py-2.5 text-left hover:bg-accent"
-            >
-              <span className="grid size-9 shrink-0 place-items-center rounded-[10px] bg-[#0f7b6c] text-white"><Download className="size-[18px]" /></span>
-              <span className="flex-1 text-[15px] font-medium">Export to Excel</span>
-              <ChevronRight className="size-4 text-muted-foreground" />
-            </button>
-            <button
-              type="button"
-              onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
-              className="press flex w-full items-center gap-3 rounded-xl px-2 py-2.5 text-left hover:bg-accent"
-            >
-              <span className="grid size-9 shrink-0 place-items-center rounded-[10px] bg-foreground/80 text-background">
-                {resolvedTheme === "dark" ? <Sun className="size-[18px]" /> : <Moon className="size-[18px]" />}
+            <div key={tab} className="surface-enter">
+              {tab === "overview" && (
+                <OverviewTab
+                  accounts={accounts}
+                  transactions={transactions}
+                  transfers={transfers}
+                  categories={categories}
+                  totalBalance={totalBalance}
+                  rangeLabel={rangeLabel}
+                  rangeType={rangeType}
+                  rangeStart={rangeStart}
+                  rangeEnd={rangeEnd}
+                  comparison={comparison}
+                  canEdit={canEdit}
+                  budgets={budgetProgress}
+                  recurring={recurring}
+                  onActivity={() => changeTab("transactions")}
+                  onPlanning={() => changeTab("planning")}
+                  onAccounts={() => changeTab("accounts")}
+                />
+              )}
+              {tab === "transactions" && (
+                <TransactionsTab
+                  transactions={transactions}
+                  transfers={transfers}
+                  accounts={accounts}
+                  categories={categories}
+                  canEdit={canEdit}
+                  showAuthors={showAuthors}
+                />
+              )}
+              {tab === "accounts" && (
+                <AccountsSection
+                  accounts={accounts}
+                  categories={categories}
+                  canEdit={canEdit}
+                />
+              )}
+              {tab === "planning" && (
+                <PlanningTab
+                  budgets={budgetProgress}
+                  categories={categories}
+                  accounts={liveAccounts}
+                  recurring={recurring}
+                  goals={goals}
+                  split={split}
+                  canEdit={canEdit}
+                />
+              )}
+              {tab === "analytics" && (
+                <AnalyticsTab
+                  transactions={transactions}
+                  rangeType={rangeType}
+                  rangeStart={rangeStart}
+                  rangeEnd={rangeEnd}
+                  rangeLabel={rangeLabel}
+                  budgets={budgetProgress}
+                  categories={categories}
+                  accounts={liveAccounts}
+                  recurring={recurring}
+                  netWorth={netWorth}
+                  comparison={comparison}
+                  analytics={analytics}
+                  canEdit={canEdit}
+                  showAuthors={showAuthors}
+                />
+              )}
+            </div>
+          </main>
+        </div>
+        <nav
+          aria-label="Mobile navigation"
+          className="fixed inset-x-0 bottom-0 z-30 flex justify-around border-t bg-background px-2 pt-2 pb-safe lg:hidden"
+        >
+          {(
+            [
+              ["overview", House, "Home"],
+              ["transactions", Receipt, "Activity"],
+              ["add", Plus, "Add"],
+              ["analytics", TrendingUp, "Insights"],
+              ["more", Menu, "More"],
+            ] as const
+          ).map(([id, Icon, label]) => {
+            const button = (
+              <button
+                type="button"
+                aria-label={id === "add" ? "Add transaction" : label}
+                aria-current={tab === id ? "page" : undefined}
+                onClick={
+                  id === "add"
+                    ? undefined
+                    : () => (id === "more" ? setMoreOpen(true) : changeTab(id))
+                }
+                className={cn(
+                  "flex min-h-14 flex-1 flex-col items-center justify-center gap-1 rounded-xl px-3 text-xs font-medium",
+                  tab === id ? "text-brand" : "text-muted-foreground",
+                )}
+              >
+                <span
+                  className={cn(
+                    "grid h-7 w-11 place-items-center rounded-lg",
+                    id === "add"
+                      ? "bg-brand text-brand-foreground"
+                      : tab === id && "bg-brand/10",
+                  )}
+                >
+                  <Icon className="size-5" />
+                </span>
+                {label}
+              </button>
+            );
+            return id === "add" ? (
+              canEdit ? (
+                <TransactionDialog
+                  key={id}
+                  accounts={liveAccounts}
+                  categories={categories}
+                  trigger={button}
+                />
+              ) : (
+                <span key={id} className="flex-1" />
+              )
+            ) : (
+              <span key={id} className="flex flex-1">
+                {button}
               </span>
-              <span className="flex-1 text-[15px] font-medium">{resolvedTheme === "dark" ? "Light mode" : "Dark mode"}</span>
-            </button>
-          </div>
-        </SheetContent>
-      </Sheet>
+            );
+          })}
+        </nav>
+        <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
+          <SheetContent
+            side="left"
+            className="w-[min(320px,90vw)] overflow-y-auto lg:hidden"
+          >
+            <SheetHeader>
+              <SheetTitle>Your workspace</SheetTitle>
+            </SheetHeader>
+            <div className="space-y-4 px-4 pb-8">
+              {navigation}
+              <div className="grid gap-1 border-t pt-4">
+                {tools}
+                <SettingsDialog
+                  currencyCode={currencyCode}
+                  userEmail={userEmail}
+                  canEdit={canEdit}
+                  trigger={toolButton(Settings, "Settings")}
+                />
+                <a href="/api/export" className="nav-item">
+                  <Download className="size-[18px]" />
+                  Export data
+                </a>
+              </div>
+            </div>
+          </SheetContent>
+        </Sheet>
+      </div>
     </SettingsProvider>
   );
 }

@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { and, eq, isNull, or, sql } from "drizzle-orm";
 import { getDb } from "./db";
 import { accounts, appSettings, budgets, categories, goals, recurring, splits, tags, transactionTags, transactions, transfers, workspaceMembers } from "./db/schema";
+import { assertWorkspaceReferences } from "./workspace-references";
 import { findCurrencyByCode } from "./currencies";
 import { getActiveRole, getActiveWorkspaceId, getUserWorkspaces } from "./workspace";
 import { getCurrentUser, setActiveWorkspace } from "./session";
@@ -127,7 +128,7 @@ const txSchema = z.object({
   note: z.string().trim().max(200).default(""),
   accountId: z.string().min(1, "Pick an account"),
   categoryId: z.string().min(1).nullable().optional(),
-  tagIds: z.array(z.string()).optional(),
+  tagIds: z.array(z.string()).transform((ids) => [...new Set(ids)]).optional(),
 });
 
 export async function createTransaction(input: unknown): Promise<Result> {
@@ -136,6 +137,7 @@ export async function createTransaction(input: unknown): Promise<Result> {
     const w = await wid();
     const me = await getCurrentUser();
     const db = await getDb();
+    await assertWorkspaceReferences(w, { accountIds: [d.accountId], categoryId: d.categoryId, tagIds: d.tagIds });
     const [row] = await db.insert(transactions).values({
       workspaceId: w, type: d.type, amount: String(d.amount), date: d.date,
       note: d.note ?? "", accountId: d.accountId, categoryId: d.categoryId ?? null,
@@ -155,6 +157,7 @@ export async function updateTransaction(id: string, input: unknown): Promise<Res
     if (d.amount !== undefined) patch.amount = String(d.amount);
     const w = await wid();
     const db = await getDb();
+    await assertWorkspaceReferences(w, { accountIds: [d.accountId], categoryId: d.categoryId, tagIds: d.tagIds });
     const [owned] = await db.select({ id: transactions.id }).from(transactions).where(and(eq(transactions.id, id), eq(transactions.workspaceId, w))).limit(1);
     if (!owned) return { ok: false, error: "Transaction not found." };
     if (Object.keys(patch).length) await db.update(transactions).set(patch).where(and(eq(transactions.id, id), eq(transactions.workspaceId, w)));
@@ -206,10 +209,11 @@ export async function setBudget(input: unknown): Promise<Result> {
     const d = budgetSchema.parse(input);
     const w = await wid();
     const db = await getDb();
+    await assertWorkspaceReferences(w, { categoryId: d.categoryId });
     await db
       .insert(budgets)
       .values({ workspaceId: w, categoryId: d.categoryId, amount: String(d.amount) })
-      .onConflictDoUpdate({ target: budgets.categoryId, set: { amount: String(d.amount) } });
+      .onConflictDoUpdate({ target: budgets.categoryId, set: { amount: String(d.amount) }, setWhere: eq(budgets.workspaceId, w) });
     revalidatePath("/");
     return { ok: true };
   } catch (e) { return fail(e); }
@@ -241,6 +245,7 @@ export async function createTransfer(input: unknown): Promise<Result> {
     const d = transferSchema.parse(input);
     const w = await wid();
     const db = await getDb();
+    await assertWorkspaceReferences(w, { accountIds: [d.fromAccountId, d.toAccountId] });
     await db.insert(transfers).values({
       workspaceId: w, amount: String(d.amount), date: d.date, note: d.note ?? "",
       fromAccountId: d.fromAccountId, toAccountId: d.toAccountId,
@@ -284,6 +289,7 @@ export async function createRecurring(input: unknown): Promise<Result> {
     const d = recurringSchema.parse(input);
     const w = await wid();
     const db = await getDb();
+    await assertWorkspaceReferences(w, { accountIds: [d.accountId], categoryId: d.categoryId });
     await db.insert(recurring).values({
       workspaceId: w, type: d.type, amount: String(d.amount), note: d.note ?? "",
       accountId: d.accountId, categoryId: d.categoryId ?? null,
@@ -304,6 +310,7 @@ export async function updateRecurring(id: string, input: unknown): Promise<Resul
     const d = recurringSchema.parse(input);
     const w = await wid();
     const db = await getDb();
+    await assertWorkspaceReferences(w, { accountIds: [d.accountId], categoryId: d.categoryId });
     const [cur] = await db.select().from(recurring).where(and(eq(recurring.id, id), eq(recurring.workspaceId, w))).limit(1);
     if (!cur) return { ok: false, error: "Subscription not found." };
 
@@ -364,17 +371,17 @@ const goalSchema = z.object({
   color: z.string().optional(),
 });
 
-export async function createGoal(input: unknown): Promise<Result> {
+export async function createGoal(input: unknown): Promise<Result<{ id: string }>> {
   try {
     const d = goalSchema.parse(input);
     const w = await wid();
     const db = await getDb();
-    await db.insert(goals).values({
+    const [created] = await db.insert(goals).values({
       workspaceId: w, name: d.name, targetAmount: String(d.targetAmount),
       savedAmount: String(d.savedAmount ?? 0), deadline: d.deadline ?? null, color: d.color || "#047857",
-    });
+    }).returning({ id: goals.id });
     revalidatePath("/");
-    return { ok: true };
+    return { ok: true, data: { id: created.id } };
   } catch (e) { return fail(e); }
 }
 

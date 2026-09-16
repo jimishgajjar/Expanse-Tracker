@@ -64,16 +64,14 @@
   "Quiet premium ledger" — one committed emerald brand accent, a single cool-neutral
   gray family (no warm cream, no AI-purple), tabular figures, hairline surfaces.
 */
-/* Notion-like light theme: white paper, warm near-black #37352F ink, soft gray
-   hairlines, restrained colour (Notion green for money, Notion red for spend),
-   small radii. The default look. */
+/* Light surfaces with cool ink and a restrained emerald accent. */
 :root {
   --background: #ffffff;
-  --foreground: #37352f;
+  --foreground: #25342e;
   --card: #ffffff;
-  --card-foreground: #37352f;
+  --card-foreground: #25342e;
   --popover: #ffffff;
-  --popover-foreground: #37352f;
+  --popover-foreground: #25342e;
   --primary: #0f7b6c;
   --primary-foreground: #ffffff;
   --brand: #0f7b6c;
@@ -91,15 +89,15 @@
      rgba(55,53,47,0.03)); never a card-on-card border. */
   --canvas-muted: rgba(55, 53, 47, 0.03);
   --secondary: #f1f1ef;
-  --secondary-foreground: #37352f;
-  --muted: #f7f6f3;
-  --muted-foreground: #787774;
+  --secondary-foreground: #25342e;
+  --muted: #f2f5f3;
+  --muted-foreground: #65716b;
   --accent: #efedea;
-  --accent-foreground: #37352f;
-  --destructive: #e03e3e;
+  --accent-foreground: #25342e;
+  --destructive: #bf3e38;
   --positive: #0f7b6c;
   --positive-foreground: #ffffff;
-  --negative: #e03e3e;
+  --negative: #bf3e38;
   --negative-foreground: #ffffff;
   --border: rgba(55, 53, 47, 0.09);
   --input: rgba(55, 53, 47, 0.16);
@@ -107,17 +105,16 @@
   --chart-1: #0f7b6c;
   --chart-2: #0b6e99;
   --chart-3: #cb912f;
-  --chart-4: #e03e3e;
+  --chart-4: #bf3e38;
   --chart-5: #6940a5;
-  /* Notion's radii: 3–4px on controls, ~6px on popovers. Tailwind's steps
-     derive from this base (sm ≈2.4, md ≈3.2, lg 4, xl ≈5.4, 2xl ≈6.8). */
-  --radius: 0.25rem;
-  --sidebar: #fbfbfa;
-  --sidebar-foreground: #37352f;
+  /* 10px base radius; controls and surfaces derive their sizes from it. */
+  --radius: 0.625rem;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #25342e;
   --sidebar-primary: #0f7b6c;
   --sidebar-primary-foreground: #ffffff;
   --sidebar-accent: #efedea;
-  --sidebar-accent-foreground: #37352f;
+  --sidebar-accent-foreground: #25342e;
   --sidebar-border: rgba(55, 53, 47, 0.09);
   --sidebar-ring: #0f7b6c;
 }
@@ -256,3 +253,21 @@
     }
   }
 }
+
+/* Household workspace: content stays readable; navigation recedes. */
+.app-shell { background: #f6f8f7; }
+.dark .app-shell { background: #171b19; }
+.nav-item { display:flex; align-items:center; gap:12px; width:100%; min-height:44px; padding:10px 12px; border-radius:8px; font-size:14px; font-weight:500; color:var(--muted-foreground); text-align:left; transition:background 140ms ease,color 140ms ease; }
+.nav-item:hover { background:var(--muted); color:var(--foreground); }
+.nav-item-active { color:var(--brand); background:color-mix(in srgb,var(--brand) 9%,transparent); }
+button:focus-visible, a:focus-visible, summary:focus-visible { outline:2px solid var(--ring); outline-offset:3px; }
+.pb-safe { padding-bottom:max(8px, env(safe-area-inset-bottom)); }
+.surface-enter { animation:surface-enter 180ms ease-out; }
+@keyframes surface-enter { from { opacity:.6; transform:translateY(4px); } to { opacity:1; transform:translateY(0); } }
+@media (max-width:639px) {
+ [data-slot="button"], [data-slot="select-trigger"] { min-height:44px; }
+ [data-slot="button"][data-size^="icon"] { min-width:44px; }
+ [data-slot="input"], [data-slot="textarea"] { min-height:44px; font-size:16px; }
+ .transaction-sheet { top:auto; bottom:0; left:0; width:100%; max-width:100%; max-height:92dvh; transform:none; translate:none; animation:none; --tw-translate-x:0px; --tw-translate-y:0px; border-radius:20px 20px 0 0; padding:20px 16px max(16px,env(safe-area-inset-bottom)); }
+}
+@media (prefers-reduced-motion:reduce) { .surface-enter { animation:none; } }

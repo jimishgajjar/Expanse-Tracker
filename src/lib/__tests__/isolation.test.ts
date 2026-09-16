@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it, vi } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PGlite } from "@electric-sql/pglite";
 import { drizzle } from "drizzle-orm/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
@@ -7,11 +7,11 @@ import * as schema from "@/lib/db/schema";
 
 // Shared mutable state the mocks read from (vi.hoisted runs before imports).
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const h = vi.hoisted(() => ({ db: null as any, activeWs: null as string | null, role: "owner" as string }));
+const h = vi.hoisted(() => ({ db: null as any, activeWs: null as string | null, userId: "tester", role: "owner" as string }));
 
 vi.mock("@/lib/db", () => ({ getDb: async () => h.db }));
 vi.mock("next/cache", () => ({ revalidatePath: () => {} }));
-vi.mock("@/lib/session", () => ({ getCurrentUser: async () => ({ id: "tester" }) }));
+vi.mock("@/lib/session", () => ({ getCurrentUser: async () => ({ id: h.userId }) }));
 vi.mock("@/lib/workspace", () => ({
   getActiveWorkspaceId: async () => h.activeWs,
   getActiveRole: async () => h.role,
@@ -21,12 +21,14 @@ vi.mock("@/lib/workspace", () => ({
 
 // Imported under the mocks above.
 import { getAccountsWithBalances, getTransactionsInRange } from "@/lib/queries";
-import { createTransaction, deleteTransaction, updateTransaction } from "@/lib/actions";
+import { createTransaction, deleteTransaction, updateTransaction, createTransfer, setBudget } from "@/lib/actions";
 
 const ids = { wsA: "", wsB: "", txA: "", txB: "" };
 
+let client: PGlite;
+afterAll(async () => { await client?.close(); });
 beforeAll(async () => {
-  const client = new PGlite(); // in-memory
+  client = new PGlite(); // in-memory
   const db = drizzle(client, { schema });
   await migrate(db, { migrationsFolder: "./drizzle" });
   h.db = db;
@@ -35,6 +37,7 @@ beforeAll(async () => {
   const [uB] = await db.insert(schema.users).values({ email: "b@x.com", passwordHash: "x" }).returning();
   const [wA] = await db.insert(schema.workspaces).values({ name: "A", ownerId: uA.id }).returning();
   const [wB] = await db.insert(schema.workspaces).values({ name: "B", ownerId: uB.id }).returning();
+  h.userId = uA.id;
   ids.wsA = wA.id; ids.wsB = wB.id;
   await db.insert(schema.workspaceMembers).values([
     { workspaceId: wA.id, userId: uA.id, role: "owner" },
@@ -56,6 +59,37 @@ const txAmount = async (id: string) => {
 };
 
 describe("workspace isolation", () => {
+  it("rejects foreign accounts, categories and tags before creating or editing entries", async () => {
+    h.activeWs = ids.wsA;
+    h.role = "owner";
+    const [ownAccount] = await h.db.select().from(schema.accounts).where(eq(schema.accounts.workspaceId, ids.wsA));
+    const [foreignAccount] = await h.db.select().from(schema.accounts).where(eq(schema.accounts.workspaceId, ids.wsB));
+    const [foreignCategory] = await h.db.select().from(schema.categories).where(eq(schema.categories.workspaceId, ids.wsB));
+    const [foreignTag] = await h.db.insert(schema.tags).values({ workspaceId: ids.wsB, name: "Private tag" }).returning();
+    const input = { type: "expense", amount: 10, date: "2026-06-02", accountId: ownAccount.id };
+    const before = (await h.db.select().from(schema.transactions)).length;
+    expect((await createTransaction({ ...input, accountId: foreignAccount.id })).ok).toBe(false);
+    expect((await createTransaction({ ...input, categoryId: foreignCategory.id })).ok).toBe(false);
+    expect((await createTransaction({ ...input, tagIds: [foreignTag.id] })).ok).toBe(false);
+    expect((await updateTransaction(ids.txA, { accountId: foreignAccount.id })).ok).toBe(false);
+    expect((await updateTransaction(ids.txA, { tagIds: [foreignTag.id] })).ok).toBe(false);
+    expect((await h.db.select().from(schema.transactions)).length).toBe(before);
+    expect(await txAmount(ids.txA)).toBe("100.00");
+  });
+
+  it("cannot transfer into another workspace or overwrite its category budget", async () => {
+    h.activeWs = ids.wsA;
+    h.role = "owner";
+    const [own] = await h.db.select().from(schema.accounts).where(eq(schema.accounts.workspaceId, ids.wsA));
+    const [foreign] = await h.db.select().from(schema.accounts).where(eq(schema.accounts.workspaceId, ids.wsB));
+    const [category] = await h.db.select().from(schema.categories).where(eq(schema.categories.workspaceId, ids.wsB));
+    await h.db.insert(schema.budgets).values({ workspaceId: ids.wsB, categoryId: category.id, amount: "500" });
+    expect((await createTransfer({ fromAccountId: own.id, toAccountId: foreign.id, amount: 10, date: "2026-06-02" })).ok).toBe(false);
+    expect((await setBudget({ categoryId: category.id, amount: 1 })).ok).toBe(false);
+    const [budget] = await h.db.select().from(schema.budgets).where(eq(schema.budgets.categoryId, category.id));
+    expect(budget.amount).toBe("500.00");
+    expect(await h.db.select().from(schema.transfers)).toHaveLength(0);
+  });
   it("queries return only the active workspace's rows", async () => {
     h.activeWs = ids.wsA;
     const accs = await getAccountsWithBalances();

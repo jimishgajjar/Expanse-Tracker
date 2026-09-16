@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { eq } from "drizzle-orm";
-import { getDb } from "@/lib/db";
-import { users } from "@/lib/db/schema";
+import { updatePasswordAndSessions } from "@/lib/password-update";
 import { getSession } from "@/lib/session";
 import { verifyPassword, hashPassword } from "@/lib/password";
 
@@ -21,7 +19,6 @@ export async function POST(req: Request) {
   if (!verifyPassword(p.data.current, s.user.passwordHash)) {
     return NextResponse.json({ error: "Current password is incorrect." }, { status: 400 });
   }
-  const db = await getDb();
-  await db.update(users).set({ passwordHash: hashPassword(p.data.newPassword) }).where(eq(users.id, s.user.id));
+  await updatePasswordAndSessions(s.user.id, hashPassword(p.data.newPassword), s.sessionId);
   return NextResponse.json({ ok: true });
 }

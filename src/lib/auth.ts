@@ -6,8 +6,10 @@ import { z } from "zod";
 import { eq } from "drizzle-orm";
 import { getDb } from "./db";
 import { users, workspaceMembers, workspaces } from "./db/schema";
+import { updatePasswordAndSessions } from "./password-update";
+import { safeReturnPath } from "./safe-redirect";
 import { hashPassword, verifyPassword } from "./password";
-import { createSession, destroySession, getCurrentUser } from "./session";
+import { createSession, destroySession, getCurrentUser, getSession } from "./session";
 import { seed } from "./db/seed";
 import { sendVerificationEmail } from "./verify";
 import { rateLimit, clientIp, retryMessage } from "./rate-limit";
@@ -67,7 +69,7 @@ export async function login(_prev: string | undefined, formData: FormData): Prom
   const [u] = await db.select().from(users).where(eq(users.email, emailP.data.toLowerCase())).limit(1);
   if (!u || !verifyPassword(password, u.passwordHash)) return "Incorrect email or password.";
   await createSession(u.id, await defaultWorkspaceId(u.id));
-  redirect(String(formData.get("next") || "/"));
+  redirect(safeReturnPath(formData.get("next")));
 }
 
 export async function logout() {
@@ -83,8 +85,9 @@ export async function changePassword(_prev: string | undefined, formData: FormDa
   if (!nextP.success) return nextP.error.issues[0].message;
   if (!verifyPassword(current, user.passwordHash)) return "Current password is incorrect.";
 
-  const db = await getDb();
-  await db.update(users).set({ passwordHash: hashPassword(nextP.data) }).where(eq(users.id, user.id));
+  const session = await getSession();
+  if (!session) return "You're not signed in.";
+  await updatePasswordAndSessions(user.id, hashPassword(nextP.data), session.sessionId);
   return "ok";
 }
 

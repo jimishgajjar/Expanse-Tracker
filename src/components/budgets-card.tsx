@@ -8,21 +8,21 @@ import { useFormat } from "@/components/settings-provider";
 import { cn } from "@/lib/utils";
 import type { BudgetProgressDTO, CategoryDTO } from "@/lib/queries";
 
-export function BudgetsCard({ budgets, categories }: { budgets: BudgetProgressDTO[]; categories: CategoryDTO[] }) {
+export function BudgetsCard({ budgets, categories, canEdit = true }: { budgets: BudgetProgressDTO[]; categories: CategoryDTO[]; canEdit?: boolean }) {
   const { money } = useFormat();
   return (
     <Card className="gap-3">
       <CardHeader>
         <CardTitle>Budgets <span className="font-normal text-muted-foreground">· this month</span></CardTitle>
-        <BudgetManager
+        {canEdit && <BudgetManager
           budgets={budgets}
           categories={categories}
           trigger={<Button size="sm" variant="outline" className="ml-auto">Manage</Button>}
-        />
+        />}
       </CardHeader>
       <CardContent>
         {budgets.length === 0 ? (
-          <p className="py-6 text-center text-sm text-muted-foreground">No budgets set — tap Manage to add monthly limits.</p>
+          <p className="py-6 text-center text-sm text-muted-foreground">No monthly limits set yet. Workspace editors can add budgets.</p>
         ) : (
           <ul className="space-y-3">
             {budgets.map((b) => {

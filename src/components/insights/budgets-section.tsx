@@ -17,10 +17,12 @@ export function BudgetsSection({
   data,
   budgets,
   categories,
+  canEdit = true,
 }: {
   data: AnalyticsData;
   budgets: BudgetProgressDTO[];
   categories: CategoryDTO[];
+  canEdit?: boolean;
 }) {
   const { money } = useFormat();
   const b = data.budgets;
@@ -31,11 +33,11 @@ export function BudgetsSection({
       <Card className="gap-3">
         <CardHeader>
           <CardTitle>Budgets</CardTitle>
-          <BudgetManager
+          {canEdit && <BudgetManager
             budgets={budgets}
             categories={categories}
             trigger={<Button size="sm" variant="outline" className="ml-auto">Set budgets</Button>}
-          />
+          />}
         </CardHeader>
         <CardContent>
           <Empty>
@@ -92,11 +94,11 @@ export function BudgetsSection({
       <Card className="gap-3">
         <CardHeader>
           <CardTitle>Pace by category <span className="font-normal text-muted-foreground">· this month</span></CardTitle>
-          <BudgetManager
+          {canEdit && <BudgetManager
             budgets={budgets}
             categories={categories}
             trigger={<Button size="sm" variant="outline" className="ml-auto">Manage</Button>}
-          />
+          />}
         </CardHeader>
         <CardContent>
           <ul className="space-y-3.5">

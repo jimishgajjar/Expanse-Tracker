@@ -1,86 +1,43 @@
 import { Skeleton } from "@/components/ui/skeleton";
 
-/**
- * Instant shell for the signed-in dashboard.
- *
- * `/` fans out to ~15 DB queries plus the recurring materialisation, so without
- * this every period change left the viewer on a blank page until all of it
- * resolved. It mirrors the real layout — header, period bar, hero balance,
- * ledger strip, accounts, charts — so the swap-in lands on the same geometry
- * instead of reflowing.
- *
- * Deliberately NOT `app/loading.tsx`: that boundary wraps the whole root
- * segment, which also serves the logged-out marketing page, so a first-time
- * visitor got a flash of fake dashboard before the landing hero. It lives
- * behind a Suspense boundary in page.tsx that only the signed-in branch
- * renders.
- */
+/** Used only for authenticated navigation; matches the sidebar and overview. */
 export function DashboardSkeleton() {
   return (
-    <div className="min-h-svh" aria-busy="true" aria-live="polite">
+    <div className="app-shell min-h-dvh" aria-busy="true" role="status">
       <span className="sr-only">Loading your tracker…</span>
-
-      {/* Header */}
-      <header className="border-b border-border">
-        <div className="mx-auto flex max-w-6xl items-center gap-3 px-3 py-3 sm:px-6">
-          <Skeleton className="size-8 rounded-lg" />
-          <Skeleton className="h-4 w-36" />
-          <div className="ml-auto flex items-center gap-1.5">
-            <Skeleton className="hidden h-8 w-24 rounded-md sm:block" />
-            <Skeleton className="size-8 rounded-md" />
-            <Skeleton className="size-8 rounded-md" />
+      <aside
+        aria-hidden="true"
+        className="fixed inset-y-0 hidden w-60 space-y-4 border-r bg-sidebar p-7 lg:block"
+      >
+        <Skeleton className="mb-10 h-9 w-full" />
+        {Array.from({ length: 9 }, (_, i) => (
+          <Skeleton key={i} className="h-10 w-full" />
+        ))}
+      </aside>
+      <div className="lg:pl-60" aria-hidden="true">
+        <div className="flex h-16 items-center border-b bg-background px-4 sm:px-7 xl:px-10">
+          <Skeleton className="h-5 w-40" />
+        </div>
+        <div className="mx-auto max-w-[1440px] space-y-6 px-4 pt-6 pb-28 sm:px-7 sm:pt-8 xl:px-10">
+          <div className="space-y-3">
+            <Skeleton className="h-9 w-44" />
+            <Skeleton className="h-5 w-64 max-w-full" />
           </div>
-        </div>
-      </header>
-
-      <div className="mx-auto max-w-6xl space-y-4 px-3 pt-4 pb-28 sm:space-y-5 sm:px-6 sm:pt-5 sm:pb-6">
-        {/* Period bar */}
-        <div className="flex items-center gap-2">
-          <Skeleton className="h-8 w-40 rounded-md" />
-          <Skeleton className="ml-auto h-8 w-56 rounded-md max-sm:hidden" />
-        </div>
-
-        {/* Tab list (desktop) */}
-        <Skeleton className="h-9 w-72 rounded-lg max-sm:hidden" />
-
-        {/* Hero balance + ledger strip */}
-        <div className="rounded-xl border border-border p-4 sm:p-5">
-          <Skeleton className="h-3 w-24" />
-          <Skeleton className="mt-2.5 h-9 w-56" />
-          <div className="mt-5 grid grid-cols-3 gap-px overflow-hidden rounded-lg bg-border">
-            {[0, 1, 2].map((i) => (
-              <div key={i} className="bg-background p-3">
-                <Skeleton className="h-3 w-14" />
-                <Skeleton className="mt-2 h-5 w-20" />
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Accounts */}
-        <div className="space-y-3">
-          <Skeleton className="h-4 w-32" />
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {[0, 1, 2].map((i) => (
-              <div key={i} className="rounded-xl border border-border p-4">
-                <div className="flex items-center gap-2.5">
-                  <Skeleton className="size-8 rounded-lg" />
-                  <Skeleton className="h-4 w-24" />
-                </div>
-                <Skeleton className="mt-3 h-6 w-28" />
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Donut + trend */}
-        <div className="grid gap-4 lg:grid-cols-2">
-          {[0, 1].map((i) => (
-            <div key={i} className="rounded-xl border border-border p-4">
-              <Skeleton className="h-4 w-36" />
-              <Skeleton className="mt-5 h-[200px] w-full rounded-lg" />
+          <Skeleton className="h-40 w-full rounded-xl sm:h-16" />
+          <div className="rounded-2xl border bg-card p-6">
+            <Skeleton className="h-4 w-24" />
+            <Skeleton className="mt-4 h-12 w-64 max-w-full" />
+            <Skeleton className="mt-4 h-4 w-52 max-w-full" />
+            <div className="mt-8 grid gap-5 sm:grid-cols-3">
+              {[0, 1, 2].map((i) => (
+                <Skeleton key={i} className="h-20 w-full" />
+              ))}
             </div>
-          ))}
+          </div>
+          <div className="grid gap-6 xl:grid-cols-[1.7fr_1fr]">
+            <Skeleton className="h-72 w-full rounded-xl" />
+            <Skeleton className="h-72 w-full rounded-xl" />
+          </div>
         </div>
       </div>
     </div>

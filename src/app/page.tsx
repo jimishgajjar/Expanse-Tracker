@@ -31,7 +31,7 @@ export default async function Page({
   const sp = await searchParams;
   const rangeType = (RANGE_TYPES.includes(sp.range as RangeType) ? sp.range : "month") as RangeType;
   const anchor = /^\d{4}-\d{2}-\d{2}$/.test(sp.date ?? "") ? sp.date! : todayISO();
-  const initialTab = sp.tab === "transactions" || sp.tab === "analytics" ? sp.tab : "overview";
+  const initialTab = sp.tab === "transactions" || sp.tab === "analytics" || sp.tab === "accounts" || sp.tab === "planning" ? sp.tab : "overview";
 
   return (
     // Keyed on the period so moving between months re-suspends and shows the
@@ -51,7 +51,7 @@ async function DashboardData({
 }: {
   rangeType: RangeType;
   anchor: string;
-  initialTab: "overview" | "transactions" | "analytics";
+  initialTab: "overview" | "transactions" | "analytics" | "accounts" | "planning";
 }) {
   // getSession is wrapped in React cache(), so this reuses the lookup the page
   // already made rather than issuing a second query.

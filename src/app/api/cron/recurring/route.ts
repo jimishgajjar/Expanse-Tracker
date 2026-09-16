@@ -9,11 +9,17 @@ export const dynamic = "force-dynamic";
 // `Authorization: Bearer <CRON_SECRET>` — Vercel adds this header automatically.
 export async function GET(req: Request) {
   const secret = process.env.CRON_SECRET;
+  if (process.env.NODE_ENV === "production" && !secret) return new NextResponse("Cron is not configured", { status: 503 });
   if (secret && req.headers.get("authorization") !== `Bearer ${secret}`) {
     return new NextResponse("Unauthorized", { status: 401 });
   }
-  const created = await processAllRecurring().catch(() => 0);
-  const digests = await sendMonthlyDigests().catch(() => 0);
-  const budgetAlerts = await checkBudgetAlerts().catch(() => 0);
-  return NextResponse.json({ ok: true, created, digests, budgetAlerts });
+  try {
+    const created = await processAllRecurring();
+    const digests = await sendMonthlyDigests();
+    const budgetAlerts = await checkBudgetAlerts();
+    return NextResponse.json({ ok: true, created, digests, budgetAlerts });
+  } catch (error) {
+    console.error("Scheduled financial processing failed", error);
+    return NextResponse.json({ ok: false, error: "Scheduled processing failed. Retry the job." }, { status: 500 });
+  }
 }

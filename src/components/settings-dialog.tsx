@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, type ReactElement } from "react";
+import { useId, useState, useTransition, type ReactElement } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
@@ -21,11 +21,14 @@ export function SettingsDialog({
   trigger,
   currencyCode,
   userEmail,
+  canEdit = true,
 }: {
   trigger: ReactElement;
   currencyCode: string;
   userEmail: string;
+  canEdit?: boolean;
 }) {
+  const id = useId();
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [pending, start] = useTransition();
@@ -39,7 +42,7 @@ export function SettingsDialog({
   function save() {
     start(async () => {
       const res = await updateSettings({ currencyCode: code });
-      if (res.ok) { toast.success("Settings saved"); setOpen(false); router.refresh(); }
+      if (res.ok) { toast.success("Currency saved"); router.refresh(); }
       else toast.error(res.error);
     });
   }
@@ -49,12 +52,12 @@ export function SettingsDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogTrigger render={trigger} />
-      <DialogContent>
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader><DialogTitle>Settings</DialogTitle></DialogHeader>
         <div className="grid gap-1.5">
-          <Label>Currency</Label>
-          <Select value={code} onValueChange={(v) => setCode(v as string)} items={items}>
-            <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+          <Label htmlFor={id}>Display currency</Label>
+          <Select disabled={!canEdit} value={code} onValueChange={(v) => setCode(v as string)} items={items}>
+            <SelectTrigger id={id} className="w-full"><SelectValue /></SelectTrigger>
             <SelectContent>
               {CURRENCIES.map((c) => (
                 <SelectItem key={c.code} value={c.code}>
@@ -65,14 +68,16 @@ export function SettingsDialog({
               ))}
             </SelectContent>
           </Select>
-          <p className="text-xs text-muted-foreground">Sets the symbol and number grouping used across the app.</p>
+          <p className="text-xs text-muted-foreground">Changes display formatting only. Existing amounts are not converted.</p>
         </div>
+        {canEdit && <Button onClick={save} disabled={pending || code === currencyCode} className="justify-self-start">{pending ? "Saving…" : "Save currency"}</Button>}
+        <p className="text-xs text-muted-foreground">Each section saves separately. Closing settings does not undo completed actions.</p>
         <div className="space-y-2 border-t pt-3">
-          <Label>Data</Label>
+          <h2 className="text-sm font-semibold">Data</h2>
           <Button type="button" variant="outline" size="sm" className="w-full" onClick={() => window.location.assign("/api/export")}>
             Export to Excel
           </Button>
-          <ImportForm />
+          {canEdit && <ImportForm />}
           <p className="text-xs text-muted-foreground">Import expects the same columns as Export (Date, Type, Amount, Category, Account, Note).</p>
         </div>
         <div className="space-y-2 border-t pt-3">
@@ -90,8 +95,7 @@ export function SettingsDialog({
           <DeleteAccountForm />
         </div>
         <DialogFooter className="mt-2">
-          <DialogClose render={<Button type="button" variant="outline" />}>Cancel</DialogClose>
-          <Button onClick={save} disabled={pending}>{pending ? "Saving…" : "Save"}</Button>
+          <DialogClose render={<Button type="button" variant="outline" />}>Done</DialogClose>
         </DialogFooter>
       </DialogContent>
     </Dialog>

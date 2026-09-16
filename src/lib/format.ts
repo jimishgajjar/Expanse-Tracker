@@ -17,7 +17,7 @@ const round2 = (n: number) => Math.round(((n || 0) + Number.EPSILON) * 100) / 10
 export function makeFormatters(currency: string, locale: string): Formatters {
   // Always two decimals, matching the precision amounts are entered with.
   const fmt = new Intl.NumberFormat(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  const money = (n: number, _opts: { decimals?: boolean } = {}) => `${currency}${fmt.format(Math.abs(round2(n)))}`;
+  const money = (n: number) => `${currency}${fmt.format(Math.abs(round2(n)))}`;
   const signedMoney = (n: number) => `${n < 0 ? "−" : "+"}${money(n)}`;
   const balanceMoney = (n: number) => `${n < 0 ? "−" : ""}${money(n)}`;
   return { money, signedMoney, balanceMoney };

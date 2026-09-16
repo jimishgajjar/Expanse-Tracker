@@ -12,11 +12,11 @@ type Seg = { name: string; value: number; color: string; icon: string };
 
 function Donut({ segments, total }: { segments: Seg[]; total: number }) {
   const size = 176, stroke = 26, r = (size - stroke) / 2, c = 2 * Math.PI * r, cx = size / 2;
-  let offset = 0;
   return (
     <svg viewBox={`0 0 ${size} ${size}`} width={size} height={size} className="-rotate-90">
       <circle cx={cx} cy={cx} r={r} fill="none" stroke="var(--muted)" strokeWidth={stroke} />
-      {segments.map((s) => {
+      {segments.map((s, index) => {
+        const offset = total ? segments.slice(0, index).reduce((sum, part) => sum + part.value, 0) / total * c : 0;
         const dash = total ? (s.value / total) * c : 0;
         const el = (
           <circle
@@ -31,7 +31,6 @@ function Donut({ segments, total }: { segments: Seg[]; total: number }) {
             strokeDashoffset={-offset}
           />
         );
-        offset += dash;
         return el;
       })}
     </svg>

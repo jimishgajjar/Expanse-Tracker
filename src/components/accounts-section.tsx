@@ -49,7 +49,7 @@ export function AccountsSection({
 
   return (
     <section className="space-y-3">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="flex items-baseline gap-2 text-sm font-semibold text-muted-foreground">
           All accounts
           <span className="amount text-base font-semibold text-foreground">{balanceMoney(total)}</span>
@@ -57,7 +57,7 @@ export function AccountsSection({
         {canEdit && <AccountDialog trigger={<Button variant="outline" size="sm"><Plus className="size-4" /> Add account</Button>} />}
       </div>
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {active.map((a) => <AccountCard key={a.id} account={a} {...shared} />)}
         {accounts.length === 0 && <p className="text-sm text-muted-foreground">No accounts yet — add one to get started.</p>}
       </div>
@@ -74,7 +74,7 @@ export function AccountsSection({
             <span className="amount text-foreground/70">{balanceMoney(archivedTotal)}</span>
           </button>
           {showArchived && (
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
               {archived.map((a) => <AccountCard key={a.id} account={a} {...shared} />)}
             </div>
           )}
@@ -96,8 +96,7 @@ function AccountCard({
   onArchive: (id: string, value: boolean) => void;
 }) {
   return (
-    // Notion gallery card: a hairline, a hover wash, and no lift — the page
-    // stays flat, the row just lights up under the pointer.
+    // Keep account management separate from the linked balance and title.
     <Card className={cn("group relative gap-0 overflow-hidden p-0 transition-colors hover:bg-hover", a.archived && "opacity-65 hover:opacity-100")}>
       <Link href={`/accounts/${a.id}`} className="flex w-full flex-col items-start p-4 text-left">
         <div className="flex w-full items-center gap-2.5">
@@ -117,7 +116,7 @@ function AccountCard({
         </div>
       </Link>
       {canEdit && (
-        <div className="absolute top-2 right-2 flex text-muted-foreground/70 transition sm:text-foreground sm:opacity-0 sm:group-hover:opacity-100">
+        <div className="flex justify-end border-t px-2 py-1 text-muted-foreground">
           {a.archived ? (
             <Button size="icon-sm" variant="ghost" aria-label="Restore account" title="Restore" onClick={() => onArchive(a.id, false)}>
               <ArchiveRestore className="size-3.5" />
@@ -142,15 +141,15 @@ function AccountCard({
         <div className="flex border-t text-xs font-medium">
           <TransactionDialog
             accounts={accounts} categories={categories} defaultAccountId={a.id} defaultType="income"
-            trigger={<button type="button" aria-label={`Add income to ${a.name}`} className="flex flex-1 items-center justify-center gap-1.5 py-2 text-positive transition-colors hover:bg-positive/10"><Plus className="size-3.5" /> Income</button>}
+            trigger={<button type="button" aria-label={`Add income to ${a.name}`} className="flex min-h-11 flex-1 items-center justify-center gap-1.5 py-2 text-positive transition-colors hover:bg-positive/10"><Plus className="size-3.5" /> Income</button>}
           />
           <TransactionDialog
             accounts={accounts} categories={categories} defaultAccountId={a.id} defaultType="expense"
-            trigger={<button type="button" aria-label={`Add expense to ${a.name}`} className="flex flex-1 items-center justify-center gap-1.5 border-l py-2 text-negative transition-colors hover:bg-negative/10"><Minus className="size-3.5" /> Expense</button>}
+            trigger={<button type="button" aria-label={`Add expense to ${a.name}`} className="flex min-h-11 flex-1 items-center justify-center gap-1.5 border-l py-2 text-negative transition-colors hover:bg-negative/10"><Minus className="size-3.5" /> Expense</button>}
           />
           <TransactionDialog
             accounts={accounts} categories={categories} defaultAccountId={a.id} defaultType="transfer"
-            trigger={<button type="button" aria-label={`Transfer from ${a.name}`} className="flex flex-1 items-center justify-center gap-1.5 border-l py-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"><ArrowRightLeft className="size-3.5" /> Transfer</button>}
+            trigger={<button type="button" aria-label={`Transfer from ${a.name}`} className="flex min-h-11 flex-1 items-center justify-center gap-1.5 border-l py-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"><ArrowRightLeft className="size-3.5" /> Transfer</button>}
           />
         </div>
       )}

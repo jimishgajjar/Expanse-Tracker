@@ -107,7 +107,8 @@ export async function checkBudgetAlerts(now = new Date()): Promise<number> {
       .where(and(eq(budgetAlerts.workspaceId, b.workspaceId), eq(budgetAlerts.categoryId, b.categoryId), eq(budgetAlerts.period, period)));
     if (crossed <= seen.reduce((m, a) => Math.max(m, a.threshold), 0)) continue;
 
-    await db.insert(budgetAlerts).values({ workspaceId: b.workspaceId, categoryId: b.categoryId, period, threshold: crossed }).onConflictDoNothing();
+    const claimed = await db.insert(budgetAlerts).values({ workspaceId: b.workspaceId, categoryId: b.categoryId, period, threshold: crossed }).onConflictDoNothing().returning({ period: budgetAlerts.period });
+    if (!claimed.length) continue;
     const sym = await symbolFor(db, b.workspaceId, symCache);
     await notifyWorkspace(b.workspaceId, {
       title: `Budget ${crossed >= 100 ? "exceeded" : "warning"}: ${b.name} ${Math.round(pct)}%`,

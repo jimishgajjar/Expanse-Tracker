@@ -5,7 +5,7 @@ import { Plus, X } from "lucide-react";
 import { createTag, listTags } from "@/lib/actions";
 import type { TagRef } from "@/lib/queries";
 
-export function TagInput({ value, onChange }: { value: TagRef[]; onChange: (tags: TagRef[]) => void }) {
+export function TagInput({ id, value, onChange }: { id?: string; value: TagRef[]; onChange: (tags: TagRef[]) => void }) {
   const [all, setAll] = useState<TagRef[]>([]);
   const [query, setQuery] = useState("");
   const [focused, setFocused] = useState(false);
@@ -36,10 +36,12 @@ export function TagInput({ value, onChange }: { value: TagRef[]; onChange: (tags
         {value.map((t) => (
           <span key={t.id} className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium" style={{ backgroundColor: `${t.color}22`, color: t.color }}>
             {t.name}
-            <button type="button" onClick={() => remove(t.id)} aria-label={`Remove ${t.name}`} className="opacity-70 hover:opacity-100"><X className="size-3" /></button>
+            <button type="button" onClick={() => remove(t.id)} aria-label={`Remove ${t.name}`} className="grid size-8 place-items-center opacity-70 hover:opacity-100"><X className="size-3" /></button>
           </span>
         ))}
         <input
+          id={id}
+          aria-label="Tags"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onFocus={() => setFocused(true)}

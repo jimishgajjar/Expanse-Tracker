@@ -34,7 +34,7 @@ export async function createApiSession(userId: string, workspaceId: string | nul
 }
 
 /** Validated session (user + active workspace), memoized per request. */
-export const getSession = cache(async (): Promise<{ user: User; workspaceId: string | null } | null> => {
+export const getSession = cache(async (): Promise<{ user: User; workspaceId: string | null; sessionId: string } | null> => {
   const jar = await cookies();
   let token = jar.get(SESSION_COOKIE)?.value;
   if (!token) {
@@ -51,7 +51,7 @@ export const getSession = cache(async (): Promise<{ user: User; workspaceId: str
     .where(eq(sessions.id, token))
     .limit(1);
   if (!row || row.expiresAt.getTime() < Date.now()) return null;
-  return { user: row.user, workspaceId: row.workspaceId };
+  return { user: row.user, workspaceId: row.workspaceId, sessionId: token };
 });
 
 export async function getCurrentUser(): Promise<User | null> {

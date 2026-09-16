@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -28,7 +28,6 @@ export function CategoryDetailView({
   const { money } = useFormat();
   const [pageSize, setPageSize] = useState(25);
   const [page, setPage] = useState(1);
-  useEffect(() => setPage(1), [pageSize]);
 
   const income = transactions.filter((t) => t.type === "income").reduce((s, t) => s + t.amount, 0);
   const expense = transactions.filter((t) => t.type === "expense").reduce((s, t) => s + t.amount, 0);
@@ -66,7 +65,7 @@ export function CategoryDetailView({
           <div className="mt-4 flex flex-col items-stretch gap-3 border-t pt-3 text-sm sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center justify-center gap-2 text-muted-foreground sm:justify-start">
               <span>Rows per page</span>
-              <Select value={String(pageSize)} onValueChange={(v) => setPageSize(Number(v))} items={PAGE_SIZES.map((n) => ({ value: String(n), label: String(n) }))}>
+              <Select value={String(pageSize)} onValueChange={(v) => { setPageSize(Number(v)); setPage(1); }} items={PAGE_SIZES.map((n) => ({ value: String(n), label: String(n) }))}>
                 <SelectTrigger size="sm" className="w-[4.5rem]"><SelectValue /></SelectTrigger>
                 <SelectContent>{PAGE_SIZES.map((n) => <SelectItem key={n} value={String(n)}>{n}</SelectItem>)}</SelectContent>
               </Select>

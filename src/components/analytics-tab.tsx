@@ -87,7 +87,7 @@ export function AnalyticsTab(props: AnalyticsTabProps) {
               onClick={() => setView(v.key)}
               aria-current={view === v.key ? "page" : undefined}
               className={cn(
-                "press rounded-md px-3 py-1.5 text-sm font-medium whitespace-nowrap transition-colors",
+                "press min-h-11 rounded-md px-3 py-1.5 text-sm font-medium whitespace-nowrap transition-colors",
                 view === v.key ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
               )}
             >
@@ -107,7 +107,7 @@ export function AnalyticsTab(props: AnalyticsTabProps) {
           rangeEnd={props.rangeEnd}
         />
       )}
-      {view === "budgets" && <BudgetsSection data={analytics} budgets={budgets} categories={categories} />}
+      {view === "budgets" && <BudgetsSection data={analytics} budgets={budgets} categories={categories} canEdit={canEdit} />}
       {view === "commitments" && (
         <CommitmentsSection
           data={analytics}
@@ -139,6 +139,8 @@ function SummaryView({
   categories,
   netWorth,
   comparison,
+  canEdit,
+  rangeLabel,
 }: AnalyticsTabProps) {
   const { money } = useFormat();
 
@@ -201,10 +203,11 @@ function SummaryView({
 
   return (
     <div className="space-y-5">
+      <section className="rounded-2xl border bg-card p-6"><p className="text-sm text-muted-foreground">{rangeLabel}</p><h2 className="mt-2 text-2xl font-semibold">{a.net < 0 ? "Spending exceeded income by " : "Income exceeded spending by "}{money(a.net)}</h2><p className="mt-2 text-sm text-muted-foreground">{a.totalIncome > 0 ? String(a.savingsRate) + "% of income remained after expenses." : "Add income to calculate your savings rate."} Transfers between accounts are excluded.</p></section>
       {/* One ledger lattice instead of eight identical cards: hairline-divided
           cells, reading like a statement summary. */}
       <div className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border bg-border sm:grid-cols-4">
-        {stats.map((s) => (
+        {stats.slice(0, 4).map((s) => (
           <div key={s.k} className="bg-card p-3.5">
             <div className="truncate text-xs font-medium text-muted-foreground">{s.k}</div>
             <div className={cn("amount mt-1.5 truncate text-lg font-semibold tracking-tight sm:text-xl", s.tone)}>{s.v}</div>
@@ -217,8 +220,9 @@ function SummaryView({
         ))}
       </div>
 
+      <details className="rounded-xl border bg-card px-5 py-3"><summary className="min-h-8 cursor-pointer text-sm font-medium">More statistics</summary><dl className="grid grid-cols-2 gap-4 py-4 sm:grid-cols-4">{stats.slice(4).map(s => <div key={s.k}><dt className="text-xs text-muted-foreground">{s.k}</dt><dd className="mt-1 font-semibold">{s.v}</dd></div>)}</dl></details>
       <div className="grid gap-4 lg:grid-cols-2">
-        <BudgetsCard budgets={budgets} categories={categories} />
+        <BudgetsCard budgets={budgets} categories={categories} canEdit={canEdit} />
         <NetWorthChart series={netWorth} />
       </div>
 
@@ -232,7 +236,7 @@ function SummaryView({
       <BreakdownCard title="Spending by account" items={a.byAccount} total={a.totalExpense} money={money} />
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <ListCard title="Top merchants" rows={a.topMerchants.map((m) => ({ key: m.name, name: m.name, meta: `${m.count}×`, value: money(m.value), color: m.color, icon: m.icon }))} />
+        <ListCard title="Spending by description" rows={a.topMerchants.map((m) => ({ key: m.name, name: m.name, meta: `${m.count}×`, value: money(m.value), color: m.color, icon: m.icon }))} />
         <ListCard
           title="Largest transactions"
           rows={a.largest.map((t) => ({

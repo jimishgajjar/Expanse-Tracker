@@ -6,6 +6,7 @@ import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { getDb } from "./db";
 import { passwordResets, users, workspaceMembers, workspaces } from "./db/schema";
+import { consumePasswordReset } from "./password-update";
 import { hashPassword } from "./password";
 import { createSession } from "./session";
 import { sendEmail } from "./email";
@@ -50,18 +51,15 @@ export async function resetPassword(_prev: string | undefined, formData: FormDat
   if (pwP.data !== String(formData.get("confirm") ?? "")) return "Passwords don't match.";
 
   const db = await getDb();
-  const [row] = await db.select().from(passwordResets).where(eq(passwordResets.id, token)).limit(1);
-  if (!row || row.expiresAt.getTime() < Date.now()) return "This reset link is invalid or has expired.";
+  const userId = await consumePasswordReset(token, hashPassword(pwP.data));
+  if (!userId) return "This reset link is invalid or has expired.";
 
-  await db.update(users).set({ passwordHash: hashPassword(pwP.data) }).where(eq(users.id, row.userId));
-  await db.delete(passwordResets).where(eq(passwordResets.id, token));
-
-  const [owned] = await db.select({ id: workspaces.id }).from(workspaces).where(eq(workspaces.ownerId, row.userId)).limit(1);
+  const [owned] = await db.select({ id: workspaces.id }).from(workspaces).where(eq(workspaces.ownerId, userId)).limit(1);
   let wid = owned?.id ?? null;
   if (!wid) {
-    const [m] = await db.select({ id: workspaceMembers.workspaceId }).from(workspaceMembers).where(eq(workspaceMembers.userId, row.userId)).limit(1);
+    const [m] = await db.select({ id: workspaceMembers.workspaceId }).from(workspaceMembers).where(eq(workspaceMembers.userId, userId)).limit(1);
     wid = m?.id ?? null;
   }
-  await createSession(row.userId, wid); // sign them in
+  await createSession(userId, wid); // sign them in
   redirect("/");
 }

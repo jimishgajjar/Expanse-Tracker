@@ -3,6 +3,7 @@ import { z } from "zod";
 import { eq } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { users } from "@/lib/db/schema";
+import { rateLimit, retryMessage } from "@/lib/rate-limit";
 import { verifyPassword } from "@/lib/password";
 import { createApiSession } from "@/lib/session";
 import { userWorkspaces } from "@/lib/mobile-api";
@@ -17,6 +18,8 @@ export async function POST(req: Request) {
   if (!p.success) return NextResponse.json({ error: "Enter a valid email and password." }, { status: 400 });
 
   const email = p.data.email.toLowerCase();
+  const limited = await rateLimit(`login:${email}`, 8, 10 * 60 * 1000);
+  if (!limited.ok) return NextResponse.json({ error: retryMessage(limited.retryAfterSec) }, { status: 429, headers: { "Retry-After": String(limited.retryAfterSec) } });
   const db = await getDb();
   const [u] = await db.select().from(users).where(eq(users.email, email)).limit(1);
   if (!u || !verifyPassword(p.data.password, u.passwordHash)) {

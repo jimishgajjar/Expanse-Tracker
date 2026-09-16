@@ -16,7 +16,7 @@ import type { SplitData } from "@/lib/queries";
 
 type Member = { id: string; name: string };
 
-export function SplitManager({ trigger, data }: { trigger: ReactElement; data: SplitData }) {
+export function SplitManager({ trigger, data, canEdit = true }: { trigger: ReactElement; data: SplitData; canEdit?: boolean }) {
   const { money } = useFormat();
   const { meId, otherMembers } = data;
 
@@ -45,17 +45,17 @@ export function SplitManager({ trigger, data }: { trigger: ReactElement; data: S
                       </div>
                       <div className={cn("amount text-lg font-semibold", b.net > 0 ? "text-positive" : "text-negative")}>{money(Math.abs(b.net))}</div>
                     </div>
-                    <SettleButton userId={b.userId} name={b.name} />
+                    {canEdit && <SettleButton userId={b.userId} name={b.name} />}
                   </div>
                 ))}
               </div>
 
-              <AddForm meId={meId} otherMembers={otherMembers} />
+              {canEdit && <AddForm meId={meId} otherMembers={otherMembers} />}
 
               {data.splits.length > 0 && (
                 <div className="space-y-1.5">
                   <div className="px-0.5 text-xs font-semibold text-muted-foreground">Open items · {data.splits.length}</div>
-                  {data.splits.map((s) => <SplitRow key={s.id} split={s} meId={meId} otherMembers={otherMembers} />)}
+                  {data.splits.map((s) => <SplitRow canEdit={canEdit} key={s.id} split={s} meId={meId} otherMembers={otherMembers} />)}
                 </div>
               )}
             </>
@@ -107,12 +107,12 @@ function AddForm({ meId, otherMembers }: { meId: string; otherMembers: Member[] 
 
   return (
     <form onSubmit={add} className="space-y-2.5 rounded-lg border p-2.5">
-      <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder="What for? (e.g. Groceries split)" />
+      <Input aria-label="Expense description" value={note} onChange={(e) => setNote(e.target.value)} placeholder="What for? (e.g. Groceries split)" />
       <div className="grid grid-cols-2 gap-2">
-        <Input type="number" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="Amount owed" required />
+        <Input aria-label="Amount owed" type="number" min="0.01" step="0.01" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="Amount owed" required />
         {otherMembers.length > 1 ? (
           <Select value={otherId} onValueChange={(v) => setOtherId(v as string)} items={otherMembers.map((m) => ({ value: m.id, label: m.name }))}>
-            <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+            <SelectTrigger aria-label="Other member" className="w-full"><SelectValue /></SelectTrigger>
             <SelectContent>{otherMembers.map((m) => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}</SelectContent>
           </Select>
         ) : (
@@ -121,7 +121,7 @@ function AddForm({ meId, otherMembers }: { meId: string; otherMembers: Member[] 
       </div>
       <div className="grid grid-cols-2 gap-1 rounded-lg bg-muted p-1">
         {(["owesMe", "iOwe"] as const).map((d) => (
-          <button key={d} type="button" onClick={() => setDir(d)}
+          <button key={d} type="button" aria-pressed={dir === d} onClick={() => setDir(d)}
             className={cn("truncate rounded-md py-1 text-xs font-medium transition-colors", dir === d ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}>
             {d === "owesMe" ? `${otherName} owes me` : `I owe ${otherName}`}
           </button>
@@ -132,7 +132,7 @@ function AddForm({ meId, otherMembers }: { meId: string; otherMembers: Member[] 
   );
 }
 
-function SplitRow({ split, meId, otherMembers }: { split: SplitData["splits"][number]; meId: string; otherMembers: Member[] }) {
+function SplitRow({ split, meId, otherMembers, canEdit }: { canEdit: boolean; split: SplitData["splits"][number]; meId: string; otherMembers: Member[] }) {
   const router = useRouter();
   const { money } = useFormat();
   const nameOf = (id: string) => (id === meId ? "You" : otherMembers.find((m) => m.id === id)?.name ?? "Member");
@@ -148,7 +148,7 @@ function SplitRow({ split, meId, otherMembers }: { split: SplitData["splits"][nu
         <div className="text-xs text-muted-foreground">{nameOf(split.debtorId)} → {nameOf(split.creditorId)}</div>
       </div>
       <span className="amount shrink-0 text-sm font-medium">{money(split.amount)}</span>
-      <ConfirmDialog trigger={<Button size="icon-sm" variant="ghost" aria-label="Delete"><Trash2 className="size-3.5" /></Button>} title="Remove this item?" onConfirm={remove} />
+      {canEdit && <ConfirmDialog trigger={<Button size="icon-sm" variant="ghost" aria-label="Delete"><Trash2 className="size-3.5" /></Button>} title="Remove this item?" onConfirm={remove} />}
     </div>
   );
 }

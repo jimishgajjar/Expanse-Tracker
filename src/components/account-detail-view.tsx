@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, Plus, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,7 +34,6 @@ export function AccountDetailView({
   const [pageSize, setPageSize] = useState(25);
   const [page, setPage] = useState(1);
 
-  useEffect(() => setPage(1), [pageSize, search]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -89,7 +88,7 @@ export function AccountDetailView({
 
         <div className="relative mb-3">
           <Search className="absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search this account — note, category, tag…" className="pl-8" />
+          <Input value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} placeholder="Search this account — note, category, tag…" className="pl-8" />
         </div>
 
         <TransactionRows transactions={pageItems} allTransactions={filtered} accounts={accounts} categories={categories} canEdit={canEdit} emptyMessage={search ? "No transactions match your search." : "No transactions for this account yet."} />
@@ -98,7 +97,7 @@ export function AccountDetailView({
           <div className="mt-4 flex flex-col items-stretch gap-3 border-t pt-3 text-sm sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center justify-center gap-2 text-muted-foreground sm:justify-start">
               <span>Rows per page</span>
-              <Select value={String(pageSize)} onValueChange={(v) => setPageSize(Number(v))} items={PAGE_SIZES.map((n) => ({ value: String(n), label: String(n) }))}>
+              <Select value={String(pageSize)} onValueChange={(v) => { setPageSize(Number(v)); setPage(1); }} items={PAGE_SIZES.map((n) => ({ value: String(n), label: String(n) }))}>
                 <SelectTrigger size="sm" className="w-[4.5rem]"><SelectValue /></SelectTrigger>
                 <SelectContent>{PAGE_SIZES.map((n) => <SelectItem key={n} value={String(n)}>{n}</SelectItem>)}</SelectContent>
               </Select>
