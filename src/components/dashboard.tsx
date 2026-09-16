@@ -400,7 +400,6 @@ export function Dashboard({
                   recurring={recurring}
                   onActivity={() => changeTab("transactions")}
                   onPlanning={() => changeTab("planning")}
-                  onAccounts={() => changeTab("accounts")}
                 />
               )}
               {tab === "transactions" && (

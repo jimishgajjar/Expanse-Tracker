@@ -49,3 +49,5 @@ No decorative financial claims, charts without context, hidden primary actions, 
 Account, category, and tag detail pages use the same workspace canvas, navigation, typography, and surfaces as Overview. Account rows on Overview link directly to their detail pages. Desktop detail navigation offers direct account switching; mobile retains the five primary destinations.
 
 Account balances and all-time summaries remain independent of activity filters. Activity supports income, expense, transfer, search, category, inclusive date and amount ranges, transfer direction, and date/amount sorting. Category and tag histories also support account filtering. Filtered income and expense totals exclude transfers. Existing edit, delete, and undo controls remain available according to workspace permissions.
+
+Overview places the full Accounts card grid directly after the balance summary, before charts and recent activity. It shares AccountsSection with the Accounts page, including direct detail links, transaction shortcuts, account management, and archived-account access.
