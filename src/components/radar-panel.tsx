@@ -29,7 +29,7 @@ export function RadarPanel({
   return (
     <section
       aria-labelledby="radar-title"
-      className="overflow-hidden rounded-xl border bg-card"
+      className="flex flex-col overflow-hidden rounded-xl border bg-card"
     >
       <div className="flex items-start justify-between gap-3 border-b p-4">
         <div>
@@ -44,7 +44,7 @@ export function RadarPanel({
           <CalendarDays className="size-5" aria-hidden />
         </span>
       </div>
-      <div className="px-4">
+      <div className="flex-1 px-4">
         {watch.length > 0 && (
           <div className="py-3">
             <h3 className="mb-2 flex items-center gap-2 text-xs font-semibold text-negative">
