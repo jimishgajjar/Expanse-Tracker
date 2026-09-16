@@ -182,16 +182,16 @@ export function DetailActivity({
     });
   return (
     <section
-      className="overflow-hidden rounded-xl border bg-card"
+      className="detail-activity overflow-hidden rounded-xl border bg-card"
       aria-labelledby={`${id}-title`}
     >
-      <div className="space-y-5 p-4 sm:p-6">
+      <div className="space-y-3 p-3 sm:p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 id={`${id}-title`} className="text-lg font-semibold">
+            <h2 id={`${id}-title`} className="text-sm font-semibold">
               Activity
             </h2>
-            <p className="mt-1 text-sm text-muted-foreground">
+            <p className="mt-0.5 text-xs text-muted-foreground">
               Find a payment, follow your income, or review a period.
             </p>
           </div>
@@ -227,7 +227,7 @@ export function DetailActivity({
             </Button>
           ))}
         </div>
-        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
           <div className="relative min-w-0 flex-1 sm:min-w-60">
             <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -277,6 +277,19 @@ export function DetailActivity({
               </span>
             )}
           </Button>
+          <FilterSelect
+            label="Sort activity"
+            value={filters.sort}
+            onChange={(sort) =>
+              update({ sort: sort as ActivityFilters["sort"] })
+            }
+            options={[
+              { value: "newest", label: "Newest first" },
+              { value: "oldest", label: "Oldest first" },
+              { value: "highest", label: "Highest amount" },
+              { value: "lowest", label: "Lowest amount" },
+            ]}
+          />
         </div>
         <FilterChips chips={chips} onClear={clear} />
         {expanded && (
@@ -355,8 +368,8 @@ export function DetailActivity({
             {error}
           </p>
         )}
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="text-sm text-muted-foreground" role="status">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-y py-2 text-xs">
+          <p className="text-xs text-muted-foreground" role="status">
             {filtered.length} of {entries.length} entries
             {active && (
               <Button
@@ -369,21 +382,6 @@ export function DetailActivity({
               </Button>
             )}
           </p>
-          <FilterSelect
-            label="Sort activity"
-            value={filters.sort}
-            onChange={(sort) =>
-              update({ sort: sort as ActivityFilters["sort"] })
-            }
-            options={[
-              { value: "newest", label: "Newest first" },
-              { value: "oldest", label: "Oldest first" },
-              { value: "highest", label: "Highest amount" },
-              { value: "lowest", label: "Lowest amount" },
-            ]}
-          />
-        </div>
-        <div className="flex flex-wrap gap-x-6 gap-y-2 border-y py-3 text-sm">
           <span className="text-muted-foreground">Filtered totals</span>
           <span>
             Income{" "}
@@ -413,7 +411,7 @@ export function DetailActivity({
                   ? "No matching activity"
                   : "No activity yet"}
             </p>
-            <p className="mt-1 text-sm text-muted-foreground">
+            <p className="mt-0.5 text-xs text-muted-foreground">
               {error
                 ? "Adjust the dates or amounts above to see results."
                 : active
@@ -555,7 +553,7 @@ export function DetailStat({
       <dt className="text-xs text-muted-foreground">{label}</dt>
       <dd
         className={cn(
-          "amount mt-2 break-all text-lg font-semibold sm:text-xl",
+          "amount mt-2 break-all text-sm font-semibold sm:text-xl",
           tone,
         )}
       >

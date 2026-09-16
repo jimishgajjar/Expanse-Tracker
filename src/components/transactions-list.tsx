@@ -190,7 +190,7 @@ function Row({
   const isIncome = t.type === "income";
   const color = t.category?.color ?? "#9b9a97";
   return (
-    <div className="group -mx-2 grid grid-cols-[2.25rem_minmax(0,1fr)_auto] items-start gap-x-3 gap-y-1 rounded-lg px-2 py-2.5 transition-colors hover:bg-hover sm:flex sm:items-center">
+    <div className="activity-row group -mx-2 grid grid-cols-[2.25rem_minmax(0,1fr)_auto] items-start gap-x-3 gap-y-1 rounded-lg px-2 py-2.5 transition-colors hover:bg-hover sm:flex sm:items-center">
       <span
         className="row-span-2 grid size-9 shrink-0 place-items-center rounded-lg"
         style={{ backgroundColor: `${color}22`, color }}
@@ -383,7 +383,7 @@ export function TransferRows({
               return (
                 <div
                   key={t.id}
-                  className="group -mx-2 grid grid-cols-[2.25rem_minmax(0,1fr)_auto] items-start gap-x-3 gap-y-1 rounded-lg px-2 py-2.5 transition-colors hover:bg-hover sm:flex sm:items-center"
+                  className="activity-row group -mx-2 grid grid-cols-[2.25rem_minmax(0,1fr)_auto] items-start gap-x-3 gap-y-1 rounded-lg px-2 py-2.5 transition-colors hover:bg-hover sm:flex sm:items-center"
                 >
                   <span className="row-span-2 grid size-9 shrink-0 place-items-center rounded-lg bg-muted text-muted-foreground">
                     <ArrowRightLeft className="size-3.5" />
@@ -443,7 +443,7 @@ export function ActivityRows({
 }) {
   const dates = [...new Set(entries.map((entry) => entry.item.date))];
   return (
-    <div className="space-y-5">
+    <div className="activity-date-groups space-y-5">
       {dates.map((date) => (
         <section key={date}>
           <h3 className="mb-2 border-b pb-2 text-xs font-medium text-muted-foreground">

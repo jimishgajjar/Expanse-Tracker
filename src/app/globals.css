@@ -300,3 +300,15 @@ button:focus-visible, a:focus-visible, summary:focus-visible { outline:2px solid
   .manager-panel [data-slot="tabs-list"] { padding:2px; }
 }
 .app-shell h1 { font-size:1.5rem; line-height:1.3; }
+
+/* Denser detail ledgers without changing overview or touch controls. */
+.detail-activity .activity-date-groups { display:grid; gap:8px; }
+.detail-activity .activity-date-groups > :not(:last-child) { margin-block-end:0; }
+.detail-activity .activity-date-groups h3 { margin-bottom:2px; padding-bottom:4px; }
+.detail-activity .activity-row { padding-block:6px; }
+@media (min-width:640px) and (pointer:fine) {
+  .detail-activity [data-slot="button"],
+  .detail-activity [data-slot="select-trigger"],
+  .detail-activity [data-slot="input"] { min-height:36px; }
+  .detail-activity .activity-row [data-slot="button"] { height:32px; min-height:32px; }
+}
