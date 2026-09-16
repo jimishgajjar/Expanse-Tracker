@@ -1,10 +1,5 @@
 "use client";
-import {
-  ArrowRight,
-  CalendarDays,
-  Check,
-  Plus,
-} from "lucide-react";
+import { ArrowRight, Plus } from "lucide-react";
 import { AccountsSection } from "./accounts-section";
 import { SummaryCards } from "./summary-cards";
 import { CategoryDonut } from "./category-donut";
@@ -12,8 +7,8 @@ import { TrendChart } from "./trend-chart";
 import { TransactionDialog } from "./transaction-dialog";
 import { Button } from "./ui/button";
 import { TransactionRows } from "./transactions-list";
-import { useFormat } from "./settings-provider";
-import { todayISO, type RangeType } from "@/lib/dates";
+import { RadarPanel } from "./radar-panel";
+import { type RangeType } from "@/lib/dates";
 import type {
   AccountDTO,
   BudgetProgressDTO,
@@ -55,7 +50,6 @@ export function OverviewTab({
   onActivity: () => void;
   onPlanning: () => void;
 }) {
-  const { money } = useFormat();
   const income = transactions
       .filter((t) => t.type === "income")
       .reduce((s, t) => s + t.amount, 0),
@@ -148,90 +142,20 @@ export function OverviewTab({
               </button>
             )}
           </section>
+        </div>
+        <RadarPanel watch={watch} upcoming={upcoming} onPlanning={onPlanning} />
+      </div>
+      <div className="grid items-start gap-6 xl:grid-cols-2">
+        <div className="min-w-0">
           <TrendChart
             transactions={transactions}
             rangeType={rangeType}
             start={rangeStart}
             end={rangeEnd}
           />
-          <CategoryDonut transactions={transactions} />
         </div>
-        <div className="min-w-0 space-y-6">
-          <section className="rounded-2xl border bg-card p-5 sm:p-6">
-            <div className="flex items-center justify-between gap-3">
-              <h2 className="font-semibold">On your radar</h2>
-              <CalendarDays className="size-[18px] text-muted-foreground" />
-            </div>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Current budgets & upcoming payments
-            </p>
-            <div className="mt-4 divide-y">
-              {watch.slice(0, 2).map((b) => (
-                <button
-                  key={b.categoryId}
-                  type="button"
-                  onClick={onPlanning}
-                  className="flex min-h-16 w-full items-center justify-between gap-3 py-3 text-left"
-                >
-                  <div>
-                    <p className="text-sm font-medium">{b.name}</p>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {b.spent >= b.budget
-                        ? "Monthly limit reached"
-                        : "Approaching monthly limit"}
-                    </p>
-                  </div>
-                  <span className="text-sm font-semibold text-negative">
-                    {Math.round((b.spent / b.budget) * 100)}%
-                  </span>
-                </button>
-              ))}
-              {upcoming.map((r) => (
-                <button
-                  type="button"
-                  key={r.id}
-                  onClick={onPlanning}
-                  className="flex min-h-16 w-full items-center justify-between gap-3 py-3 text-left"
-                >
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium">
-                      {r.note ||
-                        (r.type === "income"
-                          ? "Recurring income"
-                          : "Recurring payment")}
-                    </p>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {r.nextDate < todayISO() ? "Due" : "Next"} · {r.nextDate}
-                      {!r.autoPost && " · log actual amount"}
-                    </p>
-                  </div>
-                  <span className="shrink-0 text-sm font-medium">
-                    {money(r.amount)}
-                    {!r.autoPost && (
-                      <span className="block text-right text-xs text-muted-foreground">
-                        estimate
-                      </span>
-                    )}
-                  </span>
-                </button>
-              ))}
-              {!watch.length && !upcoming.length && (
-                <p className="flex items-start gap-2 py-5 text-sm text-muted-foreground">
-                  <Check className="mt-0.5 size-4 shrink-0 text-brand" />
-                  No budget warnings or scheduled payments. Set up your plan
-                  when you are ready.
-                </p>
-              )}
-            </div>
-            <Button
-              variant="outline"
-              className="mt-3 w-full"
-              onClick={onPlanning}
-            >
-              Open planning
-              <ArrowRight className="size-4" />
-            </Button>
-          </section>
+        <div className="min-w-0">
+          <CategoryDonut transactions={transactions} />
         </div>
       </div>
     </div>

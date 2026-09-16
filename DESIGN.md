@@ -52,7 +52,7 @@ Account balances and all-time summaries remain independent of activity filters. 
 
 Overview places the full Accounts card grid directly after the balance summary, before charts and recent activity. It shares AccountsSection with the Accounts page, including direct detail links, transaction shortcuts, account management, and archived-account access.
 
-Below accounts, the left column reads Recent transactions, Income vs expense, then Spending by category. On your radar stays at the top of the right column. On narrower screens these columns stack in the same DOM order.
+Below accounts, Recent transactions sits on the left and On your radar on the right. A separate chart row places Income vs expense on the left and Spending by category on the right. On narrower screens each row stacks in DOM order. Category chart content adapts to its own container width. The radar panel separates budget alerts from scheduled payments, with calendar dates, relative due labels, clear amounts, and explicit estimates for manual entries.
 
 Account cards keep income, expense, and transfer shortcuts visible; account management lives in a labeled More menu. Transaction rows use signed, aligned amounts with directional icons, wrapping notes, account links, and touch-accessible action menus. Active filters appear as individually removable chips. Global date shortcuts change the selected reporting period; detail date shortcuts filter the full account/category/tag history.
 

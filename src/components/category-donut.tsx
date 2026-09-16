@@ -122,7 +122,7 @@ export function CategoryDonut({
           ))}
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="@container">
         {segments.length === 0 ? (
           <div className="py-12 text-center">
             <p className="text-sm font-medium">
@@ -133,7 +133,7 @@ export function CategoryDonut({
             </p>
           </div>
         ) : (
-          <div className="flex flex-col items-center gap-5 sm:flex-row">
+          <div className="flex flex-col items-center gap-5 @[36rem]:flex-row">
             <div className="relative shrink-0">
               <Donut segments={segments} total={total} />
               <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
