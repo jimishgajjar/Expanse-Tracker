@@ -56,4 +56,6 @@ Below accounts, Recent transactions sits on the left and On your radar on the ri
 
 Account cards keep income, expense, and transfer shortcuts visible; account management lives in a labeled More menu. Transaction rows use signed, aligned amounts with directional icons, wrapping notes, account links, and touch-accessible action menus. Active filters appear as individually removable chips. Global date shortcuts change the selected reporting period; detail date shortcuts filter the full account/category/tag history.
 
+The Accounts section separates its title and active count from the combined balance. Individual account cards use rounded surfaces, larger account icons, wrapping names, an explicit current-balance label, and a navigation chevron. Income, expense, and transfer remain separate 44px touch targets in a softly tinted footer.
+
 Cash-flow charts offer labeled axes, keyboard and touch selection, and exact amounts in a persistent detail area. Category legends link to full category history. Empty charts explain how to populate them. Account, transaction, and settings forms share spacing, touch targets, inline errors, and mobile sheets. Budget changes require an explicit Save or Remove action; invalid numbers never remove an existing limit.

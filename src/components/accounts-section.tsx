@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import Link from "next/link";
 import {
   Archive,
   ArchiveRestore,
   ArrowRightLeft,
   ChevronDown,
+  ChevronRight,
   Minus,
   Pencil,
   Plus,
@@ -37,6 +38,7 @@ export function AccountsSection({
   canEdit?: boolean;
 }) {
   const router = useRouter();
+  const headingId = useId();
   const { balanceMoney } = useFormat();
   const [showArchived, setShowArchived] = useState(false);
 
@@ -70,18 +72,28 @@ export function AccountsSection({
   };
 
   return (
-    <section className="space-y-3">
+    <section aria-labelledby={headingId} className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="flex items-baseline gap-2 text-sm font-semibold text-muted-foreground">
-          All accounts
-          <span className="amount text-base font-semibold text-foreground">
-            {balanceMoney(total)}
-          </span>
-        </h2>
+        <div>
+          <div className="flex items-center gap-2.5">
+            <h2 id={headingId} className="text-base font-semibold">
+              All accounts
+            </h2>
+            <span className="rounded-md bg-muted px-2 py-1 text-xs text-muted-foreground">
+              {active.length} active
+            </span>
+          </div>
+          <p className="mt-1.5 text-xs text-muted-foreground">
+            Combined balance{" "}
+            <span className="amount ml-1 font-medium text-foreground">
+              {balanceMoney(total)}
+            </span>
+          </p>
+        </div>
         {canEdit && (
           <AccountDialog
             trigger={
-              <Button variant="outline" size="sm">
+              <Button variant="outline" className="min-h-11 rounded-lg">
                 <Plus className="size-4" /> Add account
               </Button>
             }
@@ -89,7 +101,7 @@ export function AccountsSection({
         )}
       </div>
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {active.map((a) => (
           <AccountCard key={a.id} account={a} {...shared} />
         ))}
@@ -120,7 +132,7 @@ export function AccountsSection({
             </span>
           </button>
           {showArchived && (
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {archived.map((a) => (
                 <AccountCard key={a.id} account={a} {...shared} />
               ))}
@@ -153,49 +165,62 @@ function AccountCard({
     // Keep account management separate from the linked balance and title.
     <Card
       className={cn(
-        "group relative gap-0 overflow-hidden p-0 transition-colors hover:bg-hover",
+        "group relative gap-0 overflow-hidden rounded-2xl p-0 transition-colors hover:border-brand/40 focus-within:border-brand/50",
         a.archived && "opacity-65 hover:opacity-100",
       )}
     >
       <Link
         href={`/accounts/${a.id}`}
-        className={cn(
-          "flex w-full flex-col items-start p-4 text-left",
-          canEdit && "pr-14",
-        )}
+        aria-label={`Open ${a.name}, balance ${balanceMoney(a.balance)}`}
+        className="block flex-1 p-5 text-left transition-colors hover:bg-muted/20 focus-visible:outline-offset-[-4px]"
       >
-        <div className="flex w-full items-center gap-2.5">
+        <div
+          className={cn("flex w-full items-center gap-3", canEdit && "pr-9")}
+        >
           <span
-            className="grid size-9 shrink-0 place-items-center rounded-lg"
-            style={{ backgroundColor: `${a.color}22`, color: a.color }}
+            className="grid size-11 shrink-0 place-items-center rounded-xl"
+            style={{ backgroundColor: `${a.color}18`, color: a.color }}
           >
-            <Icon name={a.icon} size={18} />
+            <Icon name={a.icon} size={21} />
           </span>
           <div className="min-w-0">
-            <div className="flex items-center gap-1.5">
-              <span className="truncate font-medium">{a.name}</span>
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="break-words font-semibold leading-snug [overflow-wrap:anywhere]">
+                {a.name}
+              </span>
               {a.archived && (
                 <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
                   Archived
                 </span>
               )}
             </div>
-            <div className="text-xs text-muted-foreground capitalize">
+            <div className="mt-1 text-xs text-muted-foreground capitalize">
               {a.type}
             </div>
           </div>
         </div>
-        <div
-          className={cn(
-            "amount mt-3 break-all text-xl font-semibold",
-            a.balance < 0 && "text-negative",
-          )}
-        >
-          {balanceMoney(a.balance)}
+        <div className="mt-5 flex items-end justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-xs text-muted-foreground">Current balance</p>
+            <p
+              className={cn(
+                "amount mt-1 break-all text-2xl font-semibold leading-tight",
+                a.balance < 0 && "text-negative",
+              )}
+            >
+              {balanceMoney(a.balance)}
+            </p>
+          </div>
+          <span
+            className="mb-0.5 grid size-8 shrink-0 place-items-center rounded-full bg-muted/60 text-muted-foreground transition-colors group-hover:bg-brand/10 group-hover:text-brand"
+            aria-hidden
+          >
+            <ChevronRight className="size-4" />
+          </span>
         </div>
       </Link>
       {canEdit && (
-        <div className="absolute top-2 right-2">
+        <div className="absolute top-3 right-3">
           <MoreActions label={`More actions for ${a.name}`}>
             {a.archived ? (
               <DropdownMenuItem onClick={() => onArchive(a.id, false)}>
@@ -244,7 +269,7 @@ function AccountCard({
         </div>
       )}
       {canEdit && !a.archived && (
-        <div className="flex border-t text-xs font-medium">
+        <div className="grid grid-cols-3 gap-2 border-t bg-muted/10 p-3 text-xs font-medium">
           <TransactionDialog
             accounts={accounts}
             categories={categories}
@@ -254,7 +279,7 @@ function AccountCard({
               <button
                 type="button"
                 aria-label={`Add income to ${a.name}`}
-                className="flex min-h-11 flex-1 items-center justify-center gap-1.5 py-2 text-positive transition-colors hover:bg-positive/10"
+                className="flex min-h-11 items-center justify-center gap-1.5 rounded-lg bg-positive/5 px-1 py-2 text-positive transition-colors hover:bg-positive/15"
               >
                 <Plus className="size-3.5" /> Income
               </button>
@@ -269,7 +294,7 @@ function AccountCard({
               <button
                 type="button"
                 aria-label={`Add expense to ${a.name}`}
-                className="flex min-h-11 flex-1 items-center justify-center gap-1.5 border-l py-2 text-negative transition-colors hover:bg-negative/10"
+                className="flex min-h-11 items-center justify-center gap-1.5 rounded-lg bg-negative/5 px-1 py-2 text-negative transition-colors hover:bg-negative/15"
               >
                 <Minus className="size-3.5" /> Expense
               </button>
@@ -284,7 +309,7 @@ function AccountCard({
               <button
                 type="button"
                 aria-label={`Transfer from ${a.name}`}
-                className="flex min-h-11 flex-1 items-center justify-center gap-1.5 border-l py-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                className="flex min-h-11 items-center justify-center gap-1.5 rounded-lg bg-muted/60 px-1 py-2 text-foreground transition-colors hover:bg-muted"
               >
                 <ArrowRightLeft className="size-3.5" /> Transfer
               </button>
