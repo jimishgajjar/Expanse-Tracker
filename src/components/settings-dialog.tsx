@@ -3,16 +3,8 @@
 import { useId, useState, useTransition, type ReactElement } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogDescription,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+import { Settings } from "lucide-react";
+import { ManagerPanel, PanelSection } from "./manager-panel";
 import {
   Select,
   SelectContent,
@@ -74,15 +66,19 @@ export function SettingsDialog({
   }));
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogTrigger render={trigger} />
-      <DialogContent className="form-dialog sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>Settings</DialogTitle>
-          <DialogDescription>
-            Manage display preferences, data, and your account.
-          </DialogDescription>
-        </DialogHeader>
+    <ManagerPanel
+      trigger={trigger}
+      title="Settings"
+      description="Manage display preferences, data, and your account."
+      icon={Settings}
+      open={open}
+      onOpenChange={onOpenChange}
+    >
+      <p className="text-xs leading-relaxed text-muted-foreground">
+        Each section saves separately. Closing settings does not undo completed
+        actions.
+      </p>
+      <PanelSection title="Display & currency">
         <div className="grid gap-1.5">
           <Label htmlFor={id}>Display currency</Label>
           <Select
@@ -118,61 +114,49 @@ export function SettingsDialog({
           </Button>
         )}
         <FormError>{error}</FormError>
+      </PanelSection>
+      <PanelSection title="Data">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="w-full"
+          onClick={() => window.location.assign("/api/export")}
+        >
+          Export to Excel
+        </Button>
+        {canEdit && <ImportForm />}
         <p className="text-xs text-muted-foreground">
-          Each section saves separately. Closing settings does not undo
-          completed actions.
+          Import expects the same columns as Export (Date, Type, Amount,
+          Category, Account, Note).
         </p>
-        <div className="space-y-3 border-t pt-5">
-          <h2 className="text-sm font-semibold">Data</h2>
+      </PanelSection>
+      <PanelSection title="Notifications">
+        <NotificationsToggle />
+        <p className="text-xs text-muted-foreground">
+          Get a reminder before a recurring payment posts, and a confirmation
+          when it does — by email and on this device. Turn alerts on per rule in
+          the Recurring panel.
+        </p>
+      </PanelSection>
+      <PanelSection title="Account & security">
+        <p className="text-xs text-muted-foreground">
+          Signed in as{" "}
+          <span className="font-medium text-foreground">{userEmail}</span>
+        </p>
+        <ChangePasswordForm />
+        <form action={logout}>
           <Button
-            type="button"
-            variant="outline"
+            type="submit"
+            variant="ghost"
             size="sm"
-            className="w-full"
-            onClick={() => window.location.assign("/api/export")}
+            className="w-full text-muted-foreground"
           >
-            Export to Excel
+            Sign out
           </Button>
-          {canEdit && <ImportForm />}
-          <p className="text-xs text-muted-foreground">
-            Import expects the same columns as Export (Date, Type, Amount,
-            Category, Account, Note).
-          </p>
-        </div>
-        <div className="space-y-3 border-t pt-5">
-          <Label>Notifications</Label>
-          <NotificationsToggle />
-          <p className="text-xs text-muted-foreground">
-            Get a reminder before a recurring payment posts, and a confirmation
-            when it does — by email and on this device. Turn alerts on per rule
-            in the Recurring panel.
-          </p>
-        </div>
-        <div className="space-y-3 border-t pt-5">
-          <Label>Account</Label>
-          <p className="text-xs text-muted-foreground">
-            Signed in as{" "}
-            <span className="font-medium text-foreground">{userEmail}</span>
-          </p>
-          <ChangePasswordForm />
-          <form action={logout}>
-            <Button
-              type="submit"
-              variant="ghost"
-              size="sm"
-              className="w-full text-muted-foreground"
-            >
-              Sign out
-            </Button>
-          </form>
-          <DeleteAccountForm />
-        </div>
-        <DialogFooter className="mt-2">
-          <DialogClose render={<Button type="button" variant="outline" />}>
-            Done
-          </DialogClose>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </form>
+        <DeleteAccountForm />
+      </PanelSection>
+    </ManagerPanel>
   );
 }

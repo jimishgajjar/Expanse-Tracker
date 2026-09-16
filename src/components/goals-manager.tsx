@@ -3,8 +3,8 @@
 import { useState, useTransition, type ReactElement } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Plus, Trash2 } from "lucide-react";
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Plus, Trash2, Target } from "lucide-react";
+import { ManagerPanel, PanelCreate } from "./manager-panel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ConfirmDialog } from "@/components/confirm-dialog";
@@ -12,41 +12,70 @@ import { useFormat } from "@/components/settings-provider";
 import { contributeGoal, createGoal, deleteGoal } from "@/lib/actions";
 import type { GoalDTO } from "@/lib/queries";
 
-export function GoalsManager({ trigger, goals }: { trigger: ReactElement; goals: GoalDTO[] }) {
+export function GoalsManager({
+  trigger,
+  goals,
+}: {
+  trigger: ReactElement;
+  goals: GoalDTO[];
+}) {
   const { money } = useFormat();
   const [items, setItems] = useState(goals);
   const totalSaved = items.reduce((s, g) => s + g.savedAmount, 0);
   const totalTarget = items.reduce((s, g) => s + g.targetAmount, 0);
 
   const onAdded = (g: GoalDTO) => setItems((x) => [...x, g]);
-  const onContributed = (id: string, saved: number) => setItems((x) => x.map((g) => (g.id === id ? { ...g, savedAmount: saved } : g)));
-  const onRemoved = (id: string) => setItems((x) => x.filter((g) => g.id !== id));
+  const onContributed = (id: string, saved: number) =>
+    setItems((x) =>
+      x.map((g) => (g.id === id ? { ...g, savedAmount: saved } : g)),
+    );
+  const onRemoved = (id: string) =>
+    setItems((x) => x.filter((g) => g.id !== id));
 
   return (
-    <Sheet>
-      <SheetTrigger render={trigger} />
-      <SheetContent className="flex w-full flex-col gap-0 p-0 sm:max-w-md">
-        <SheetHeader className="border-b p-4">
-          <SheetTitle>Savings goals</SheetTitle>
-          <SheetDescription>Set targets and watch your progress toward them.</SheetDescription>
-        </SheetHeader>
-        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
-          {items.length > 0 && (
-            <div className="rounded-xl border bg-card p-4">
-              <div className="text-xs font-medium text-muted-foreground">Saved across {items.length} goal{items.length === 1 ? "" : "s"}</div>
-              <div className="amount mt-1 text-2xl font-semibold">
-                {money(totalSaved)}<span className="ml-1.5 text-sm font-normal text-muted-foreground">of {money(totalTarget)}</span>
-              </div>
+    <ManagerPanel
+      trigger={trigger}
+      title="Savings goals"
+      icon={Target}
+      description="Set targets and track your progress, one contribution at a time."
+    >
+      <div className="space-y-6">
+        {items.length > 0 && (
+          <div className="rounded-xl border bg-card p-4">
+            <div className="text-xs font-medium text-muted-foreground">
+              Saved across {items.length} goal{items.length === 1 ? "" : "s"}
             </div>
-          )}
-          <AddForm onAdded={onAdded} />
-          <div className="space-y-2">
-            {items.map((g) => <GoalCard key={g.id} goal={g} onContributed={onContributed} onRemoved={onRemoved} />)}
-            {items.length === 0 && <p className="py-4 text-center text-sm text-muted-foreground">No goals yet — add one above to start saving.</p>}
+            <div className="amount mt-1 text-2xl font-semibold">
+              {money(totalSaved)}
+              <span className="ml-1.5 text-sm font-normal text-muted-foreground">
+                of {money(totalTarget)}
+              </span>
+            </div>
           </div>
+        )}
+        <PanelCreate
+          title="Add a savings goal"
+          defaultOpen={items.length === 0}
+        >
+          <AddForm onAdded={onAdded} />
+        </PanelCreate>
+        <div className="space-y-2">
+          {items.map((g) => (
+            <GoalCard
+              key={g.id}
+              goal={g}
+              onContributed={onContributed}
+              onRemoved={onRemoved}
+            />
+          ))}
+          {items.length === 0 && (
+            <p className="py-4 text-center text-sm text-muted-foreground">
+              No goals yet — add one above to start saving.
+            </p>
+          )}
         </div>
-      </SheetContent>
-    </Sheet>
+      </div>
+    </ManagerPanel>
   );
 }
 
@@ -61,33 +90,87 @@ function AddForm({ onAdded }: { onAdded: (g: GoalDTO) => void }) {
     e.preventDefault();
     if (!name.trim() || !target) return;
     start(async () => {
-      const res = await createGoal({ name, targetAmount: Number(target), deadline: deadline || null });
+      const res = await createGoal({
+        name,
+        targetAmount: Number(target),
+        deadline: deadline || null,
+      });
       if (res.ok && res.data) {
         toast.success("Goal added");
-        onAdded({ id: res.data.id, name: name.trim(), targetAmount: Number(target), savedAmount: 0, deadline: deadline || null, color: "#047857" });
-        setName(""); setTarget(""); setDeadline(""); router.refresh();
+        onAdded({
+          id: res.data.id,
+          name: name.trim(),
+          targetAmount: Number(target),
+          savedAmount: 0,
+          deadline: deadline || null,
+          color: "#047857",
+        });
+        setName("");
+        setTarget("");
+        setDeadline("");
+        router.refresh();
       } else if (!res.ok) toast.error(res.error);
     });
   }
   return (
-    <form onSubmit={add} className="space-y-2.5 rounded-lg border p-2.5">
-      <label className="grid gap-1.5 text-xs font-medium">Goal name<Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Emergency fund" required /></label>
+    <form onSubmit={add} className="space-y-4 rounded-xl border bg-card p-4">
+      <label className="grid gap-1.5 text-xs font-medium">
+        Goal name
+        <Input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Emergency fund"
+          required
+        />
+      </label>
       <div className="grid grid-cols-2 gap-2">
-        <label className="grid gap-1.5 text-xs font-medium">Target amount<Input type="number" min="0.01" step="0.01" inputMode="decimal" value={target} onChange={(e) => setTarget(e.target.value)} placeholder="0.00" required /></label>
-        <label className="grid gap-1.5 text-xs font-medium">Target date (optional)<Input type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} /></label>
+        <label className="grid gap-1.5 text-xs font-medium">
+          Target amount
+          <Input
+            type="number"
+            min="0.01"
+            step="0.01"
+            inputMode="decimal"
+            value={target}
+            onChange={(e) => setTarget(e.target.value)}
+            placeholder="0.00"
+            required
+          />
+        </label>
+        <label className="grid gap-1.5 text-xs font-medium">
+          Target date (optional)
+          <Input
+            type="date"
+            value={deadline}
+            onChange={(e) => setDeadline(e.target.value)}
+          />
+        </label>
       </div>
-      <Button type="submit" size="sm" className="w-full" disabled={pending}><Plus className="size-4" /> Add goal</Button>
+      <Button type="submit" size="sm" className="w-full" disabled={pending}>
+        <Plus className="size-4" /> Add goal
+      </Button>
     </form>
   );
 }
 
-function GoalCard({ goal, onContributed, onRemoved }: { goal: GoalDTO; onContributed: (id: string, saved: number) => void; onRemoved: (id: string) => void }) {
+function GoalCard({
+  goal,
+  onContributed,
+  onRemoved,
+}: {
+  goal: GoalDTO;
+  onContributed: (id: string, saved: number) => void;
+  onRemoved: (id: string) => void;
+}) {
   const router = useRouter();
   const { money } = useFormat();
   const [adding, setAdding] = useState(false);
   const [amt, setAmt] = useState("");
   const [pending, start] = useTransition();
-  const pct = goal.targetAmount > 0 ? Math.min(100, Math.round((goal.savedAmount / goal.targetAmount) * 100)) : 0;
+  const pct =
+    goal.targetAmount > 0
+      ? Math.min(100, Math.round((goal.savedAmount / goal.targetAmount) * 100))
+      : 0;
   const done = goal.targetAmount > 0 && goal.savedAmount >= goal.targetAmount;
 
   function contribute(e: React.FormEvent) {
@@ -96,39 +179,83 @@ function GoalCard({ goal, onContributed, onRemoved }: { goal: GoalDTO; onContrib
     if (!n) return;
     start(async () => {
       const res = await contributeGoal(goal.id, n);
-      if (res.ok) { onContributed(goal.id, Math.max(0, goal.savedAmount + n)); setAmt(""); setAdding(false); router.refresh(); }
-      else toast.error(res.error);
+      if (res.ok) {
+        onContributed(goal.id, Math.max(0, goal.savedAmount + n));
+        setAmt("");
+        setAdding(false);
+        router.refresh();
+      } else toast.error(res.error);
     });
   }
   async function remove() {
     const res = await deleteGoal(goal.id);
-    if (res.ok) { toast.success("Goal removed"); onRemoved(goal.id); router.refresh(); }
-    else toast.error(res.error);
+    if (res.ok) {
+      toast.success("Goal removed");
+      onRemoved(goal.id);
+      router.refresh();
+    } else toast.error(res.error);
   }
 
   return (
-    <div className="rounded-xl border p-3">
+    <div className="rounded-xl border bg-card p-4">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <div className="truncate text-sm font-medium">{goal.name}{done && <span className="ml-1.5 text-positive">✓</span>}</div>
-          <div className="text-xs text-muted-foreground">{goal.deadline ? `by ${goal.deadline}` : "no deadline"}</div>
+          <div className="truncate text-sm font-medium">
+            {goal.name}
+            {done && <span className="ml-1.5 text-positive">✓</span>}
+          </div>
+          <div className="text-xs text-muted-foreground">
+            {goal.deadline ? `by ${goal.deadline}` : "no deadline"}
+          </div>
         </div>
         <div className="flex items-center gap-1">
-          <Button size="icon-sm" variant="ghost" aria-label="Add money" onClick={() => setAdding((v) => !v)}><Plus className="size-3.5" /></Button>
-          <ConfirmDialog trigger={<Button size="icon-sm" variant="ghost" aria-label="Delete goal"><Trash2 className="size-3.5" /></Button>} title={`Delete "${goal.name}"?`} onConfirm={remove} />
+          <Button
+            size="icon-sm"
+            variant="ghost"
+            aria-label="Add money"
+            onClick={() => setAdding((v) => !v)}
+          >
+            <Plus className="size-3.5" />
+          </Button>
+          <ConfirmDialog
+            trigger={
+              <Button size="icon-sm" variant="ghost" aria-label="Delete goal">
+                <Trash2 className="size-3.5" />
+              </Button>
+            }
+            title={`Delete "${goal.name}"?`}
+            onConfirm={remove}
+          />
         </div>
       </div>
       <div className="mt-2 flex items-center justify-between text-xs">
         <span className="amount font-medium">{money(goal.savedAmount)}</span>
-        <span className="text-muted-foreground">{pct}% · {money(goal.targetAmount)}</span>
+        <span className="text-muted-foreground">
+          {pct}% · {money(goal.targetAmount)}
+        </span>
       </div>
       <div className="mt-1 h-2 overflow-hidden rounded-full bg-muted">
-        <div className="h-full rounded-full transition-[width] duration-500 ease-out-quart" style={{ width: `${pct}%`, backgroundColor: goal.color }} />
+        <div
+          className="h-full rounded-full transition-[width] duration-500 ease-out-quart"
+          style={{ width: `${pct}%`, backgroundColor: goal.color }}
+        />
       </div>
       {adding && (
         <form onSubmit={contribute} className="mt-2 flex gap-2">
-          <Input aria-label="Contribution amount" type="number" step="0.01" inputMode="decimal" value={amt} onChange={(e) => setAmt(e.target.value)} placeholder="Add amount (− to withdraw)" className="h-7" autoFocus />
-          <Button type="submit" size="sm" disabled={pending}>Save</Button>
+          <Input
+            aria-label="Contribution amount"
+            type="number"
+            step="0.01"
+            inputMode="decimal"
+            value={amt}
+            onChange={(e) => setAmt(e.target.value)}
+            placeholder="Add amount (− to withdraw)"
+            className="h-7"
+            autoFocus
+          />
+          <Button type="submit" size="sm" disabled={pending}>
+            Save
+          </Button>
         </form>
       )}
     </div>

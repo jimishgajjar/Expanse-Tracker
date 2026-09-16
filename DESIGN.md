@@ -58,4 +58,6 @@ Account cards keep income, expense, and transfer shortcuts visible; account mana
 
 The Accounts section separates its title and active count from the combined balance. Individual account cards use rounded surfaces, larger account icons, wrapping names, an explicit current-balance label, and a navigation chevron. Income, expense, and transfer remain separate 44px touch targets in a softly tinted footer.
 
+Workspace tools use a shared slide-out ManagerPanel: up to 576px wide on desktop, full width on mobile, with a fixed icon/title header, one scrolling content area, and a persistent Done action. Categories, subscriptions, goals, shared expenses, members, and settings share this layout. Creation forms expand in place, opening initially when a list is empty; lists remain easy to scan. Settings separates display, data, notifications, and security into labeled sections. Existing mutation permissions and confirmation dialogs remain in force.
+
 Cash-flow charts offer labeled axes, keyboard and touch selection, and exact amounts in a persistent detail area. Category legends link to full category history. Empty charts explain how to populate them. Account, transaction, and settings forms share spacing, touch targets, inline errors, and mobile sheets. Budget changes require an explicit Save or Remove action; invalid numbers never remove an existing limit.

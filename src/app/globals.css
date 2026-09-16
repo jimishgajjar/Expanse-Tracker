@@ -274,5 +274,15 @@ button:focus-visible, a:focus-visible, summary:focus-visible { outline:2px solid
 
 /* Shared form rhythm and touch targets across editing surfaces. */
 .form-layout { display:grid; gap:20px; }
+.manager-panel [data-slot="button"],
+.manager-panel [data-slot="input"],
+.manager-panel [data-slot="select-trigger"],
+.manager-panel [data-slot="tabs-trigger"],
+.manager-panel select { min-height:44px; }
+.manager-panel [data-slot="button"][data-size^="icon"] { min-width:44px; }
+.manager-panel [data-slot="sheet-close"] { width:44px; height:44px; }
+.manager-panel [data-slot="tabs-list"] { height:auto; padding:4px; }
+.manager-panel [data-slot="input"], .manager-panel [data-slot="select-trigger"] { min-width:0; }
+.manager-panel-body > * { min-width:0; }
 [data-slot="dialog-content"] [data-slot="input"],
 [data-slot="dialog-content"] [data-slot="select-trigger"] { min-height:44px; }
