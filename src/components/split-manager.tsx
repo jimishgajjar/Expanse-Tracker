@@ -41,7 +41,7 @@ export function SplitManager({
       icon={Handshake}
       description="See who owes whom, record shared costs, and settle up."
     >
-      <div className="space-y-6">
+      <div className="space-y-4">
         {otherMembers.length === 0 ? (
           <p className="py-6 text-center text-sm text-muted-foreground">
             Invite someone to your tracker (via Sharing) to split expenses with

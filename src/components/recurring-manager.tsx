@@ -110,12 +110,12 @@ export function RecurringManager({
       icon={Repeat}
       description="Manage scheduled payments, installments, and recurring income."
     >
-      <div className="space-y-6">
+      <div className="space-y-4">
         <div className="rounded-xl border bg-card p-4">
           <div className="text-xs font-medium text-muted-foreground">
             Monthly commitment
           </div>
-          <div className="amount mt-1 text-2xl font-semibold">
+          <div className="amount mt-1 text-xl font-semibold">
             {money(monthly)}
             <span className="ml-1.5 text-sm font-normal text-muted-foreground">
               /mo
@@ -364,7 +364,7 @@ function RecurringForm({
         </Field>
       )}
 
-      <div className="grid grid-cols-1 gap-4 min-[400px]:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 min-[400px]:grid-cols-2">
         <Field label={autoPost ? "Amount" : "Estimated amount"}>
           <Input
             type="number"
@@ -395,7 +395,7 @@ function RecurringForm({
         </Field>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 min-[400px]:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 min-[400px]:grid-cols-2">
         <Field label="Account">
           <Select
             value={accountId}
@@ -446,7 +446,7 @@ function RecurringForm({
         />
       </Field>
 
-      <div className="grid grid-cols-1 gap-4 min-[400px]:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 min-[400px]:grid-cols-2">
         <Field label="Next charge">
           <Input
             type="date"
@@ -465,7 +465,7 @@ function RecurringForm({
         </Field>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 min-[400px]:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 min-[400px]:grid-cols-2">
         <Field label={isEmi ? "Installments" : "Stop after N (optional)"}>
           <Input
             type="number"

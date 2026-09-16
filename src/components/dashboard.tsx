@@ -272,17 +272,17 @@ export function Dashboard({
         >
           Skip to content
         </a>
-        <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 flex-col overflow-y-auto border-r bg-sidebar px-4 py-6 lg:flex">
-          <div className="mb-9 flex items-center gap-3 px-3">
+        <aside className="fixed inset-y-0 left-0 z-30 hidden w-52 flex-col overflow-y-auto border-r bg-sidebar px-3 py-4 lg:flex">
+          <div className="mb-6 flex items-center gap-3 px-3">
             <span className="grid size-9 place-items-center rounded-xl bg-brand text-brand-foreground">
               <Wallet className="size-5" />
             </span>
-            <span className="text-base font-semibold tracking-tight">
+            <span className="text-sm font-semibold tracking-tight">
               Expense Tracker
             </span>
           </div>
           {navigation}
-          <div className="mt-7 border-t pt-5">
+          <div className="mt-5 border-t pt-4">
             <p className="px-3 pb-2 text-xs font-medium text-muted-foreground">
               Your workspace
             </p>
@@ -312,9 +312,9 @@ export function Dashboard({
             </div>
           </div>
         </aside>
-        <div className="min-w-0 lg:pl-60">
+        <div className="min-w-0 lg:pl-52">
           <header className="border-b bg-background pt-safe">
-            <div className="mx-auto flex h-16 max-w-[1440px] items-center justify-between gap-3 px-4 sm:px-7 xl:px-10">
+            <div className="mx-auto flex h-12 max-w-[1600px] items-center justify-between gap-3 px-4 sm:px-5 xl:px-6">
               <div className="flex min-w-0 items-center gap-2.5">
                 <Wallet className="size-[18px] shrink-0 text-brand lg:hidden" />
                 <span className="truncate text-sm font-medium">
@@ -348,15 +348,15 @@ export function Dashboard({
           </header>
           <main
             id="main-content"
-            className="mx-auto max-w-[1440px] space-y-6 px-4 pt-6 pb-28 sm:px-7 sm:pt-8 lg:pb-10 xl:px-10"
+            className="mx-auto max-w-[1600px] space-y-4 px-4 pt-4 pb-28 sm:px-5 sm:pt-5 lg:pb-8 xl:px-6"
           >
             {!emailVerified && <VerifyBanner email={userEmail} />}
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div>
-                <h1 className="text-[1.75rem] font-semibold tracking-tight sm:text-[2rem]">
+                <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">
                   {page.label}
                 </h1>
-                <p className="mt-1 text-sm text-muted-foreground">
+                <p className="mt-1 text-xs text-muted-foreground">
                   {page.description}
                 </p>
               </div>

@@ -29,24 +29,24 @@ export function RadarPanel({
   return (
     <section
       aria-labelledby="radar-title"
-      className="overflow-hidden rounded-2xl border bg-card"
+      className="overflow-hidden rounded-xl border bg-card"
     >
-      <div className="flex items-start justify-between gap-3 border-b p-5 sm:p-6">
+      <div className="flex items-start justify-between gap-3 border-b p-4">
         <div>
-          <h2 id="radar-title" className="font-semibold">
+          <h2 id="radar-title" className="text-sm font-semibold">
             On your radar
           </h2>
           <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
             Upcoming payments & budget alerts
           </p>
         </div>
-        <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-brand/10 text-brand">
+        <span className="grid size-8 shrink-0 place-items-center rounded-xl bg-brand/10 text-brand">
           <CalendarDays className="size-5" aria-hidden />
         </span>
       </div>
-      <div className="px-5 sm:px-6">
+      <div className="px-4">
         {watch.length > 0 && (
-          <div className="py-5">
+          <div className="py-3">
             <h3 className="mb-2 flex items-center gap-2 text-xs font-semibold text-negative">
               <CircleAlert className="size-3.5" aria-hidden />
               {watch.length} budget {watch.length === 1 ? "alert" : "alerts"}
@@ -100,7 +100,7 @@ export function RadarPanel({
           </div>
         )}
         {upcoming.length > 0 && (
-          <div className={cn("py-5", watch.length > 0 && "border-t")}>
+          <div className={cn("py-3", watch.length > 0 && "border-t")}>
             <div className="mb-1 flex items-center justify-between gap-2">
               <h3 className="text-xs font-semibold text-muted-foreground">
                 Next scheduled
@@ -126,7 +126,7 @@ export function RadarPanel({
                     key={r.id}
                     type="button"
                     onClick={onPlanning}
-                    className="group flex w-full items-center gap-3 rounded-lg py-4 text-left transition-colors hover:bg-muted/50"
+                    className="group flex w-full items-center gap-3 rounded-lg py-2.5 text-left transition-colors hover:bg-muted/50"
                   >
                     <time
                       dateTime={r.nextDate}
@@ -205,10 +205,10 @@ export function RadarPanel({
           </div>
         )}
       </div>
-      <div className="border-t bg-muted/20 p-4">
+      <div className="border-t bg-muted/20 p-2">
         <Button
           variant="ghost"
-          className="min-h-11 w-full justify-between text-brand hover:text-brand"
+          className="min-h-11 sm:min-h-8 w-full justify-between text-brand hover:text-brand"
           onClick={onPlanning}
         >
           Open planning

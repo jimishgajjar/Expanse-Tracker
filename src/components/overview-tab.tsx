@@ -72,7 +72,7 @@ export function OverviewTab({
     .sort((a, b) => a.nextDate.localeCompare(b.nextDate))
     .slice(0, 3);
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {fresh && canEdit && (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-brand/20 bg-brand/5 p-4">
           <div>
@@ -108,12 +108,12 @@ export function OverviewTab({
         categories={categories}
         canEdit={canEdit}
       />
-      <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1.7fr)_minmax(280px,1fr)]">
-        <div className="min-w-0 space-y-6">
-          <section className="rounded-2xl border bg-card p-5 sm:p-6">
-            <div className="mb-5 flex items-center justify-between gap-2">
+      <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1.7fr)_minmax(280px,1fr)]">
+        <div className="min-w-0 space-y-4">
+          <section className="rounded-xl border bg-card p-4">
+            <div className="mb-3 flex items-center justify-between gap-2">
               <div>
-                <h2 className="font-semibold">Recent transactions</h2>
+                <h2 className="text-sm font-semibold">Recent transactions</h2>
                 <p className="mt-1 text-xs text-muted-foreground">
                   Income and expenses · {rangeLabel}
                 </p>
@@ -145,7 +145,7 @@ export function OverviewTab({
         </div>
         <RadarPanel watch={watch} upcoming={upcoming} onPlanning={onPlanning} />
       </div>
-      <div className="grid items-start gap-6 xl:grid-cols-2">
+      <div className="grid items-start gap-4 xl:grid-cols-2">
         <div className="min-w-0">
           <TrendChart
             transactions={transactions}

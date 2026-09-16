@@ -48,22 +48,22 @@ export function SummaryCards({
   return (
     <section
       aria-label="Balance and cash flow"
-      className="overflow-hidden rounded-2xl border bg-card"
+      className="overflow-hidden rounded-xl border bg-card lg:grid lg:grid-cols-[minmax(220px,1fr)_2fr]"
     >
-      <div className="flex flex-wrap items-end justify-between gap-2 px-4 py-4 sm:px-5">
+      <div className="flex flex-wrap items-end justify-between gap-2 px-4 py-3 lg:block">
         <div>
           <p className="text-sm font-medium text-muted-foreground">
             Total balance
           </p>
           <p
             className={cn(
-              "amount mt-1 break-all text-3xl font-semibold leading-tight tracking-tight sm:text-4xl",
+              "amount mt-1 break-all text-2xl font-semibold leading-tight tracking-tight sm:text-[1.75rem]",
               totalBalance < 0 && "text-negative",
             )}
           >
             {balanceMoney(totalBalance)}
           </p>
-          <p className="mt-2 text-xs text-muted-foreground">
+          <p className="mt-1 text-xs text-muted-foreground">
             Current balance across {accountsCount} account
             {accountsCount === 1 ? "" : "s"}
           </p>
@@ -72,17 +72,17 @@ export function SummaryCards({
           Cash flow · {rangeLabel}
         </p>
       </div>
-      <dl className="grid grid-cols-3 divide-x border-t bg-canvas-muted">
+      <dl className="grid grid-cols-1 divide-y sm:grid-cols-3 sm:divide-x sm:divide-y-0 border-t bg-canvas-muted lg:items-center lg:border-t-0 lg:border-l">
         {items.map((item) => (
-          <div key={item.label} className="min-w-0 px-3 py-3 sm:px-5">
+          <div key={item.label} className="flex min-w-0 items-center justify-between gap-2 px-4 py-2.5 sm:block">
             <dt className="flex items-center gap-2 text-xs text-muted-foreground">
               <item.icon className="hidden size-3.5 sm:block" />
               {item.label}
             </dt>
-            <dd className="mt-1.5">
+            <dd className="sm:mt-1">
               <span
                 className={cn(
-                  "amount break-all text-sm font-semibold sm:text-lg",
+                  "amount break-all text-sm font-semibold sm:text-base",
                   item.tone,
                 )}
               >

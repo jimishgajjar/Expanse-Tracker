@@ -43,7 +43,7 @@ export function DetailShell({
       >
         Skip to content
       </a>
-      <aside className="fixed inset-y-0 left-0 hidden w-60 flex-col border-r bg-card p-5 lg:flex">
+      <aside className="fixed inset-y-0 left-0 hidden w-52 flex-col border-r bg-card p-3 lg:flex">
         <Link
           href="/"
           className="mb-8 flex min-h-11 items-center gap-3 font-semibold"
@@ -99,8 +99,8 @@ export function DetailShell({
           A clearer view of your money.
         </p>
       </aside>
-      <div className="lg:pl-60">
-        <header className="flex h-18 items-center justify-between gap-3 border-b bg-card px-4 sm:px-8">
+      <div className="lg:pl-52">
+        <header className="flex h-14 items-center justify-between gap-3 border-b bg-card px-4 sm:px-8">
           <div className="flex min-w-0 items-center gap-3">
             <Link
               href={
@@ -120,7 +120,7 @@ export function DetailShell({
         </header>
         <main
           id="detail-content"
-          className="mx-auto max-w-7xl px-4 pt-7 pb-28 sm:px-8 sm:pt-9 lg:pb-12"
+          className="mx-auto max-w-[1600px] px-4 pt-4 pb-28 sm:px-6 sm:pt-5 lg:pb-8"
         >
           {children}
         </main>

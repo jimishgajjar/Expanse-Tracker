@@ -39,13 +39,13 @@ export function GoalsManager({
       icon={Target}
       description="Set targets and track your progress, one contribution at a time."
     >
-      <div className="space-y-6">
+      <div className="space-y-4">
         {items.length > 0 && (
           <div className="rounded-xl border bg-card p-4">
             <div className="text-xs font-medium text-muted-foreground">
               Saved across {items.length} goal{items.length === 1 ? "" : "s"}
             </div>
-            <div className="amount mt-1 text-2xl font-semibold">
+            <div className="amount mt-1 text-xl font-semibold">
               {money(totalSaved)}
               <span className="ml-1.5 text-sm font-normal text-muted-foreground">
                 of {money(totalTarget)}

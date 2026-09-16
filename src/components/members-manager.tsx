@@ -92,7 +92,7 @@ export function MembersManager({
           : `You have shared access to ${workspaceName}.`
       }
     >
-      <div className="space-y-6">
+      <div className="space-y-4">
         {isOwner && (
           <PanelCreate title="Invite someone">
             <InviteForm onInvited={onInvited} />

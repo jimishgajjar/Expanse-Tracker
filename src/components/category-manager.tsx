@@ -178,7 +178,7 @@ function CategoryRow({ category }: { category: CategoryDTO }) {
   }
 
   return (
-    <div className="flex items-center gap-3 rounded-xl border bg-card p-3">
+    <div className="flex items-center gap-3 rounded-xl border bg-card p-2">
       <span
         className="grid size-8 place-items-center rounded-md"
         style={{

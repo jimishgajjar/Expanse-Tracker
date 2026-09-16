@@ -286,3 +286,17 @@ button:focus-visible, a:focus-visible, summary:focus-visible { outline:2px solid
 .manager-panel-body > * { min-width:0; }
 [data-slot="dialog-content"] [data-slot="input"],
 [data-slot="dialog-content"] [data-slot="select-trigger"] { min-height:44px; }
+
+/* Compact desktop workspace; touch devices retain comfortable targets. */
+@media (min-width: 640px) and (pointer: fine) {
+  .nav-item { min-height:36px; padding:8px 10px; font-size:13px; gap:10px; }
+  .manager-panel [data-slot="button"],
+  .manager-panel [data-slot="input"],
+  .manager-panel [data-slot="select-trigger"],
+  .manager-panel [data-slot="tabs-trigger"],
+  .manager-panel select { min-height:36px; font-size:13px; }
+  .manager-panel [data-slot="button"][data-size^="icon"] { min-width:36px; }
+  .manager-panel [data-slot="sheet-close"] { width:36px; height:36px; }
+  .manager-panel [data-slot="tabs-list"] { padding:2px; }
+}
+.app-shell h1 { font-size:1.5rem; line-height:1.3; }

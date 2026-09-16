@@ -101,7 +101,7 @@ export function AccountsSection({
         )}
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {active.map((a) => (
           <AccountCard key={a.id} account={a} {...shared} />
         ))}
@@ -132,7 +132,7 @@ export function AccountsSection({
             </span>
           </button>
           {showArchived && (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
               {archived.map((a) => (
                 <AccountCard key={a.id} account={a} {...shared} />
               ))}
@@ -165,20 +165,20 @@ function AccountCard({
     // Keep account management separate from the linked balance and title.
     <Card
       className={cn(
-        "group relative gap-0 overflow-hidden rounded-2xl p-0 transition-colors hover:border-brand/40 focus-within:border-brand/50",
+        "group relative gap-0 overflow-hidden rounded-xl p-0 transition-colors hover:border-brand/40 focus-within:border-brand/50",
         a.archived && "opacity-65 hover:opacity-100",
       )}
     >
       <Link
         href={`/accounts/${a.id}`}
         aria-label={`Open ${a.name}, balance ${balanceMoney(a.balance)}`}
-        className="block flex-1 p-5 text-left transition-colors hover:bg-muted/20 focus-visible:outline-offset-[-4px]"
+        className="block flex-1 p-4 text-left transition-colors hover:bg-muted/20 focus-visible:outline-offset-[-4px]"
       >
         <div
           className={cn("flex w-full items-center gap-3", canEdit && "pr-9")}
         >
           <span
-            className="grid size-11 shrink-0 place-items-center rounded-xl"
+            className="grid size-9 shrink-0 place-items-center rounded-lg"
             style={{ backgroundColor: `${a.color}18`, color: a.color }}
           >
             <Icon name={a.icon} size={21} />
@@ -199,12 +199,12 @@ function AccountCard({
             </div>
           </div>
         </div>
-        <div className="mt-5 flex items-end justify-between gap-3">
+        <div className="mt-3 flex items-end justify-between gap-3">
           <div className="min-w-0">
             <p className="text-xs text-muted-foreground">Current balance</p>
             <p
               className={cn(
-                "amount mt-1 break-all text-2xl font-semibold leading-tight",
+                "amount mt-1 break-all text-xl font-semibold leading-tight",
                 a.balance < 0 && "text-negative",
               )}
             >
@@ -220,7 +220,7 @@ function AccountCard({
         </div>
       </Link>
       {canEdit && (
-        <div className="absolute top-3 right-3">
+        <div className="absolute top-2 right-2">
           <MoreActions label={`More actions for ${a.name}`}>
             {a.archived ? (
               <DropdownMenuItem onClick={() => onArchive(a.id, false)}>
@@ -269,7 +269,7 @@ function AccountCard({
         </div>
       )}
       {canEdit && !a.archived && (
-        <div className="grid grid-cols-3 gap-2 border-t bg-muted/10 p-3 text-xs font-medium">
+        <div className="grid grid-cols-3 gap-1 border-t bg-muted/10 p-2 text-xs font-medium">
           <TransactionDialog
             accounts={accounts}
             categories={categories}
@@ -279,7 +279,7 @@ function AccountCard({
               <button
                 type="button"
                 aria-label={`Add income to ${a.name}`}
-                className="flex min-h-11 items-center justify-center gap-1.5 rounded-lg bg-positive/5 px-1 py-2 text-positive transition-colors hover:bg-positive/15"
+                className="flex min-h-11 sm:min-h-8 items-center justify-center gap-1.5 rounded-lg bg-positive/5 px-1 py-2 text-positive transition-colors hover:bg-positive/15"
               >
                 <Plus className="size-3.5" /> Income
               </button>
@@ -294,7 +294,7 @@ function AccountCard({
               <button
                 type="button"
                 aria-label={`Add expense to ${a.name}`}
-                className="flex min-h-11 items-center justify-center gap-1.5 rounded-lg bg-negative/5 px-1 py-2 text-negative transition-colors hover:bg-negative/15"
+                className="flex min-h-11 sm:min-h-8 items-center justify-center gap-1.5 rounded-lg bg-negative/5 px-1 py-2 text-negative transition-colors hover:bg-negative/15"
               >
                 <Minus className="size-3.5" /> Expense
               </button>
@@ -309,7 +309,7 @@ function AccountCard({
               <button
                 type="button"
                 aria-label={`Transfer from ${a.name}`}
-                className="flex min-h-11 items-center justify-center gap-1.5 rounded-lg bg-muted/60 px-1 py-2 text-foreground transition-colors hover:bg-muted"
+                className="flex min-h-11 sm:min-h-8 items-center justify-center gap-1.5 rounded-lg bg-muted/60 px-1 py-2 text-foreground transition-colors hover:bg-muted"
               >
                 <ArrowRightLeft className="size-3.5" /> Transfer
               </button>
