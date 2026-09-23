@@ -282,15 +282,16 @@ const recurringSchema = z.object({
   commitmentType: z.enum(["subscription", "bill", "emi", "other"]).optional(),
   autoPost: z.coerce.boolean().optional(),
   totalAmount: z.coerce.number().positive().nullable().optional(),
+  tagIds: z.array(z.string().min(1)).max(50).transform((ids) => [...new Set(ids)]).optional(),
 }).refine((d) => !d.endDate || d.endDate >= d.nextDate, { message: "End date must be after the start date", path: ["endDate"] });
 
-export async function createRecurring(input: unknown): Promise<Result> {
+export async function createRecurring(input: unknown): Promise<Result<{ id: string }>> {
   try {
     const d = recurringSchema.parse(input);
     const w = await wid();
     const db = await getDb();
-    await assertWorkspaceReferences(w, { accountIds: [d.accountId], categoryId: d.categoryId });
-    await db.insert(recurring).values({
+    await assertWorkspaceReferences(w, { accountIds: [d.accountId], categoryId: d.categoryId, tagIds: d.tagIds });
+    const [created] = await db.insert(recurring).values({
       workspaceId: w, type: d.type, amount: String(d.amount), note: d.note ?? "",
       accountId: d.accountId, categoryId: d.categoryId ?? null,
       frequency: d.frequency, nextDate: d.nextDate,
@@ -299,18 +300,19 @@ export async function createRecurring(input: unknown): Promise<Result> {
       commitmentType: d.commitmentType ?? "other", autoPost: d.autoPost ?? true,
       totalAmount: d.totalAmount != null ? String(d.totalAmount) : null,
       priceHistory: [{ amount: d.amount, at: new Date().toISOString() }],
-    });
+      tagIds: d.tagIds ?? [],
+    }).returning({ id: recurring.id });
     revalidatePath("/");
-    return { ok: true };
+    return { ok: true, data: { id: created.id } };
   } catch (e) { return fail(e); }
 }
 
-export async function updateRecurring(id: string, input: unknown): Promise<Result> {
+export async function updateRecurring(id: string, input: unknown): Promise<Result<{ id: string }>> {
   try {
     const d = recurringSchema.parse(input);
     const w = await wid();
     const db = await getDb();
-    await assertWorkspaceReferences(w, { accountIds: [d.accountId], categoryId: d.categoryId });
+    await assertWorkspaceReferences(w, { accountIds: [d.accountId], categoryId: d.categoryId, tagIds: d.tagIds });
     const [cur] = await db.select().from(recurring).where(and(eq(recurring.id, id), eq(recurring.workspaceId, w))).limit(1);
     if (!cur) return { ok: false, error: "Subscription not found." };
 
@@ -333,9 +335,10 @@ export async function updateRecurring(id: string, input: unknown): Promise<Resul
       commitmentType: d.commitmentType ?? "other", autoPost: d.autoPost ?? true,
       totalAmount: d.totalAmount != null ? String(d.totalAmount) : null,
       priceHistory,
+      ...(d.tagIds !== undefined ? { tagIds: d.tagIds } : {}),
     }).where(and(eq(recurring.id, id), eq(recurring.workspaceId, w)));
     revalidatePath("/");
-    return { ok: true };
+    return { ok: true, data: { id } };
   } catch (e) { return fail(e); }
 }
 

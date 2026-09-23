@@ -111,6 +111,7 @@ export const recurring = pgTable(
     // Append-only log of price changes — each entry is the amount that became
     // effective at `at` (ISO). Additive column; existing rows default to [].
     priceHistory: jsonb("price_history").$type<{ amount: number; at: string }[]>().notNull().default([]),
+    tagIds: jsonb("tag_ids").$type<string[]>().notNull().default([]),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (t) => [index("recurring_ws_idx").on(t.workspaceId)],

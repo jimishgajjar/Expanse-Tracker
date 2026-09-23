@@ -20,8 +20,8 @@ vi.mock("@/lib/workspace", () => ({
 }));
 
 // Imported under the mocks above.
-import { getAccountsWithBalances, getTransactionsInRange } from "@/lib/queries";
-import { createTransaction, deleteTransaction, updateTransaction, createTransfer, setBudget } from "@/lib/actions";
+import { getAccountsWithBalances, getTransactionsInRange, getRecurring } from "@/lib/queries";
+import { createTransaction, deleteTransaction, updateTransaction, createTransfer, setBudget, createRecurring, updateRecurring } from "@/lib/actions";
 
 const ids = { wsA: "", wsB: "", txA: "", txB: "" };
 
@@ -121,6 +121,29 @@ describe("workspace isolation", () => {
     h.role = "owner";
     await deleteTransaction(ids.txB);
     expect(await txAmount(ids.txB)).toBeDefined(); // B's transaction still exists
+  });
+
+  it("round-trips subscription tags, preserves omitted tags, and rejects foreign tags", async () => {
+    h.activeWs = ids.wsA;
+    h.role = "owner";
+    const [account] = await h.db.select().from(schema.accounts).where(eq(schema.accounts.workspaceId, ids.wsA));
+    const [tag] = await h.db.insert(schema.tags).values({ workspaceId: ids.wsA, name: "Bills" }).returning();
+    const [foreign] = await h.db.insert(schema.tags).values({ workspaceId: ids.wsB, name: "Foreign" }).returning();
+    const payload = { type: "expense", amount: 12, note: "Internet", accountId: account.id, frequency: "monthly", nextDate: "2027-01-01" };
+    const created = await createRecurring({ ...payload, tagIds: [tag.id, tag.id] });
+    expect(created.ok).toBe(true);
+    if (!created.ok || !created.data) throw new Error("Missing recurring ID");
+    const id = created.data.id;
+    expect((await getRecurring()).find(r => r.id === id)?.tags?.map(t => t.id)).toEqual([tag.id]);
+    expect((await updateRecurring(id, { ...payload, amount: 15 })).ok).toBe(true);
+    expect((await getRecurring()).find(r => r.id === id)?.tags?.map(t => t.id)).toEqual([tag.id]);
+    expect((await updateRecurring(id, { ...payload, tagIds: [foreign.id] })).ok).toBe(false);
+    expect((await createRecurring({ ...payload, tagIds: [foreign.id] })).ok).toBe(false);
+    expect((await updateRecurring(id, { ...payload, tagIds: [] })).ok).toBe(true);
+    expect((await getRecurring()).find(r => r.id === id)?.tags).toEqual([]);
+    h.role = "viewer";
+    expect((await updateRecurring(id, { ...payload, tagIds: [tag.id] })).ok).toBe(false);
+    h.role = "owner";
   });
 
   it("sums repeated transfers by account pair without counting them as expenses", async () => {

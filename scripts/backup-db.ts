@@ -64,6 +64,9 @@ type Snapshot = {
 const args = process.argv.slice(2);
 const value = (name: string) =>
   args.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3);
+// Before an additive deployment, use the previous release's migrations to
+// rehearse its still-live schema. The exact migrations are saved in the backup.
+const migrationsFolder = value("migrations") ?? "./drizzle";
 const hash = (s: string) => createHash("sha256").update(s).digest("hex");
 function canonical(v: unknown): string {
   if (Array.isArray(v)) return `[${v.map(canonical).join(",")}]`;
@@ -79,7 +82,7 @@ function comparisonRow(table: string, row: Row): string {
   // Scheduled processing may advance these values; the rule itself must survive.
   return canonical(
     Object.fromEntries(
-      Object.entries(row).filter(
+      Object.entries({ tag_ids: [], ...row }).filter(
         ([key]) =>
           !["next_date", "occurrence_count", "last_reminded_for"].includes(key),
       ),
@@ -173,7 +176,7 @@ async function verifyRestore(snapshot: Snapshot) {
   // Deliberately no path or DATABASE_URL: every write is confined to memory.
   const isolated = new PGlite();
   try {
-    await migrate(drizzle(isolated), { migrationsFolder: "./drizzle" });
+    await migrate(drizzle(isolated), { migrationsFolder });
     const localColumns = (await isolated.query<Row>(columnsSQL)).rows;
     if (canonical(localColumns) !== canonical(snapshot.columns))
       throw new Error(
@@ -224,7 +227,7 @@ async function main() {
     ),
     { mode: 0o600 },
   );
-  cpSync("drizzle", join(directory, "drizzle"), { recursive: true });
+  cpSync(migrationsFolder, join(directory, "drizzle"), { recursive: true });
   const manifest = {
     at: snapshot.at,
     source,

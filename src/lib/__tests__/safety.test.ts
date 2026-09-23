@@ -41,6 +41,30 @@ async function rule() {
 const entry = () => ({ workspaceId, accountId, type: "expense" as const, amount: "10", date: "2026-01-01", note: "Scheduled", categoryId: null });
 
 describe("existing-schema financial safety", () => {
+  it("copies only this workspace's existing tags to newly posted occurrences", async () => {
+    const [tag] = await db.insert(schema.tags).values({ workspaceId, name: "Household" }).returning();
+    const [other] = await db.insert(schema.workspaces).values({ ownerId: userId, name: "Other" }).returning();
+    const [foreign] = await db.insert(schema.tags).values({ workspaceId: other.id, name: "Private" }).returning();
+    const r = await rule();
+    r.tagIds = [tag.id, tag.id, foreign.id, "deleted-tag"];
+    await db.update(schema.recurring).set({ tagIds: r.tagIds }).where(eq(schema.recurring.id, r.id));
+    expect(await postRecurringOccurrences(state.db, r, "2026-03-01", 2, [
+      { ...entry(), note: "Tagged January" }, { ...entry(), date: "2026-02-01", note: "Tagged February" },
+    ])).toBe(true);
+    const links = await db.select().from(schema.transactionTags).where(eq(schema.transactionTags.tagId, tag.id));
+    expect(links).toHaveLength(2);
+    expect(await db.select().from(schema.transactionTags).where(eq(schema.transactionTags.tagId, foreign.id))).toHaveLength(0);
+    const [historical] = await db.select().from(schema.transactions).where(eq(schema.transactions.note, "Historical entry"));
+    expect(await db.select().from(schema.transactionTags).where(eq(schema.transactionTags.transactionId, historical.id))).toHaveLength(0);
+    expect(await postRecurringOccurrences(state.db, r, "2026-03-01", 2, [entry()])).toBe(false);
+  });
+
+  it("does not post stale tags if the rule was edited during processing", async () => {
+    const r = await rule();
+    await db.update(schema.recurring).set({ tagIds: ["changed"] }).where(eq(schema.recurring.id, r.id));
+    expect(await postRecurringOccurrences(state.db, r, "2026-02-01", 1, [entry()])).toBe(false);
+  });
+
   it("claims a due rule only once across racing workers and retries, preserving history", async () => {
     const r = await rule();
     const results = await Promise.all([

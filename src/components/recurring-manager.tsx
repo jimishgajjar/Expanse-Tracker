@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, type ReactElement } from "react";
+import { useId, useState, useTransition, type ReactElement } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { differenceInCalendarDays, format, parseISO } from "date-fns";
@@ -14,6 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { TagInput } from "./tag-input";
 import { Input } from "@/components/ui/input";
 import { Icon } from "@/components/icon";
 import { ConfirmDialog } from "@/components/confirm-dialog";
@@ -26,7 +27,7 @@ import {
 import { commitmentTotals, perMonth } from "@/lib/commitments";
 import { todayISO } from "@/lib/dates";
 import { cn } from "@/lib/utils";
-import type { AccountDTO, CategoryDTO, RecurringDTO } from "@/lib/queries";
+import type { AccountDTO, CategoryDTO, RecurringDTO, TagRef } from "@/lib/queries";
 
 const NONE = "__none__";
 const FREQS = [
@@ -223,6 +224,9 @@ function RecurringForm({
     editing?.accountId ?? accounts[0]?.id ?? "",
   );
   const [categoryId, setCategoryId] = useState(editing?.categoryId ?? NONE);
+  const tagInputId = useId();
+  const [selectedTags, setSelectedTags] = useState<TagRef[]>(editing?.tags ?? []);
+  const [tagsPending, setTagsPending] = useState(false);
   const [frequency, setFrequency] = useState(editing?.frequency ?? "monthly");
   const [note, setNote] = useState(editing?.note ?? "");
   const [nextDate, setNextDate] = useState(editing?.nextDate ?? todayISO());
@@ -245,10 +249,12 @@ function RecurringForm({
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
+    if (tagsPending) return;
     const amt = Number(amount);
     const payload = {
       type,
       amount: amt,
+      tagIds: selectedTags.map((tag) => tag.id),
       note,
       accountId,
       categoryId: categoryId === NONE ? null : categoryId,
@@ -287,7 +293,8 @@ function RecurringForm({
       }
 
       onSaved({
-        id: editing?.id ?? crypto.randomUUID(),
+        id: editing?.id ?? res.data!.id,
+        tags: selectedTags,
         type,
         amount: amt,
         note,
@@ -307,6 +314,7 @@ function RecurringForm({
       });
 
       if (!editing) {
+        setSelectedTags([]);
         setAmount("");
         setNote("");
         setEndDate("");
@@ -438,6 +446,12 @@ function RecurringForm({
         </Field>
       </div>
 
+      <div className="space-y-1.5">
+        <label htmlFor={tagInputId} className="text-xs font-medium text-muted-foreground">Tags (optional)</label>
+        <TagInput id={tagInputId} value={selectedTags} onChange={setSelectedTags} onPendingChange={setTagsPending} />
+        <p className="text-xs text-muted-foreground">Tags also appear on future automatic payments.</p>
+      </div>
+
       <Field label="Name">
         <Input
           value={note}
@@ -541,7 +555,7 @@ function RecurringForm({
             Cancel
           </Button>
         )}
-        <Button type="submit" size="sm" className="flex-1" disabled={pending}>
+        <Button type="submit" size="sm" className="flex-1" disabled={pending || tagsPending}>
           {editing ? (
             "Save changes"
           ) : (
@@ -716,6 +730,16 @@ function RuleRow({
           onConfirm={remove}
         />
       </div>
+
+      {!!rule.tags?.length && (
+        <div className="mt-2 flex flex-wrap gap-1.5" aria-label="Tags">
+          {rule.tags.map((tag) => (
+            <span key={tag.id} className="inline-flex items-center gap-1.5 rounded-md bg-muted px-2 py-1 text-xs">
+              <span className="size-1.5 rounded-full" style={{ backgroundColor: tag.color }} aria-hidden />{tag.name}
+            </span>
+          ))}
+        </div>
+      )}
 
       <div className="mt-1.5 flex items-center justify-between gap-2 border-t border-dashed pt-1.5 pl-0.5 text-xs">
         <span className="truncate text-muted-foreground">

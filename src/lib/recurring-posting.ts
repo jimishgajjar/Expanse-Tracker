@@ -4,7 +4,7 @@ import type { recurring, transactions } from "./db/schema";
 
 /** One SQL statement: advance a still-current rule and insert its occurrences.
  * A racing worker claims zero rows; a failed insert rolls back the advance.
- * Uses existing columns, so deploying requires no schema change or backfill.
+ * Tags are attached in the same statement; historical transactions are untouched.
  */
 export async function postRecurringOccurrences(
   db: AppDb,
@@ -24,6 +24,7 @@ export async function postRecurringOccurrences(
         AND next_date = ${rule.nextDate}::date AND occurrence_count = ${rule.occurrenceCount}
         AND amount = ${rule.amount}::numeric AND frequency = ${rule.frequency}
         AND auto_post = ${rule.autoPost}
+        AND tag_ids = ${JSON.stringify(rule.tagIds)}::jsonb
       RETURNING id
     ), posted AS (
       INSERT INTO transactions (id, workspace_id, type, amount, date, note, account_id, category_id)
@@ -33,6 +34,11 @@ export async function postRecurringOccurrences(
         AS entry(id text, type text, amount text, date text, note text, "accountId" text, "categoryId" text)
       CROSS JOIN claimed
       RETURNING id
+    ), tagged AS (
+      INSERT INTO transaction_tags (transaction_id, tag_id)
+      SELECT posted.id, tags.id FROM posted CROSS JOIN tags
+      WHERE tags.workspace_id = ${rule.workspaceId}
+        AND tags.id IN (SELECT jsonb_array_elements_text(${JSON.stringify(rule.tagIds)}::jsonb))
     )
     SELECT EXISTS(SELECT 1 FROM claimed) AS claimed
   `);

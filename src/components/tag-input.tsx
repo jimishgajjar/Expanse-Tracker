@@ -5,10 +5,12 @@ import { Plus, X } from "lucide-react";
 import { createTag, listTags } from "@/lib/actions";
 import type { TagRef } from "@/lib/queries";
 
-export function TagInput({ id, value, onChange }: { id?: string; value: TagRef[]; onChange: (tags: TagRef[]) => void }) {
+export function TagInput({ id, value, onChange, onPendingChange }: { id?: string; value: TagRef[]; onChange: (tags: TagRef[]) => void; onPendingChange?: (pending: boolean) => void }) {
   const [all, setAll] = useState<TagRef[]>([]);
   const [query, setQuery] = useState("");
   const [focused, setFocused] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [error, setError] = useState("");
 
   useEffect(() => { listTags().then(setAll).catch(() => {}); }, []);
 
@@ -21,17 +23,25 @@ export function TagInput({ id, value, onChange }: { id?: string; value: TagRef[]
   function remove(id: string) { onChange(value.filter((t) => t.id !== id)); }
   async function create() {
     const name = query.trim();
-    if (!name) return;
-    const res = await createTag({ name });
-    if (res.ok && res.data) {
-      const t = res.data;
-      setAll((a) => (a.some((x) => x.id === t.id) ? a : [...a, t]));
-      add(t);
-    }
+    if (!name || creating) return;
+    setCreating(true);
+    onPendingChange?.(true);
+    setError("");
+    try {
+      const res = await createTag({ name });
+      if (res.ok && res.data) {
+        const t = res.data;
+        setAll((a) => (a.some((x) => x.id === t.id) ? a : [...a, t]));
+        add(t);
+      } else if (!res.ok) setError(res.error);
+    } catch { setError("Could not create the tag. Please try again."); }
+    finally { setCreating(false); onPendingChange?.(false); }
   }
 
   return (
-    <div className="relative">
+    <div className="relative" onFocus={() => setFocused(true)} onBlur={(event) => {
+      if (!event.currentTarget.contains(event.relatedTarget)) setFocused(false);
+    }}>
       <div className="flex flex-wrap items-center gap-1.5 rounded-lg border bg-transparent p-1.5">
         {value.map((t) => (
           <span key={t.id} className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium" style={{ backgroundColor: `${t.color}22`, color: t.color }}>
@@ -44,8 +54,6 @@ export function TagInput({ id, value, onChange }: { id?: string; value: TagRef[]
           aria-label="Tags"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          onFocus={() => setFocused(true)}
-          onBlur={() => setTimeout(() => setFocused(false), 150)}
           onKeyDown={(e) => {
             if (e.key === "Enter" && q) { e.preventDefault(); if (exact) add(exact); else create(); }
             if (e.key === "Backspace" && !query && value.length) remove(value[value.length - 1].id);
@@ -57,18 +65,19 @@ export function TagInput({ id, value, onChange }: { id?: string; value: TagRef[]
       {focused && (q.length > 0 || suggestions.length > 0) && (
         <div className="absolute z-50 mt-1 max-h-48 w-full overflow-y-auto rounded-lg border bg-popover p-1 shadow-md">
           {suggestions.map((t) => (
-            <button key={t.id} type="button" onMouseDown={(e) => { e.preventDefault(); add(t); }} className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-muted">
+            <button key={t.id} type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => add(t)} className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-muted">
               <span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: t.color }} />
               {t.name}
             </button>
           ))}
           {q.length > 0 && !exact && (
-            <button type="button" onMouseDown={(e) => { e.preventDefault(); create(); }} className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-muted">
+            <button type="button" disabled={creating} onMouseDown={(e) => e.preventDefault()} onClick={create} className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-muted disabled:opacity-50">
               <Plus className="size-3.5 shrink-0" /> Create &ldquo;{query.trim()}&rdquo;
             </button>
           )}
         </div>
       )}
+      {error && <p role="alert" className="mt-1 text-xs text-destructive">{error}</p>}
     </div>
   );
 }

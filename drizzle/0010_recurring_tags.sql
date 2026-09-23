@@ -1,0 +1,1 @@
+ALTER TABLE "recurring" ADD COLUMN "tag_ids" jsonb DEFAULT '[]'::jsonb NOT NULL;
