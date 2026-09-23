@@ -51,19 +51,21 @@ export async function getAccountsWithBalances(): Promise<AccountDTO[]> {
   const wid = await getActiveWorkspaceId();
   if (!wid) return [];
   const db = await getDb();
-  const accs = await db.select().from(accounts).where(eq(accounts.workspaceId, wid)).orderBy(asc(accounts.createdAt));
-  const agg = await db
-    .select({ accountId: transactions.accountId, type: transactions.type, total: sql<string>`coalesce(sum(${transactions.amount}), 0)` })
-    .from(transactions)
-    .where(eq(transactions.workspaceId, wid))
-    .groupBy(transactions.accountId, transactions.type);
+  const [accs, agg, xfers] = await Promise.all([
+    db.select().from(accounts).where(eq(accounts.workspaceId, wid)).orderBy(asc(accounts.createdAt)),
+    db.select({ accountId: transactions.accountId, type: transactions.type, total: sql<string>`coalesce(sum(${transactions.amount}), 0)` })
+      .from(transactions)
+      .where(eq(transactions.workspaceId, wid))
+      .groupBy(transactions.accountId, transactions.type),
+    db.select({ from: transfers.fromAccountId, to: transfers.toAccountId, amount: sql<string>`sum(${transfers.amount})` })
+      .from(transfers).where(eq(transfers.workspaceId, wid)).groupBy(transfers.fromAccountId, transfers.toAccountId),
+  ]);
 
   const byId: Record<string, { income: number; expense: number }> = {};
   for (const r of agg) {
     if (!r.accountId) continue;
     (byId[r.accountId] ??= { income: 0, expense: 0 })[r.type] += Number(r.total ?? 0);
   }
-  const xfers = await db.select({ from: transfers.fromAccountId, to: transfers.toAccountId, amount: transfers.amount }).from(transfers).where(eq(transfers.workspaceId, wid));
   const transferNet: Record<string, number> = {};
   for (const x of xfers) {
     const amt = Number(x.amount);

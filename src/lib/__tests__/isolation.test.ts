@@ -123,6 +123,18 @@ describe("workspace isolation", () => {
     expect(await txAmount(ids.txB)).toBeDefined(); // B's transaction still exists
   });
 
+  it("sums repeated transfers by account pair without counting them as expenses", async () => {
+    h.activeWs = ids.wsA;
+    const [from] = await h.db.select().from(schema.accounts).where(eq(schema.accounts.workspaceId, ids.wsA));
+    const [to] = await h.db.insert(schema.accounts).values({ workspaceId: ids.wsA, name: "Savings", initialBalance: "50" }).returning();
+    const before = (await getAccountsWithBalances()).find(a => a.id === from.id)!;
+    await h.db.insert(schema.transfers).values(["12.25", "7.75"].map(amount => ({ workspaceId: ids.wsA, fromAccountId: from.id, toAccountId: to.id, amount, date: "2026-06-01" })));
+    const result = await getAccountsWithBalances();
+    expect(result.find(a => a.id === from.id)?.balance).toBe(before.balance - 20);
+    expect(result.find(a => a.id === from.id)?.expense).toBe(before.expense);
+    expect(result.find(a => a.id === to.id)?.balance).toBe(70);
+  });
+
   it("a view-only member is blocked from writing (server-side)", async () => {
     h.activeWs = ids.wsA;
     const before = (await h.db.select().from(schema.transactions)).length;

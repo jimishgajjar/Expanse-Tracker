@@ -58,8 +58,6 @@ async function DashboardData({
   const user = await getCurrentUser();
   if (!user) return <Landing />;
 
-  const [workspaces, activeWorkspace] = await Promise.all([getUserWorkspaces(), getActiveWorkspace()]);
-
   const range = getRange(rangeType, anchor);
   const prevRange = rangeType === "all" ? null : getRange(rangeType, shiftAnchor(rangeType, anchor, -1));
 
@@ -67,22 +65,21 @@ async function DashboardData({
   // posts today shows up in this render. The resulting emails and web-push
   // sends are network I/O with nothing to contribute to the page, so they run
   // after the response instead of in front of it.
-  const notices = await processRecurring();
+  // Metadata does not depend on posted payments. Start it alongside recurring
+  // processing instead of adding another database round trip to every load.
+  const [notices, workspaces, activeWorkspace, categories, settings, goals, split, members, invites] = await Promise.all([
+    processRecurring(), getUserWorkspaces(), getActiveWorkspace(), getCategories(),
+    getSettings(), getGoals(), getSplitData(), getMembers(), getInvites(),
+  ]);
   if (notices.length) after(() => flushNotices(notices));
 
-  const [accounts, categories, transactions, transfers, settings, budgetProgress, netWorth, recurring, goals, split, members, invites, prevTotals, analytics] = await Promise.all([
+  const [accounts, transactions, transfers, budgetProgress, netWorth, recurring, prevTotals, analytics] = await Promise.all([
     getAccountsWithBalances(),
-    getCategories(),
     getTransactionsInRange(range.start, range.end),
     getTransfersInRange(range.start, range.end),
-    getSettings(),
     getBudgetProgress(),
     getNetWorthSeries(),
     getRecurring(),
-    getGoals(),
-    getSplitData(),
-    getMembers(),
-    getInvites(),
     prevRange ? getRangeTotals(prevRange.start, prevRange.end) : Promise.resolve(null),
     // Deeper Insights aggregates. The tab switcher is client-side (no server
     // round-trip), so this has to load with the rest — hence every query in
