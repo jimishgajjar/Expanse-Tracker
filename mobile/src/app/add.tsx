@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -18,7 +18,7 @@ function todayISO() {
 type TxType = "expense" | "income" | "transfer";
 const ACCENT: Record<TxType, string> = { expense: colors.red, income: colors.green, transfer: colors.ink };
 
-export default function TransactionForm() {
+export default function TransactionForm({ asTab = false }: { asTab?: boolean }) {
   const { data, reload, token, ready } = useApp();
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id?: string }>();
@@ -41,11 +41,19 @@ export default function TransactionForm() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // The native Add tab may mount while bootstrap data is still loading.
+  useEffect(() => {
+    if (!accounts.length) return;
+    if (!accountId) setAccountId(accounts[0].id);
+    if (!fromAccountId) setFromAccountId(accounts[0].id);
+    if (!toAccountId) setToAccountId(accounts.find((a) => a.id !== accounts[0].id)?.id ?? "");
+  }, [accounts, accountId, fromAccountId, toAccountId]);
+
   const categories = useMemo(
     () => (data?.categories ?? []).filter((c) => c.kind === (type === "income" ? "income" : "expense")),
     [data, type],
   );
-  const dismiss = () => (router.canGoBack() ? router.back() : router.replace("/home"));
+  const dismiss = () => asTab ? router.navigate("/home") : (router.canGoBack() ? router.back() : router.replace("/home"));
   const types: TxType[] = isEdit ? ["expense", "income"] : ["expense", "income", "transfer"];
   const accent = ACCENT[type];
   const symbol = data?.settings.currency ?? "";
@@ -56,6 +64,7 @@ export default function TransactionForm() {
   async function save() {
     const value = parseFloat(amount.replace(",", "."));
     if (!value || value <= 0) return setError("Enter an amount greater than 0.");
+    if (type !== "transfer" && !accountId) return setError("Pick an account.");
     setBusy(true);
     setError(null);
     try {
@@ -97,7 +106,7 @@ export default function TransactionForm() {
     setTagIds((ids) => (ids.includes(tid) ? ids.filter((x) => x !== tid) : [...ids, tid]));
 
   return (
-    <SafeAreaView style={s.screen} edges={["top", "bottom"]}>
+    <SafeAreaView style={s.screen} edges={asTab ? ["top"] : ["top", "bottom"]}>
       <View style={s.header}>
         <Pressable onPress={dismiss} hitSlop={12}>
           <Text style={s.cancel}>Cancel</Text>
@@ -260,20 +269,20 @@ const s = StyleSheet.create({
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingVertical: 12 },
   cancel: { fontSize: 16, color: colors.inkSoft },
   title: { fontSize: 16, fontWeight: "700", color: colors.ink },
-  hero: { alignItems: "center", paddingTop: 8, paddingBottom: 22, paddingHorizontal: 16, gap: 18 },
+  hero: { alignItems: "center", paddingTop: 8, paddingBottom: 16, paddingHorizontal: 16, gap: 12 },
   toggle: { flexDirection: "row", backgroundColor: colors.card, borderRadius: radius.pill, padding: 4, gap: 4, borderWidth: 1, borderColor: colors.border },
   toggleBtn: { paddingVertical: 8, paddingHorizontal: 18, borderRadius: radius.pill },
   toggleText: { fontSize: 14, fontWeight: "600", color: colors.inkSoft },
   amountRow: { flexDirection: "row", alignItems: "center", justifyContent: "center" },
   currency: { fontSize: 28, fontWeight: "700", marginRight: 4 },
-  amountHero: { fontSize: 52, fontWeight: "800", letterSpacing: -1.5, minWidth: 90, padding: 0 },
+  amountHero: { fontSize: 42, fontWeight: "700", letterSpacing: -1, minWidth: 90, padding: 0, fontVariant: ["tabular-nums"] },
   dateChip: { flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, borderRadius: radius.pill, paddingHorizontal: 14, paddingVertical: 8 },
   dateText: { fontSize: 13, fontWeight: "600", color: colors.ink },
   label: { fontSize: 13, fontWeight: "600", color: colors.inkSoft, marginBottom: 8 },
   hint: { color: colors.inkSoft, fontSize: 14 },
   input: { borderWidth: 1, borderColor: colors.borderStrong, borderRadius: radius.md, paddingHorizontal: 14, paddingVertical: 12, fontSize: 16, color: colors.ink },
-  chip: { borderWidth: 1, borderRadius: radius.pill, paddingHorizontal: 14, paddingVertical: 9 },
-  chipText: { fontSize: 14, fontWeight: "600", color: colors.inkSoft },
+  chip: { borderWidth: 1, borderRadius: radius.pill, paddingHorizontal: 13, minHeight: 40, alignItems: "center", justifyContent: "center" },
+  chipText: { fontSize: 13, fontWeight: "600", color: colors.inkSoft },
   error: { color: colors.red, fontSize: 14 },
   footer: { padding: 16, borderTopWidth: 1, borderTopColor: colors.border },
   save: { borderRadius: radius.md, paddingVertical: 16, alignItems: "center" },

@@ -43,7 +43,7 @@ export default function More() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }} edges={["top"]}>
-      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 110 }}>
+      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 32 }}>
         <Text style={s.bigTitle}>More</Text>
 
         <Card style={s.profile}>
@@ -94,17 +94,17 @@ export default function More() {
 }
 
 const s = StyleSheet.create({
-  bigTitle: { fontSize: 30, fontWeight: "800", color: colors.ink, letterSpacing: -0.6, marginBottom: 18 },
-  profile: { flexDirection: "row", alignItems: "center", gap: 14, marginBottom: 22 },
-  avatar: { width: 52, height: 52, borderRadius: 26, backgroundColor: colors.green, alignItems: "center", justifyContent: "center" },
-  avatarText: { color: "#fff", fontSize: 22, fontWeight: "800" },
-  name: { fontSize: 17, fontWeight: "700", color: colors.ink },
-  email: { fontSize: 14, color: colors.inkSoft, marginTop: 1 },
+  bigTitle: { fontSize: 24, fontWeight: "700", color: colors.ink, letterSpacing: -0.5, marginBottom: 12 },
+  profile: { flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 16 },
+  avatar: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.green, alignItems: "center", justifyContent: "center" },
+  avatarText: { color: "#fff", fontSize: 17, fontWeight: "800" },
+  name: { fontSize: 15, fontWeight: "700", color: colors.ink },
+  email: { fontSize: 12, color: colors.inkSoft, marginTop: 1 },
   section: { fontSize: 12, fontWeight: "700", color: colors.inkSoft, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 8, marginLeft: 4 },
-  row: { flexDirection: "row", alignItems: "center", gap: 14, paddingVertical: 12, paddingHorizontal: 14 },
+  row: { flexDirection: "row", alignItems: "center", gap: 12, minHeight: 48, paddingVertical: 8, paddingHorizontal: 12 },
   divider: { borderTopWidth: 1, borderTopColor: colors.border },
-  tile: { width: 30, height: 30, borderRadius: 8, alignItems: "center", justifyContent: "center" },
-  rowText: { flex: 1, fontSize: 15, fontWeight: "500", color: colors.ink },
+  tile: { width: 28, height: 28, borderRadius: 8, alignItems: "center", justifyContent: "center" },
+  rowText: { flex: 1, fontSize: 13, fontWeight: "600", color: colors.ink },
   signOut: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 14, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, marginTop: 4 },
   signOutText: { color: colors.red, fontSize: 15, fontWeight: "600" },
 });

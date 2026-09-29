@@ -17,9 +17,10 @@ export function TxRow({ tx, fmt }: { tx: Transaction; fmt: { signed: (n: number)
       style={({ pressed }) => ({
         flexDirection: "row",
         alignItems: "center",
-        paddingVertical: 11,
+        minHeight: 56,
+        paddingVertical: 8,
         paddingHorizontal: 12,
-        gap: 12,
+        gap: 10,
         backgroundColor: pressed ? colors.hover : "transparent",
       })}
     >
@@ -31,11 +32,11 @@ export function TxRow({ tx, fmt }: { tx: Transaction; fmt: { signed: (n: number)
         <IconBubble icon={tx.category?.icon ?? tx.account?.icon} label={tx.category?.name || tx.account?.name || "?"} color={tint} />
       )}
       <View style={{ flex: 1, minWidth: 0 }}>
-        <Text style={{ fontSize: 15, fontWeight: "600", color: colors.ink }} numberOfLines={1}>
+        <Text style={{ fontSize: 13, fontWeight: "600", color: colors.ink }} numberOfLines={1}>
           {title}
         </Text>
         {sub ? (
-          <Text style={{ fontSize: 13, color: colors.inkSoft, marginTop: 1 }} numberOfLines={1}>
+          <Text style={{ fontSize: 11, color: colors.inkSoft, marginTop: 1 }} numberOfLines={1}>
             {sub}
           </Text>
         ) : null}
@@ -49,7 +50,7 @@ export function TxRow({ tx, fmt }: { tx: Transaction; fmt: { signed: (n: number)
           </View>
         ) : null}
       </View>
-      <Text style={{ fontSize: 15, fontWeight: "700", color: positive ? colors.green : colors.red }}>
+      <Text style={{ fontSize: 13, fontWeight: "700", color: positive ? colors.green : colors.red, fontVariant: ["tabular-nums"] }}>
         {fmt.signed(positive ? tx.amount : -tx.amount)}
       </Text>
     </Pressable>

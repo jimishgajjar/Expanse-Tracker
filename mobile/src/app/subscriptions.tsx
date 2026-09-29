@@ -7,7 +7,7 @@ import { differenceInCalendarDays, format, parseISO } from "date-fns";
 import { useApp } from "@/lib/store";
 import { api } from "@/lib/api";
 import { qk } from "@/lib/query";
-import { Card, IconBubble, Loading } from "@/components/ui";
+import { Card, IconBubble, Loading, Pill } from "@/components/ui";
 import { colors } from "@/lib/theme";
 import type { Recurring } from "@/lib/types";
 
@@ -82,6 +82,11 @@ export default function Subscriptions() {
                     </Text>
                     <Text style={[s.rowSub, { color: due.color, fontWeight: daysUntil <= 1 ? "600" : "400" }]}>{due.label}</Text>
                   </View>
+                  {r.tags?.length ? (
+                    <View style={s.tags}>
+                      {r.tags.map((tag) => <Pill key={tag.id} label={tag.name} color={tag.color} />)}
+                    </View>
+                  ) : null}
                 </View>
               );
             })}
@@ -94,9 +99,10 @@ export default function Subscriptions() {
 
 const s = StyleSheet.create({
   head: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 12, paddingVertical: 8 },
-  title: { fontSize: 18, fontWeight: "700", color: colors.ink },
+  title: { fontSize: 16, fontWeight: "700", color: colors.ink },
   empty: { color: colors.inkSoft, fontSize: 14, textAlign: "center", marginTop: 48, paddingHorizontal: 24 },
-  row: { paddingVertical: 11, paddingHorizontal: 12, gap: 7 },
+  row: { paddingVertical: 10, paddingHorizontal: 12, gap: 6 },
+  tags: { flexDirection: "row", flexWrap: "wrap", gap: 5, marginLeft: 48 },
   rowTop: { flexDirection: "row", alignItems: "center", gap: 12 },
   rowMeta: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10 },
   divider: { borderTopWidth: 1, borderTopColor: colors.border },

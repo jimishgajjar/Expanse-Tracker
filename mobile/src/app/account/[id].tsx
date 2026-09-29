@@ -80,9 +80,9 @@ export default function AccountDetail() {
           </View>
         </View>
 
-        <Card style={{ marginBottom: 16 }}>
+        <Card style={{ marginBottom: 12 }}>
           <Text style={s.cardLabel}>Balance</Text>
-          <Text style={[s.balance, account.balance < 0 && { color: colors.red }]}>{money.balance(account.balance)}</Text>
+          <Text style={[s.balance, account.balance < 0 && { color: colors.red }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.65}>{money.balance(account.balance)}</Text>
           <View style={{ flexDirection: "row", gap: 24, marginTop: 14 }}>
             <View>
               <Text style={s.statLabel}>In · all time</Text>
@@ -132,16 +132,16 @@ export default function AccountDetail() {
 
 const s = StyleSheet.create({
   missing: { flex: 1, backgroundColor: colors.bg, alignItems: "center", justifyContent: "center" },
-  head: { paddingHorizontal: 12, paddingVertical: 4 },
-  name: { fontSize: 20, fontWeight: "700", color: colors.ink },
-  type: { fontSize: 14, color: colors.inkSoft, textTransform: "capitalize" },
-  cardLabel: { fontSize: 13, color: colors.inkSoft },
-  balance: { fontSize: 30, fontWeight: "800", color: colors.ink, letterSpacing: -0.6, marginTop: 4 },
+  head: { paddingHorizontal: 12, paddingVertical: 6 },
+  name: { fontSize: 17, fontWeight: "700", color: colors.ink },
+  type: { fontSize: 12, color: colors.inkSoft, textTransform: "capitalize" },
+  cardLabel: { fontSize: 12, color: colors.inkSoft },
+  balance: { fontSize: 27, fontWeight: "700", color: colors.ink, letterSpacing: -0.6, marginTop: 4, fontVariant: ["tabular-nums"] },
   statLabel: { fontSize: 12, color: colors.inkFaint },
-  stat: { fontSize: 16, fontWeight: "700", marginTop: 2 },
-  section: { fontSize: 12, fontWeight: "700", color: colors.inkSoft, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 10 },
-  searchWrap: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: colors.hover, borderRadius: radius.md, paddingHorizontal: 12, paddingVertical: 9, marginBottom: 16 },
-  searchInput: { flex: 1, fontSize: 15, color: colors.ink, padding: 0 },
+  stat: { fontSize: 14, fontWeight: "700", marginTop: 2, fontVariant: ["tabular-nums"] },
+  section: { fontSize: 12, fontWeight: "700", color: colors.inkSoft, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 8 },
+  searchWrap: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, paddingHorizontal: 12, paddingVertical: 9, marginBottom: 14 },
+  searchInput: { flex: 1, fontSize: 14, color: colors.ink, padding: 0 },
   divider: { borderTopWidth: 1, borderTopColor: colors.border },
   empty: { color: colors.inkSoft, fontSize: 14, padding: 16 },
 });

@@ -37,6 +37,7 @@ export type Recurring = {
   commitmentType: string;
   autoPost: boolean;
   totalAmount: number | null;
+  tags: Tag[];
 };
 
 export type Bootstrap = {

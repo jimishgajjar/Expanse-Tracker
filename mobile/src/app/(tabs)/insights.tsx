@@ -90,7 +90,7 @@ export default function Insights() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }} edges={["top"]}>
       <ScrollView
-        contentContainerStyle={{ padding: 16, paddingBottom: 110 }}
+        contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
         keyboardShouldPersistTaps="handled"
         refreshControl={
           <RefreshControl
@@ -222,11 +222,11 @@ function Stat({ label, value, tone, delta }: { label: string; value: string; ton
 }
 
 const s = StyleSheet.create({
-  title: { fontSize: 30, fontWeight: "800", color: colors.ink, letterSpacing: -0.6, marginBottom: 16 },
-  cardLabel: { fontSize: 13, color: colors.inkSoft },
-  bigValue: { fontSize: 28, fontWeight: "800", color: colors.ink, letterSpacing: -0.5, marginTop: 4 },
-  statValue: { fontSize: 20, fontWeight: "700" },
-  section: { fontSize: 12, fontWeight: "700", color: colors.inkSoft, textTransform: "uppercase", letterSpacing: 0.6, marginTop: 22, marginBottom: 10 },
+  title: { fontSize: 24, fontWeight: "700", color: colors.ink, letterSpacing: -0.5, marginBottom: 12 },
+  cardLabel: { fontSize: 12, color: colors.inkSoft },
+  bigValue: { fontSize: 26, fontWeight: "700", color: colors.ink, letterSpacing: -0.5, marginTop: 4 },
+  statValue: { fontSize: 17, fontWeight: "700", fontVariant: ["tabular-nums"] },
+  section: { fontSize: 12, fontWeight: "700", color: colors.inkSoft, textTransform: "uppercase", letterSpacing: 0.6, marginTop: 18, marginBottom: 8 },
   catName: { fontSize: 14, fontWeight: "600", color: colors.ink },
   catAmount: { fontSize: 14, fontWeight: "700", color: colors.ink },
   track: { height: 8, backgroundColor: colors.hover, borderRadius: 4, overflow: "hidden" },

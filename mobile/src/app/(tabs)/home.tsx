@@ -50,7 +50,7 @@ export default function Home() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }} edges={["top"]}>
       <ScrollView
-        contentContainerStyle={{ padding: 16, paddingBottom: 110 }}
+        contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
         refreshControl={<RefreshControl refreshing={loading} onRefresh={reload} tintColor={colors.green} />}
       >
         {user?.emailVerified === false ? <VerifyBanner /> : null}
@@ -66,12 +66,10 @@ export default function Home() {
           </View>
         </View>
 
-        <View style={{ marginBottom: 18 }}>
+        <View style={{ marginBottom: 12 }}>
           <PeriodBar />
         </View>
 
-        {/* Hero: total balance is the one Display-scale figure on this screen,
-            on a faint emerald wash — mirrors the web overview. */}
         <Card style={s.hero}>
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
             <Text style={s.summaryLabel}>Total balance</Text>
@@ -124,30 +122,6 @@ export default function Home() {
           </View>
         </Card>
 
-        {spending.length > 0 ? (
-          <Card style={{ marginTop: 16 }}>
-            <Text style={s.cardTitle}>Spending by category</Text>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 16, marginTop: 12 }}>
-              <DonutChart
-                data={spending.map((c) => ({ value: c.amount, color: c.color }))}
-                centerValue={money.money(summary.expense)}
-                centerLabel="spent"
-              />
-              <View style={{ flex: 1, gap: 9 }}>
-                {spending.slice(0, 5).map((c) => (
-                  <View key={c.name} style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                    <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: c.color }} />
-                    <Text style={{ flex: 1, fontSize: 13, color: colors.ink }} numberOfLines={1}>
-                      {c.name}
-                    </Text>
-                    <Text style={{ fontSize: 13, fontWeight: "600", color: colors.ink }}>{money.money(c.amount)}</Text>
-                  </View>
-                ))}
-              </View>
-            </View>
-          </Card>
-        ) : null}
-
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 24, marginBottom: 10 }}>
           <Text style={[s.section, { marginTop: 0, marginBottom: 0 }]}>Accounts</Text>
           <Pressable onPress={() => router.push("/account-form")} hitSlop={8} style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
@@ -182,6 +156,29 @@ export default function Home() {
             ))
           )}
         </Card>
+        {spending.length > 0 ? (
+          <>
+            <Text style={s.section}>Spending by category</Text>
+            <Card>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 16 }}>
+                <DonutChart
+                  data={spending.map((c) => ({ value: c.amount, color: c.color }))}
+                  centerValue={money.money(summary.expense)}
+                  centerLabel="spent"
+                />
+                <View style={{ flex: 1, gap: 9 }}>
+                  {spending.slice(0, 5).map((c) => (
+                    <View key={c.name} style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                      <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: c.color }} />
+                      <Text style={{ flex: 1, fontSize: 12, color: colors.ink }} numberOfLines={1}>{c.name}</Text>
+                      <Text style={{ fontSize: 12, fontWeight: "600", color: colors.ink }} numberOfLines={1}>{money.money(c.amount)}</Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            </Card>
+          </>
+        ) : null}
       </ScrollView>
     </SafeAreaView>
   );
@@ -215,13 +212,12 @@ function VerifyBanner() {
 }
 
 const s = StyleSheet.create({
-  header: { flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 18 },
-  logo: { width: 40, height: 40, borderRadius: radius.md, backgroundColor: colors.green, alignItems: "center", justifyContent: "center" },
-  logoText: { color: "#fff", fontSize: 20, fontWeight: "800" },
-  brand: { fontSize: 19, fontWeight: "700", color: colors.ink, letterSpacing: -0.3 },
-  ws: { fontSize: 13, color: colors.inkSoft },
-  // Total-balance hero: white card washed with ~4.5% emerald (#0f7b6c over #fff).
-  hero: { backgroundColor: "#f4f9f8", padding: 18, gap: 6 },
+  header: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 14 },
+  logo: { width: 34, height: 34, borderRadius: radius.md, backgroundColor: colors.green, alignItems: "center", justifyContent: "center" },
+  logoText: { color: "#fff", fontSize: 17, fontWeight: "800" },
+  brand: { fontSize: 16, fontWeight: "700", color: colors.ink, letterSpacing: -0.3 },
+  ws: { fontSize: 12, color: colors.inkSoft },
+  hero: { backgroundColor: colors.card, padding: 16, gap: 3 },
   heroTile: {
     width: 30,
     height: 30,
@@ -229,25 +225,20 @@ const s = StyleSheet.create({
     backgroundColor: colors.green,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: colors.green,
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 1 },
-    elevation: 2,
   },
-  heroValue: { fontSize: 32, fontWeight: "700", color: colors.ink, letterSpacing: -0.7, fontVariant: ["tabular-nums"] },
-  strip: { flexDirection: "row", padding: 0, marginTop: 10 },
-  stripCell: { flex: 1, minWidth: 0, paddingHorizontal: 12, paddingVertical: 12, gap: 3 },
+  heroValue: { fontSize: 30, fontWeight: "700", color: colors.ink, letterSpacing: -0.7, fontVariant: ["tabular-nums"] },
+  strip: { flexDirection: "row", padding: 0, marginTop: 8 },
+  stripCell: { flex: 1, minWidth: 0, paddingHorizontal: 10, paddingVertical: 10, gap: 2 },
   stripDivider: { borderLeftWidth: 1, borderLeftColor: colors.border },
-  stripValue: { fontSize: 16, fontWeight: "700", letterSpacing: -0.3, fontVariant: ["tabular-nums"] },
-  summaryLabel: { fontSize: 13, color: colors.inkSoft },
-  summaryHint: { fontSize: 12, color: colors.inkFaint },
-  section: { fontSize: 12, fontWeight: "700", color: colors.inkSoft, textTransform: "uppercase", letterSpacing: 0.6, marginTop: 24, marginBottom: 10 },
+  stripValue: { fontSize: 14, fontWeight: "700", letterSpacing: -0.3, fontVariant: ["tabular-nums"] },
+  summaryLabel: { fontSize: 12, color: colors.inkSoft },
+  summaryHint: { fontSize: 11, color: colors.inkFaint },
+  section: { fontSize: 12, fontWeight: "700", color: colors.inkSoft, textTransform: "uppercase", letterSpacing: 0.6, marginTop: 18, marginBottom: 8 },
   cardTitle: { fontSize: 15, fontWeight: "700", color: colors.ink },
-  accountCard: { flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 10 },
-  accountName: { fontSize: 15, fontWeight: "600", color: colors.ink },
-  accountType: { fontSize: 13, color: colors.inkSoft, textTransform: "capitalize" },
-  accountBalance: { fontSize: 16, fontWeight: "700", color: colors.ink },
+  accountCard: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 7, paddingVertical: 12 },
+  accountName: { fontSize: 13, fontWeight: "600", color: colors.ink },
+  accountType: { fontSize: 11, color: colors.inkSoft, textTransform: "capitalize" },
+  accountBalance: { fontSize: 14, fontWeight: "700", color: colors.ink, fontVariant: ["tabular-nums"] },
   divider: { borderTopWidth: 1, borderTopColor: colors.border },
   empty: { color: colors.inkSoft, fontSize: 14, padding: 16 },
   fab: {

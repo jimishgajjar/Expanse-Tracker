@@ -67,7 +67,7 @@ export default function Activity() {
         </View>
       </View>
       <ScrollView
-        contentContainerStyle={{ padding: 16, paddingBottom: 110 }}
+        contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
         refreshControl={<RefreshControl refreshing={loading} onRefresh={reload} tintColor={colors.green} />}
       >
         {groups.length === 0 ? (
@@ -76,7 +76,7 @@ export default function Activity() {
           groups.map(([day, txns]) => {
             const net = txns.reduce((sum, t) => sum + (t.type === "income" ? t.amount : -t.amount), 0);
             return (
-              <View key={day} style={{ marginBottom: 16 }}>
+              <View key={day} style={{ marginBottom: 12 }}>
                 <View style={s.dayHead}>
                   <Text style={s.dayLabel}>{formatDay(day)}</Text>
                   <Text style={[s.dayNet, { color: net >= 0 ? colors.green : colors.red }]}>{money.signed(net)}</Text>
@@ -99,14 +99,14 @@ export default function Activity() {
 
 const s = StyleSheet.create({
   head: { paddingHorizontal: 16, paddingTop: 8 },
-  title: { fontSize: 30, fontWeight: "800", color: colors.ink, letterSpacing: -0.6, marginBottom: 14 },
-  filters: { flexDirection: "row", backgroundColor: colors.hover, borderRadius: radius.md, padding: 3, gap: 3, marginBottom: 10 },
-  searchWrap: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: colors.hover, borderRadius: radius.md, paddingHorizontal: 12, paddingVertical: 9, marginBottom: 4 },
-  searchInput: { flex: 1, fontSize: 15, color: colors.ink, padding: 0 },
-  filter: { flex: 1, paddingVertical: 7, borderRadius: radius.sm, alignItems: "center" },
+  title: { fontSize: 24, fontWeight: "700", color: colors.ink, letterSpacing: -0.5, marginBottom: 12 },
+  filters: { flexDirection: "row", backgroundColor: colors.cardAlt, borderRadius: radius.md, padding: 3, gap: 3, marginBottom: 10 },
+  searchWrap: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, paddingHorizontal: 12, paddingVertical: 9, marginBottom: 4 },
+  searchInput: { flex: 1, fontSize: 14, color: colors.ink, padding: 0 },
+  filter: { flex: 1, minHeight: 36, justifyContent: "center", borderRadius: radius.sm, alignItems: "center" },
   filterActive: { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border },
-  filterText: { fontSize: 13, fontWeight: "600", color: colors.inkSoft },
-  filterTextActive: { color: colors.ink },
+  filterText: { fontSize: 12, fontWeight: "600", color: colors.inkSoft },
+  filterTextActive: { color: colors.green },
   dayHead: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 6, paddingHorizontal: 2 },
   dayLabel: { fontSize: 13, fontWeight: "600", color: colors.inkSoft },
   dayNet: { fontSize: 13, fontWeight: "700" },

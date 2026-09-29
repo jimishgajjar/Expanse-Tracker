@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { Redirect, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -24,12 +24,17 @@ export default function RecurringForm() {
   const [amount, setAmount] = useState("");
   const [accountId, setAccountId] = useState(accounts[0]?.id ?? "");
   const [categoryId, setCategoryId] = useState<string | null>(null);
+  const [tagIds, setTagIds] = useState<string[]>([]);
   const [frequency, setFrequency] = useState<(typeof FREQ)[number]>("monthly");
   const [nextDate, setNextDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [showDate, setShowDate] = useState(false);
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!accountId && accounts[0]) setAccountId(accounts[0].id);
+  }, [accounts, accountId]);
 
   const categories = useMemo(() => (data?.categories ?? []).filter((c) => c.kind === type), [data, type]);
   const dismiss = () => (router.canGoBack() ? router.back() : router.replace("/subscriptions"));
@@ -46,7 +51,7 @@ export default function RecurringForm() {
     try {
       await api("/recurring", {
         method: "POST",
-        body: { type, amount: v, accountId, categoryId: categoryId || null, frequency, nextDate, note: note.trim() },
+        body: { type, amount: v, accountId, categoryId: categoryId || null, frequency, nextDate, note: note.trim(), tagIds },
       });
       await qc.invalidateQueries({ queryKey: qk.recurring() });
       dismiss();
@@ -66,7 +71,7 @@ export default function RecurringForm() {
         <View style={{ width: 54 }} />
       </View>
 
-      <ScrollView contentContainerStyle={{ padding: 16, gap: 20 }} keyboardShouldPersistTaps="handled">
+      <ScrollView contentContainerStyle={{ padding: 16, gap: 16 }} keyboardShouldPersistTaps="handled">
         <View style={s.toggle}>
           {(["expense", "income"] as const).map((t) => (
             <Pressable key={t} onPress={() => { setType(t); setCategoryId(null); }} style={[s.toggleBtn, type === t && (t === "expense" ? s.toggleExpense : s.toggleIncome)]}>
@@ -133,6 +138,29 @@ export default function RecurringForm() {
           </ScrollView>
         </View>
 
+        {data?.tags.length ? (
+          <View>
+            <Text style={s.label}>Tags <Text style={s.optional}>(optional)</Text></Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+              {data.tags.map((tag) => {
+                const selected = tagIds.includes(tag.id);
+                return (
+                  <Pressable
+                    key={tag.id}
+                    onPress={() => setTagIds((current) => selected ? current.filter((id) => id !== tag.id) : [...current, tag.id])}
+                    accessibilityRole="checkbox"
+                    accessibilityState={{ checked: selected }}
+                    style={[s.chip, selected ? { backgroundColor: tag.color + "22", borderColor: tag.color } : { borderColor: colors.border }]}
+                  >
+                    <Text style={[s.chipText, selected && { color: tag.color }]}>{selected ? "✓ " : ""}{tag.name}</Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+            <Text style={s.tagHint}>Future automatic payments inherit these tags.</Text>
+          </View>
+        ) : null}
+
         <View>
           <Text style={s.label}>Note</Text>
           <TextInput style={s.input} value={note} onChangeText={setNote} placeholder="e.g. Netflix" placeholderTextColor={colors.inkFaint} />
@@ -155,17 +183,19 @@ const s = StyleSheet.create({
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.border },
   cancel: { fontSize: 16, color: colors.inkSoft },
   title: { fontSize: 16, fontWeight: "700", color: colors.ink },
-  toggle: { flexDirection: "row", backgroundColor: colors.hover, borderRadius: radius.md, padding: 3, gap: 3 },
+  toggle: { flexDirection: "row", backgroundColor: colors.cardAlt, borderRadius: radius.md, padding: 3, gap: 3 },
   toggleBtn: { flex: 1, paddingVertical: 10, borderRadius: radius.sm, alignItems: "center" },
   toggleExpense: { backgroundColor: colors.red },
   toggleIncome: { backgroundColor: colors.green },
   toggleText: { fontSize: 14, fontWeight: "600", color: colors.inkSoft },
   label: { fontSize: 13, fontWeight: "600", color: colors.inkSoft, marginBottom: 8 },
-  amount: { fontSize: 34, fontWeight: "800", color: colors.ink, paddingVertical: 2, letterSpacing: -0.5 },
+  amount: { fontSize: 30, fontWeight: "700", color: colors.ink, paddingVertical: 2, letterSpacing: -0.5 },
   dateBtn: { flexDirection: "row", alignItems: "center", gap: 6, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, paddingHorizontal: 12, paddingVertical: 9 },
   dateText: { fontSize: 14, fontWeight: "600", color: colors.ink },
-  chip: { borderWidth: 1, borderRadius: radius.pill, paddingHorizontal: 14, paddingVertical: 8 },
-  chipText: { fontSize: 14, fontWeight: "600", color: colors.inkSoft, textTransform: "capitalize" },
+  chip: { borderWidth: 1, borderRadius: radius.pill, paddingHorizontal: 13, minHeight: 40, alignItems: "center", justifyContent: "center" },
+  chipText: { fontSize: 13, fontWeight: "600", color: colors.inkSoft, textTransform: "capitalize" },
+  optional: { fontWeight: "400", color: colors.inkSoft },
+  tagHint: { color: colors.inkSoft, fontSize: 11, marginTop: 7 },
   input: { borderWidth: 1, borderColor: colors.borderStrong, borderRadius: radius.md, paddingHorizontal: 14, paddingVertical: 12, fontSize: 16, color: colors.ink },
   error: { color: colors.red, fontSize: 14 },
   footer: { padding: 16, borderTopWidth: 1, borderTopColor: colors.border },
