@@ -74,19 +74,20 @@ export function OverviewTab({
   return (
     <div className="space-y-4">
       {fresh && canEdit && (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-brand/20 bg-brand/5 p-4">
+        <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-brand/30 bg-gradient-to-r from-brand/10 via-card to-background p-5 shadow-xs">
           <div>
-            <h2 className="font-medium">Your money, all in one place.</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Start with an expense or income. Your accounts and categories are
-              ready.
+            <h2 className="text-base font-bold tracking-tight text-foreground">
+              Your money, all in one calm place.
+            </h2>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Start by logging your first expense or income. Your accounts and default categories are ready.
             </p>
           </div>
           <TransactionDialog
             accounts={activeAccounts}
             categories={categories}
             trigger={
-              <Button>
+              <Button className="rounded-xl font-semibold shadow-xs">
                 <Plus className="size-4" />
                 Add your first transaction
               </Button>
@@ -110,17 +111,24 @@ export function OverviewTab({
       />
       <div className="grid items-start gap-4 xl:items-stretch xl:grid-cols-[minmax(0,1.7fr)_minmax(280px,1fr)]">
         <div className="grid min-w-0">
-          <section className="rounded-xl border bg-card p-4">
-            <div className="mb-3 flex items-center justify-between gap-2">
+          <section className="rounded-2xl border border-border/80 bg-card p-5 shadow-xs">
+            <div className="mb-3 flex items-center justify-between gap-2 border-b border-border/60 pb-3">
               <div>
-                <h2 className="text-sm font-semibold">Recent transactions</h2>
-                <p className="mt-1 text-xs text-muted-foreground">
+                <h2 className="text-sm font-semibold tracking-tight text-foreground">
+                  Recent activity
+                </h2>
+                <p className="mt-0.5 text-xs text-muted-foreground">
                   Income and expenses · {rangeLabel}
                 </p>
               </div>
-              <Button variant="ghost" size="sm" onClick={onActivity}>
-                All activity
-                <ArrowRight className="size-4" />
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onActivity}
+                className="group gap-1 text-xs font-semibold text-muted-foreground hover:text-foreground"
+              >
+                <span>All activity</span>
+                <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
               </Button>
             </div>
             <TransactionRows
@@ -134,11 +142,13 @@ export function OverviewTab({
               <button
                 type="button"
                 onClick={onActivity}
-                className="mt-3 min-h-11 text-sm text-brand"
+                className="mt-3 flex items-center gap-1.5 text-xs font-medium text-brand hover:underline"
               >
-                View {transfers.length} transfer
-                {transfers.length === 1 ? "" : "s"} in Activity{" "}
-                <ArrowRight className="ml-1 inline size-4" />
+                <span>
+                  View {transfers.length} transfer
+                  {transfers.length === 1 ? "" : "s"} in Activity
+                </span>
+                <ArrowRight className="size-3.5" />
               </button>
             )}
           </section>

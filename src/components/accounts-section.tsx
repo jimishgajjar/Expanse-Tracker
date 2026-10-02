@@ -165,46 +165,54 @@ function AccountCard({
     // Keep account management separate from the linked balance and title.
     <Card
       className={cn(
-        "group relative gap-0 overflow-hidden rounded-xl p-0 transition-colors hover:border-brand/40 focus-within:border-brand/50",
+        "group relative gap-0 overflow-hidden rounded-2xl border border-border/80 bg-gradient-to-b from-card to-card hover:to-muted/20 p-0 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-brand/40 focus-within:border-brand/50 shadow-xs",
         a.archived && "opacity-65 hover:opacity-100",
       )}
     >
+      <span
+        aria-hidden="true"
+        className="absolute inset-x-0 top-0 h-[3px] transition-opacity opacity-85 group-hover:opacity-100"
+        style={{
+          backgroundColor: a.color,
+          boxShadow: `0 1px 8px ${a.color}40`,
+        }}
+      />
       <Link
         href={`/accounts/${a.id}`}
         aria-label={`Open ${a.name}, balance ${balanceMoney(a.balance)}`}
-        className="block flex-1 p-4 text-left transition-colors hover:bg-muted/20 focus-visible:outline-offset-[-4px]"
+        className="block flex-1 p-4.5 pt-5 text-left transition-colors hover:bg-muted/10 focus-visible:outline-offset-[-4px]"
       >
         <div
           className={cn("flex w-full items-center gap-3", canEdit && "pr-9")}
         >
           <span
-            className="grid size-9 shrink-0 place-items-center rounded-lg"
-            style={{ backgroundColor: `${a.color}18`, color: a.color }}
+            className="grid size-10 shrink-0 place-items-center rounded-xl transition-transform group-hover:scale-105 shadow-2xs"
+            style={{ backgroundColor: `${a.color}1c`, color: a.color }}
           >
-            <Icon name={a.icon} size={21} />
+            <Icon name={a.icon} size={20} />
           </span>
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-1.5">
-              <span className="break-words font-semibold leading-snug [overflow-wrap:anywhere]">
+              <span className="break-words font-semibold text-sm leading-snug [overflow-wrap:anywhere] text-foreground">
                 {a.name}
               </span>
               {a.archived && (
-                <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                <span className="rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
                   Archived
                 </span>
               )}
             </div>
-            <div className="mt-1 text-xs text-muted-foreground capitalize">
+            <div className="mt-0.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground capitalize">
               {a.type}
             </div>
           </div>
         </div>
-        <div className="mt-3 flex items-end justify-between gap-3">
+        <div className="mt-3.5 flex items-end justify-between gap-3 border-t border-border/40 pt-3">
           <div className="min-w-0">
-            <p className="text-xs text-muted-foreground">Current balance</p>
+            <p className="text-[11px] font-medium text-muted-foreground">Current balance</p>
             <p
               className={cn(
-                "amount mt-1 break-all text-xl font-semibold leading-tight",
+                "amount mt-0.5 break-all text-xl font-bold leading-tight tracking-tight sm:text-2xl",
                 a.balance < 0 && "text-negative",
               )}
             >
@@ -212,10 +220,10 @@ function AccountCard({
             </p>
           </div>
           <span
-            className="mb-0.5 grid size-8 shrink-0 place-items-center rounded-full bg-muted/60 text-muted-foreground transition-colors group-hover:bg-brand/10 group-hover:text-brand"
+            className="mb-0.5 grid size-7 shrink-0 place-items-center rounded-full bg-muted/60 text-muted-foreground transition-all duration-300 group-hover:bg-brand/15 group-hover:text-brand group-hover:translate-x-1"
             aria-hidden
           >
-            <ChevronRight className="size-4" />
+            <ChevronRight className="size-3.5" />
           </span>
         </div>
       </Link>

@@ -24,15 +24,17 @@ export function DashboardSkeleton() {
             <Skeleton className="h-5 w-64 max-w-full" />
           </div>
           <Skeleton className="h-40 w-full rounded-xl sm:h-16" />
-          <div className="rounded-2xl border bg-card p-6">
-            <Skeleton className="h-4 w-24" />
-            <Skeleton className="mt-4 h-12 w-64 max-w-full" />
-            <Skeleton className="mt-4 h-4 w-52 max-w-full" />
-            <div className="mt-8 grid gap-5 sm:grid-cols-3">
-              {[0, 1, 2].map((i) => (
-                <Skeleton key={i} className="h-20 w-full" />
-              ))}
-            </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {[0, 1, 2, 3].map((i) => (
+              <div key={i} className="rounded-xl border border-border/80 bg-card p-4 space-y-3">
+                <div className="flex justify-between items-center">
+                  <Skeleton className="h-3 w-20" />
+                  <Skeleton className="size-6 rounded-lg" />
+                </div>
+                <Skeleton className="h-7 w-32" />
+                <Skeleton className="h-3 w-24" />
+              </div>
+            ))}
           </div>
           <div className="grid gap-6 xl:grid-cols-[1.7fr_1fr]">
             <Skeleton className="h-72 w-full rounded-xl" />

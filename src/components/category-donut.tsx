@@ -19,17 +19,18 @@ type Seg = {
 };
 
 function Donut({ segments, total }: { segments: Seg[]; total: number }) {
-  const size = 176,
-    stroke = 26,
+  const size = 180,
+    stroke = 24,
     r = (size - stroke) / 2,
     c = 2 * Math.PI * r,
     cx = size / 2;
+
   return (
     <svg
       viewBox={`0 0 ${size} ${size}`}
       width={size}
       height={size}
-      className="-rotate-90"
+      className="-rotate-90 transition-transform duration-500 ease-out-expo"
       aria-hidden="true"
     >
       <circle
@@ -49,7 +50,7 @@ function Donut({ segments, total }: { segments: Seg[]; total: number }) {
             c
           : 0;
         const dash = total ? (s.value / total) * c : 0;
-        const el = (
+        return (
           <circle
             key={s.id ?? "uncategorized"}
             cx={cx}
@@ -60,9 +61,9 @@ function Donut({ segments, total }: { segments: Seg[]; total: number }) {
             strokeWidth={stroke}
             strokeDasharray={`${dash} ${c - dash}`}
             strokeDashoffset={-offset}
+            className="transition-all duration-300 hover:opacity-85"
           />
         );
-        return el;
       })}
     </svg>
   );
@@ -98,12 +99,17 @@ export function CategoryDonut({
   const { money } = useFormat();
 
   return (
-    <Card className="gap-3">
-      <CardHeader className="flex flex-wrap items-center gap-y-2">
-        <CardTitle>
-          {kind === "expense" ? "Spending by category" : "Income by source"}
-        </CardTitle>
-        <div className="ml-auto flex gap-0.5 rounded-md bg-muted p-0.5 text-xs">
+    <Card className="gap-3 rounded-2xl border border-border/80 bg-card shadow-xs">
+      <CardHeader className="flex flex-wrap items-center justify-between gap-y-2 border-b border-border/60 pb-3">
+        <div>
+          <CardTitle className="text-sm font-semibold tracking-tight text-foreground">
+            {kind === "expense" ? "Spending by Category" : "Income by Source"}
+          </CardTitle>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            Distribution across categories
+          </p>
+        </div>
+        <div className="flex gap-1 rounded-lg bg-muted/60 p-1 text-xs">
           {(["expense", "income"] as const).map((k) => (
             <button
               key={k}
@@ -111,9 +117,11 @@ export function CategoryDonut({
               onClick={() => setKind(k)}
               aria-pressed={kind === k}
               className={cn(
-                "min-h-11 rounded px-3 py-2 font-medium capitalize transition-colors",
+                "min-h-7 rounded-md px-3 py-1 text-xs font-medium capitalize transition-all",
                 kind === k
-                  ? "bg-background shadow-sm"
+                  ? k === "expense"
+                    ? "bg-background text-negative font-bold shadow-xs"
+                    : "bg-background text-positive font-bold shadow-xs"
                   : "text-muted-foreground hover:text-foreground",
               )}
             >
@@ -122,73 +130,93 @@ export function CategoryDonut({
           ))}
         </div>
       </CardHeader>
-      <CardContent className="@container">
+
+      <CardContent className="@container pt-1">
         {segments.length === 0 ? (
           <div className="py-12 text-center">
-            <p className="text-sm font-medium">
+            <p className="text-sm font-medium text-foreground">
               No {kind === "expense" ? "expenses" : "income"} in this period
             </p>
-            <p className="mt-2 text-xs text-muted-foreground">
+            <p className="mt-1 text-xs text-muted-foreground">
               Choose another period to see your category breakdown.
             </p>
           </div>
         ) : (
-          <div className="flex flex-col items-center gap-5 @[36rem]:flex-row">
-            <div className="relative shrink-0">
+          <div className="flex flex-col items-center gap-6 @[36rem]:flex-row">
+            {/* Donut representation */}
+            <div className="relative shrink-0 my-2">
               <Donut segments={segments} total={total} />
               <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-xs text-muted-foreground">
-                  {kind === "expense" ? "Spent" : "Earned"}
+                <span className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground">
+                  {kind === "expense" ? "Total Spent" : "Total Earned"}
                 </span>
-                <span className="amount max-w-32 break-all text-center text-base font-semibold">
+                <span className="amount max-w-32 break-all text-center text-lg font-bold text-foreground">
                   {money(total)}
                 </span>
               </div>
             </div>
+
+            {/* Category breakdown rows with visual share bars */}
             <div className="min-w-0 w-full flex-1">
-              <p className="mb-2 text-xs text-muted-foreground">
-                Select a category to open its full history.
+              <p className="mb-2 text-[11px] font-medium text-muted-foreground">
+                Ranked by volume · Click category for history
               </p>
-              <ul className="max-h-80 divide-y overflow-y-auto">
+
+              <ul className="max-h-80 divide-y divide-border/60 overflow-y-auto pr-1">
                 {segments.map((s) => {
-                  const content = (
-                    <>
-                      <span
-                        className="grid size-8 shrink-0 place-items-center rounded-lg"
-                        style={{
-                          backgroundColor: `${s.color}22`,
-                          color: s.color,
-                        }}
-                      >
-                        <Icon name={s.icon} size={15} />
-                      </span>
-                      <span className="min-w-0 flex-1 break-words">
-                        {s.name}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        {Math.round((s.value / total) * 100)}%
-                      </span>
-                      <span className="amount shrink-0 text-right text-sm font-medium">
-                        {money(s.value)}
-                      </span>
-                      {s.id && (
-                        <ChevronRight className="size-3.5 shrink-0 text-muted-foreground" />
-                      )}
-                    </>
+                  const percent = total > 0 ? Math.round((s.value / total) * 100) : 0;
+                  const itemContent = (
+                    <div className="w-full space-y-1.5 py-1">
+                      <div className="flex items-center gap-2.5">
+                        <span
+                          className="grid size-7 shrink-0 place-items-center rounded-md"
+                          style={{
+                            backgroundColor: `${s.color}18`,
+                            color: s.color,
+                          }}
+                        >
+                          <Icon name={s.icon} size={14} />
+                        </span>
+                        <span className="min-w-0 flex-1 truncate text-xs font-semibold text-foreground">
+                          {s.name}
+                        </span>
+                        <span className="rounded bg-muted px-1.5 py-0.2 text-[10px] font-semibold text-muted-foreground">
+                          {percent}%
+                        </span>
+                        <span className="amount shrink-0 text-right text-xs font-bold text-foreground">
+                          {money(s.value)}
+                        </span>
+                        {s.id && (
+                          <ChevronRight className="size-3.5 shrink-0 text-muted-foreground" />
+                        )}
+                      </div>
+
+                      {/* Percentage share track */}
+                      <div className="h-1 w-full overflow-hidden rounded-full bg-muted/80">
+                        <div
+                          className="h-full rounded-full transition-all"
+                          style={{
+                            width: `${percent}%`,
+                            backgroundColor: s.color,
+                          }}
+                        />
+                      </div>
+                    </div>
                   );
+
                   return (
                     <li key={s.id ?? "uncategorized"}>
                       {s.id ? (
                         <Link
                           href={`/categories/${s.id}`}
-                          title={`${s.name}: ${money(s.value)} (${Math.round((s.value / total) * 100)}%)`}
-                          className="flex min-h-12 items-center gap-2 rounded-lg px-1 py-2 text-sm transition-colors hover:bg-muted"
+                          title={`${s.name}: ${money(s.value)} (${percent}%)`}
+                          className="flex min-h-11 items-center rounded-lg px-1.5 py-1 transition-colors hover:bg-muted/40"
                         >
-                          {content}
+                          {itemContent}
                         </Link>
                       ) : (
-                        <div className="flex min-h-12 items-center gap-2 px-1 py-2 text-sm">
-                          {content}
+                        <div className="flex min-h-11 items-center px-1.5 py-1">
+                          {itemContent}
                         </div>
                       )}
                     </li>

@@ -64,107 +64,98 @@
   "Quiet premium ledger" — one committed emerald brand accent, a single cool-neutral
   gray family (no warm cream, no AI-purple), tabular figures, hairline surfaces.
 */
-/* Light surfaces with cool ink and a restrained emerald accent. */
+/* Light surfaces with cool ink and an attractive, vibrant emerald accent. */
 :root {
-  --background: #ffffff;
-  --foreground: #25342e;
+  --background: #f8faf9;
+  --foreground: #0f1715;
   --card: #ffffff;
-  --card-foreground: #25342e;
+  --card-foreground: #0f1715;
   --popover: #ffffff;
-  --popover-foreground: #25342e;
-  --primary: #0f7b6c;
+  --popover-foreground: #0f1715;
+  --primary: #059669;
   --primary-foreground: #ffffff;
-  --brand: #0f7b6c;
+  --brand: #059669;
   --brand-foreground: #ffffff;
-  /* Drench ground for brand surfaces (landing hero, auth panel). Deeper than
-     --brand so paper-white type clears AA comfortably: 7.7:1 here. Reserved for
-     marketing surfaces — the app's One Emerald Rule still governs the ledger. */
-  --brand-deep: #0b5f53;
-  --brand-deep-foreground: #f2fbf8;
-  /* Notion's interaction wash — the soft gray that appears under hover on rows,
-     menu items and ghost controls. In-flow structure comes from this and from
-     hairlines, not from a border around everything. */
-  --hover: rgba(55, 53, 47, 0.08);
-  /* One step below Paper for inset panels and page properties (Notion's
-     rgba(55,53,47,0.03)); never a card-on-card border. */
-  --canvas-muted: rgba(55, 53, 47, 0.03);
-  --secondary: #f1f1ef;
-  --secondary-foreground: #25342e;
-  --muted: #f2f5f3;
-  --muted-foreground: #65716b;
-  --accent: #efedea;
-  --accent-foreground: #25342e;
-  --destructive: #bf3e38;
-  --positive: #0f7b6c;
+  /* Drench ground for brand surfaces (landing hero, auth panel). */
+  --brand-deep: #047857;
+  --brand-deep-foreground: #ecfdf5;
+  --hover: rgba(15, 23, 21, 0.05);
+  --canvas-muted: rgba(15, 23, 21, 0.025);
+  --secondary: #f0f4f2;
+  --secondary-foreground: #0f1715;
+  --muted: #f0f4f2;
+  --muted-foreground: #5a6b64;
+  --accent: #e6f0ec;
+  --accent-foreground: #0f1715;
+  --destructive: #e11d48;
+  --positive: #059669;
   --positive-foreground: #ffffff;
-  --negative: #bf3e38;
+  --negative: #e11d48;
   --negative-foreground: #ffffff;
-  --border: rgba(55, 53, 47, 0.09);
-  --input: rgba(55, 53, 47, 0.16);
-  --ring: #0f7b6c;
-  --chart-1: #0f7b6c;
-  --chart-2: #0b6e99;
-  --chart-3: #cb912f;
-  --chart-4: #bf3e38;
-  --chart-5: #6940a5;
+  --border: rgba(15, 23, 21, 0.08);
+  --input: rgba(15, 23, 21, 0.12);
+  --ring: #059669;
+  --chart-1: #059669;
+  --chart-2: #0284c7;
+  --chart-3: #f59e0b;
+  --chart-4: #e11d48;
+  --chart-5: #8b5cf6;
   /* 10px base radius; controls and surfaces derive their sizes from it. */
   --radius: 0.625rem;
   --sidebar: #ffffff;
-  --sidebar-foreground: #25342e;
-  --sidebar-primary: #0f7b6c;
+  --sidebar-foreground: #0f1715;
+  --sidebar-primary: #059669;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #efedea;
-  --sidebar-accent-foreground: #25342e;
-  --sidebar-border: rgba(55, 53, 47, 0.09);
-  --sidebar-ring: #0f7b6c;
+  --sidebar-accent: #f0f4f2;
+  --sidebar-accent-foreground: #0f1715;
+  --sidebar-border: rgba(15, 23, 21, 0.08);
+  --sidebar-ring: #059669;
 }
 
-/* Notion-like dark theme: #191919 base, #202020 surfaces, off-white ink,
-   muted Notion green / red accents, 9% white hairlines. */
+/* Deep carbon dark theme: #0a0f0d ground, #111815 surfaces, platinum ink,
+   vibrant emerald & neon rose accents, 8% white hairlines. */
 .dark {
-  --background: #191919;
-  --foreground: #d3d3d3;
-  --card: #202020;
-  --card-foreground: #d3d3d3;
-  --popover: #252525;
-  --popover-foreground: #d3d3d3;
-  --primary: #2f9e89;
-  --primary-foreground: #06231d;
-  --brand: #2f9e89;
-  --brand-foreground: #06231d;
-  /* Darker still against the #191919 ground so the band reads as a surface
-     rather than a glare. 11:1 against its foreground. */
-  --brand-deep: #0a3f38;
-  --brand-deep-foreground: #eaf6f2;
-  --hover: rgba(255, 255, 255, 0.055);
+  --background: #0a0f0d;
+  --foreground: #ecf2ee;
+  --card: #111815;
+  --card-foreground: #ecf2ee;
+  --popover: #141d19;
+  --popover-foreground: #ecf2ee;
+  --primary: #10b981;
+  --primary-foreground: #022016;
+  --brand: #10b981;
+  --brand-foreground: #022016;
+  --brand-deep: #064e3b;
+  --brand-deep-foreground: #ecfdf5;
+  --hover: rgba(255, 255, 255, 0.06);
   --canvas-muted: rgba(255, 255, 255, 0.03);
-  --secondary: #2a2a2a;
-  --secondary-foreground: #d3d3d3;
-  --muted: #262626;
-  --muted-foreground: #9b9a97;
-  --accent: #2f2f2f;
-  --accent-foreground: #d3d3d3;
-  --destructive: #ff7369;
-  --positive: #4dab9a;
-  --positive-foreground: #06231d;
-  --negative: #ff7369;
-  --negative-foreground: #2a0a08;
-  --border: rgba(255, 255, 255, 0.094);
-  --input: rgba(255, 255, 255, 0.14);
-  --ring: #2f9e89;
-  --chart-1: #4dab9a;
-  --chart-2: #529cca;
-  --chart-3: #d9a345;
-  --chart-4: #ff7369;
-  --chart-5: #9a6dd7;
-  --sidebar: #202020;
-  --sidebar-foreground: #d3d3d3;
-  --sidebar-primary: #2f9e89;
-  --sidebar-primary-foreground: #06231d;
-  --sidebar-accent: #2f2f2f;
-  --sidebar-accent-foreground: #d3d3d3;
-  --sidebar-border: rgba(255, 255, 255, 0.094);
-  --sidebar-ring: #2f9e89;
+  --secondary: #16201b;
+  --secondary-foreground: #ecf2ee;
+  --muted: #16201b;
+  --muted-foreground: #8a9c94;
+  --accent: #19241f;
+  --accent-foreground: #ecf2ee;
+  --destructive: #fb7185;
+  --positive: #10b981;
+  --positive-foreground: #022016;
+  --negative: #fb7185;
+  --negative-foreground: #2a080e;
+  --border: rgba(255, 255, 255, 0.08);
+  --input: rgba(255, 255, 255, 0.12);
+  --ring: #10b981;
+  --chart-1: #10b981;
+  --chart-2: #38bdf8;
+  --chart-3: #fbbf24;
+  --chart-4: #fb7185;
+  --chart-5: #a78bfa;
+  --sidebar: #0e1411;
+  --sidebar-foreground: #ecf2ee;
+  --sidebar-primary: #10b981;
+  --sidebar-primary-foreground: #022016;
+  --sidebar-accent: #16201b;
+  --sidebar-accent-foreground: #ecf2ee;
+  --sidebar-border: rgba(255, 255, 255, 0.08);
+  --sidebar-ring: #10b981;
 }
 
 @layer base {
@@ -255,11 +246,11 @@
 }
 
 /* Household workspace: content stays readable; navigation recedes. */
-.app-shell { background: #f6f8f7; }
-.dark .app-shell { background: #171b19; }
-.nav-item { display:flex; align-items:center; gap:12px; width:100%; min-height:44px; padding:10px 12px; border-radius:8px; font-size:14px; font-weight:500; color:var(--muted-foreground); text-align:left; transition:background 140ms ease,color 140ms ease; }
+.app-shell { background: #f8faf9; }
+.dark .app-shell { background: #0a0f0d; }
+.nav-item { display:flex; align-items:center; gap:12px; width:100%; min-height:44px; padding:9px 12px; border-radius:10px; font-size:13.5px; font-weight:500; color:var(--muted-foreground); text-align:left; transition:background 150ms ease,color 150ms ease,transform 100ms ease; }
 .nav-item:hover { background:var(--muted); color:var(--foreground); }
-.nav-item-active { color:var(--brand); background:color-mix(in srgb,var(--brand) 9%,transparent); }
+.nav-item-active { color:var(--brand); background:color-mix(in srgb,var(--brand) 12%,transparent); font-weight:600; box-shadow: inset 3px 0 0 var(--brand); }
 button:focus-visible, a:focus-visible, summary:focus-visible { outline:2px solid var(--ring); outline-offset:3px; }
 .pb-safe { padding-bottom:max(8px, env(safe-area-inset-bottom)); }
 .surface-enter { animation:surface-enter 180ms ease-out; }
@@ -289,7 +280,7 @@ button:focus-visible, a:focus-visible, summary:focus-visible { outline:2px solid
 
 /* Compact desktop workspace; touch devices retain comfortable targets. */
 @media (min-width: 640px) and (pointer: fine) {
-  .nav-item { min-height:36px; padding:8px 10px; font-size:13px; gap:10px; }
+  .nav-item { min-height:38px; padding:8px 10px; font-size:13px; gap:10px; border-radius:8px; }
   .manager-panel [data-slot="button"],
   .manager-panel [data-slot="input"],
   .manager-panel [data-slot="select-trigger"],

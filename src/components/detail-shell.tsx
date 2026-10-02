@@ -7,6 +7,7 @@ import {
   House,
   Landmark,
   CalendarDays,
+  Settings,
   Wallet,
 } from "lucide-react";
 import { ThemeToggle } from "./theme-toggle";
@@ -95,9 +96,12 @@ export function DetailShell({
               ))}
           </nav>
         </div>
-        <p className="mt-5 px-3 text-xs text-muted-foreground">
-          A clearer view of your money.
-        </p>
+        <div className="mt-auto shrink-0 border-t border-border/60 pt-3">
+          <Link href="/settings" className="nav-item group">
+            <Settings className="size-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+            <span>Settings</span>
+          </Link>
+        </div>
       </aside>
       <div className="lg:pl-52">
         <header className="flex h-14 items-center justify-between gap-3 border-b bg-card px-4 sm:px-8">
@@ -116,7 +120,17 @@ export function DetailShell({
               {title}
             </p>
           </div>
-          <ThemeToggle />
+          <div className="flex items-center gap-2">
+            <Link
+              href="/settings"
+              className="grid size-9 place-items-center rounded-lg border border-border/70 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+              title="Settings"
+              aria-label="Settings"
+            >
+              <Settings className="size-4" />
+            </Link>
+            <ThemeToggle />
+          </div>
         </header>
         <main
           id="detail-content"

@@ -1,7 +1,16 @@
 "use client";
-import { ArrowDownLeft, ArrowUpRight, ArrowRightLeft } from "lucide-react";
+
+import {
+  ArrowDownLeft,
+  ArrowUpRight,
+  ArrowRightLeft,
+  Wallet,
+  TrendingUp,
+  TrendingDown,
+} from "lucide-react";
 import { useFormat } from "./settings-provider";
 import { cn } from "@/lib/utils";
+
 export function SummaryCards({
   totalBalance,
   income,
@@ -20,88 +29,190 @@ export function SummaryCards({
   comparison?: { prevIncome: number; prevExpense: number } | null;
 }) {
   const { money, signedMoney, balanceMoney } = useFormat();
+
   const delta = (v: number, p?: number) =>
     p ? Math.round(((v - p) / Math.abs(p)) * 100) : null;
-  const items = [
-    {
-      label: "Income",
-      value: money(income),
-      icon: ArrowDownLeft,
-      tone: "text-positive",
-      change: delta(income, comparison?.prevIncome),
-    },
-    {
-      label: "Spending",
-      value: money(expense),
-      icon: ArrowUpRight,
-      tone: "text-negative",
-      change: delta(expense, comparison?.prevExpense),
-    },
-    {
-      label: "Net this period",
-      value: signedMoney(net),
-      icon: ArrowRightLeft,
-      tone: net < 0 ? "text-negative" : "text-positive",
-      change: null,
-    },
-  ];
+
+  const incomeDelta = delta(income, comparison?.prevIncome);
+  const expenseDelta = delta(expense, comparison?.prevExpense);
+  const savingsRate =
+    income > 0 ? Math.round((net / income) * 100) : null;
+
   return (
     <section
-      aria-label="Balance and cash flow"
-      className="overflow-hidden rounded-xl border bg-card lg:grid lg:grid-cols-[minmax(220px,1fr)_2fr]"
+      aria-label="Balance and cash flow summary"
+      className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-4"
     >
-      <div className="flex flex-wrap items-end justify-between gap-2 px-4 py-3 lg:block">
-        <div>
-          <p className="text-sm font-medium text-muted-foreground">
-            Total balance
-          </p>
-          <p
+      {/* 1. Total Balance Card */}
+      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-gradient-to-b from-brand/[0.04] via-card to-card p-5 shadow-xs transition-all duration-300 hover:-translate-y-1 hover:border-brand/40 hover:shadow-md hover:shadow-brand/5">
+        <span
+          aria-hidden="true"
+          className="absolute inset-x-0 top-0 h-[2.5px] bg-gradient-to-r from-brand via-emerald-400 to-transparent"
+        />
+        <div className="flex items-center justify-between text-muted-foreground">
+          <span className="text-xs font-semibold tracking-wide uppercase text-muted-foreground/80">
+            Total Balance
+          </span>
+          <span className="grid size-8 place-items-center rounded-xl bg-brand/10 text-brand ring-1 ring-brand/20 shadow-2xs">
+            <Wallet className="size-4" />
+          </span>
+        </div>
+        <p
+          className={cn(
+            "amount mt-2.5 break-all text-2xl font-bold tracking-tight text-foreground sm:text-3xl",
+            totalBalance < 0 && "text-negative",
+          )}
+        >
+          {balanceMoney(totalBalance)}
+        </p>
+        <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground border-t border-border/50 pt-2.5">
+          <span>
+            {accountsCount} active {accountsCount === 1 ? "account" : "accounts"}
+          </span>
+          <span
             className={cn(
-              "amount mt-1 break-all text-2xl font-semibold leading-tight tracking-tight sm:text-[1.75rem]",
-              totalBalance < 0 && "text-negative",
+              "amount font-semibold",
+              net >= 0 ? "text-positive" : "text-negative",
             )}
           >
-            {balanceMoney(totalBalance)}
-          </p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Current balance across {accountsCount} account
-            {accountsCount === 1 ? "" : "s"}
-          </p>
+            {signedMoney(net)}
+          </span>
         </div>
-        <p className="text-xs text-muted-foreground">
-          Cash flow · {rangeLabel}
-        </p>
       </div>
-      <dl className="grid grid-cols-1 divide-y sm:grid-cols-3 sm:divide-x sm:divide-y-0 border-t bg-canvas-muted lg:items-center lg:border-t-0 lg:border-l">
-        {items.map((item) => (
-          <div key={item.label} className="flex min-w-0 items-center justify-between gap-2 px-4 py-2.5 sm:block">
-            <dt className="flex items-center gap-2 text-xs text-muted-foreground">
-              <item.icon className="hidden size-3.5 sm:block" />
-              {item.label}
-            </dt>
-            <dd className="sm:mt-1">
-              <span
-                className={cn(
-                  "amount break-all text-sm font-semibold sm:text-base",
-                  item.tone,
-                )}
-              >
-                {item.value}
-              </span>
-              {item.change !== null && (
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {item.change > 0 ? "+" : ""}
-                  {item.change}%
-                  <span className="sr-only sm:not-sr-only">
-                    {" "}
-                    vs previous period
-                  </span>
-                </p>
+
+      {/* 2. Income Card */}
+      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-gradient-to-b from-positive/[0.04] via-card to-card p-5 shadow-xs transition-all duration-300 hover:-translate-y-1 hover:border-positive/40 hover:shadow-md hover:shadow-positive/5">
+        <span
+          aria-hidden="true"
+          className="absolute inset-x-0 top-0 h-[2.5px] bg-gradient-to-r from-positive via-emerald-400 to-transparent"
+        />
+        <div className="flex items-center justify-between text-muted-foreground">
+          <span className="text-xs font-semibold tracking-wide uppercase text-muted-foreground/80">
+            Income
+          </span>
+          <span className="grid size-8 place-items-center rounded-xl bg-positive/10 text-positive ring-1 ring-positive/20 shadow-2xs">
+            <ArrowDownLeft className="size-4" />
+          </span>
+        </div>
+        <p className="amount mt-2.5 break-all text-2xl font-bold tracking-tight text-positive sm:text-3xl">
+          {money(income)}
+        </p>
+        <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground border-t border-border/50 pt-2.5">
+          <span className="truncate">Inflow · {rangeLabel}</span>
+          {incomeDelta !== null ? (
+            <span
+              className={cn(
+                "inline-flex shrink-0 items-center gap-0.5 rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1",
+                incomeDelta >= 0
+                  ? "bg-positive/15 text-positive ring-positive/25"
+                  : "bg-muted text-muted-foreground ring-border",
               )}
-            </dd>
-          </div>
-        ))}
-      </dl>
+            >
+              {incomeDelta >= 0 ? "+" : ""}
+              {incomeDelta}%
+              <span className="sr-only sm:not-sr-only"> vs prev</span>
+            </span>
+          ) : (
+            <span className="text-[11px] text-muted-foreground/70">—</span>
+          )}
+        </div>
+      </div>
+
+      {/* 3. Spending Card */}
+      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-gradient-to-b from-negative/[0.04] via-card to-card p-5 shadow-xs transition-all duration-300 hover:-translate-y-1 hover:border-negative/40 hover:shadow-md hover:shadow-negative/5">
+        <span
+          aria-hidden="true"
+          className="absolute inset-x-0 top-0 h-[2.5px] bg-gradient-to-r from-negative via-rose-400 to-transparent"
+        />
+        <div className="flex items-center justify-between text-muted-foreground">
+          <span className="text-xs font-semibold tracking-wide uppercase text-muted-foreground/80">
+            Spending
+          </span>
+          <span className="grid size-8 place-items-center rounded-xl bg-negative/10 text-negative ring-1 ring-negative/20 shadow-2xs">
+            <ArrowUpRight className="size-4" />
+          </span>
+        </div>
+        <p className="amount mt-2.5 break-all text-2xl font-bold tracking-tight text-negative sm:text-3xl">
+          {money(expense)}
+        </p>
+        <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground border-t border-border/50 pt-2.5">
+          <span className="truncate">Outflow · {rangeLabel}</span>
+          {expenseDelta !== null ? (
+            <span
+              className={cn(
+                "inline-flex shrink-0 items-center gap-0.5 rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1",
+                expenseDelta <= 0
+                  ? "bg-positive/15 text-positive ring-positive/25"
+                  : "bg-negative/15 text-negative ring-negative/25",
+              )}
+            >
+              {expenseDelta > 0 ? "+" : ""}
+              {expenseDelta}%
+              <span className="sr-only sm:not-sr-only"> vs prev</span>
+            </span>
+          ) : (
+            <span className="text-[11px] text-muted-foreground/70">—</span>
+          )}
+        </div>
+      </div>
+
+      {/* 4. Net Cash Flow Card */}
+      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-gradient-to-b from-brand/[0.04] via-card to-card p-5 shadow-xs transition-all duration-300 hover:-translate-y-1 hover:border-brand/40 hover:shadow-md hover:shadow-brand/5">
+        <span
+          aria-hidden="true"
+          className={cn(
+            "absolute inset-x-0 top-0 h-[2.5px] bg-gradient-to-r to-transparent",
+            net >= 0
+              ? "from-positive via-emerald-400"
+              : "from-negative via-rose-400",
+          )}
+        />
+        <div className="flex items-center justify-between text-muted-foreground">
+          <span className="text-xs font-semibold tracking-wide uppercase text-muted-foreground/80">
+            Net Cash Flow
+          </span>
+          <span
+            className={cn(
+              "grid size-8 place-items-center rounded-xl ring-1 shadow-2xs",
+              net >= 0
+                ? "bg-positive/10 text-positive ring-positive/20"
+                : "bg-negative/10 text-negative ring-negative/20",
+            )}
+          >
+            <ArrowRightLeft className="size-4" />
+          </span>
+        </div>
+        <p
+          className={cn(
+            "amount mt-2.5 break-all text-2xl font-bold tracking-tight sm:text-3xl",
+            net >= 0 ? "text-positive" : "text-negative",
+          )}
+        >
+          {signedMoney(net)}
+        </p>
+        <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground border-t border-border/50 pt-2.5">
+          <span>Savings Rate</span>
+          {savingsRate !== null ? (
+            <span
+              className={cn(
+                "inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-bold ring-1",
+                savingsRate >= 0
+                  ? "bg-positive/15 text-positive ring-positive/25"
+                  : "bg-negative/15 text-negative ring-negative/25",
+              )}
+            >
+              {savingsRate >= 0 ? (
+                <TrendingUp className="size-3" />
+              ) : (
+                <TrendingDown className="size-3" />
+              )}
+              {savingsRate}%
+            </span>
+          ) : (
+            <span className="text-[11px] text-muted-foreground/70">—</span>
+          )}
+        </div>
+      </div>
     </section>
   );
 }
