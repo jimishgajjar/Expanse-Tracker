@@ -285,7 +285,7 @@ export function Dashboard({
         >
           Skip to content
         </a>
-        <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 flex-col overflow-y-auto border-r border-border/80 bg-sidebar px-3 py-4 lg:flex">
+        <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 min-w-60 max-w-60 shrink-0 flex-col overflow-y-auto border-r border-border/80 bg-sidebar px-3 py-4 lg:flex">
           <div className="mb-6 flex items-center justify-between px-3">
             <div className="flex items-center gap-2.5">
               <span className="grid size-8 place-items-center rounded-xl bg-gradient-to-tr from-brand to-emerald-400 text-white shadow-sm shadow-brand/25">

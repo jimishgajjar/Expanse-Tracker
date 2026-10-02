@@ -7,14 +7,14 @@ export function DashboardSkeleton() {
       <span className="sr-only">Loading your tracker…</span>
       <aside
         aria-hidden="true"
-        className="fixed inset-y-0 hidden w-60 space-y-4 border-r bg-sidebar p-7 lg:block"
+        className="fixed inset-y-0 left-0 z-30 hidden w-60 min-w-60 max-w-60 shrink-0 flex-col space-y-4 border-r border-border/80 bg-sidebar px-3 py-4 lg:flex"
       >
-        <Skeleton className="mb-10 h-9 w-full" />
+        <Skeleton className="mb-6 h-9 w-full" />
         {Array.from({ length: 9 }, (_, i) => (
           <Skeleton key={i} className="h-10 w-full" />
         ))}
       </aside>
-      <div className="lg:pl-60" aria-hidden="true">
+      <div className="min-w-0 lg:pl-60" aria-hidden="true">
         <div className="flex h-16 items-center border-b bg-background px-4 sm:px-7 xl:px-10">
           <Skeleton className="h-5 w-40" />
         </div>
