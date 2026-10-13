@@ -1,4 +1,8 @@
 import ExcelJS from "exceljs";
+import { and, eq } from "drizzle-orm";
+import { getActiveWorkspaceId } from "@/lib/workspace";
+import { getDb } from "@/lib/db";
+import { transfers, budgets, recurring, goals, splits, tags, transactionTags, transactions as transactionTable, appSettings, transactionHistory } from "@/lib/db/schema";
 import { getAccountsWithBalances, getAllTransactions, getCategories } from "@/lib/queries";
 
 export const runtime = "nodejs";
@@ -6,6 +10,8 @@ export const dynamic = "force-dynamic";
 
 // GET /api/export → an .xlsx workbook with all data (Transactions/Accounts/Categories).
 export async function GET() {
+  const workspace = await getActiveWorkspaceId();
+  if (!workspace) return new Response("Unauthorized", {status:401});
   const [accounts, categories, transactions] = await Promise.all([
     getAccountsWithBalances(),
     getCategories(),
@@ -24,6 +30,8 @@ export async function GET() {
     { header: "Category", key: "category", width: 22 },
     { header: "Account", key: "account", width: 18 },
     { header: "Note", key: "note", width: 34 },
+    { header: "Tags", key: "tags", width: 30 },
+    { header: "ID", key: "id", width: 40 },
   ];
   for (const t of transactions) {
     txWs.addRow({
@@ -33,6 +41,8 @@ export async function GET() {
       category: t.category?.name ?? "Uncategorised",
       account: t.account?.name ?? "",
       note: t.note,
+      tags: t.tags.map(tag => tag.name).join(", "),
+      id: t.id,
     });
   }
 
@@ -52,7 +62,29 @@ export async function GET() {
   ];
   for (const c of categories) catWs.addRow({ name: c.name, kind: c.kind });
 
-  for (const ws of [txWs, accWs, catWs]) {
+  const db = await getDb();
+  const datasets = await Promise.all([
+    db.select().from(transfers).where(eq(transfers.workspaceId,workspace)),
+    db.select().from(budgets).where(eq(budgets.workspaceId,workspace)),
+    db.select().from(recurring).where(eq(recurring.workspaceId,workspace)),
+    db.select().from(goals).where(eq(goals.workspaceId,workspace)),
+    db.select().from(splits).where(eq(splits.workspaceId,workspace)),
+    db.select().from(tags).where(eq(tags.workspaceId,workspace)),
+    db.select({transactionId:transactionTags.transactionId,tagId:transactionTags.tagId}).from(transactionTags).innerJoin(transactionTable,eq(transactionTable.id,transactionTags.transactionId)).innerJoin(tags,and(eq(tags.id,transactionTags.tagId),eq(tags.workspaceId,workspace))).where(eq(transactionTable.workspaceId,workspace)),
+    db.select().from(appSettings).where(eq(appSettings.workspaceId,workspace)),
+    db.select().from(transactionHistory).where(eq(transactionHistory.workspaceId,workspace)),
+  ]);
+  const names = ["Transfers","Budgets","Subscriptions and bills","Savings goals","Shared expenses","Tags","Transaction tags","Settings","Edit history"];
+  datasets.forEach((rows,index) => {
+    const sheet = wb.addWorksheet(names[index]);
+    const keys = [...new Set(rows.flatMap(row => Object.keys(row)))];
+    sheet.columns = keys.map(key => ({header:key,key,width:24}));
+    rows.forEach(row => sheet.addRow(Object.fromEntries(Object.entries(row).map(([key,value]) => [key,value instanceof Date ? value.toISOString() : value !== null && typeof value === "object" ? JSON.stringify(value) : value]))));
+    if (!rows.length) sheet.addRow(["No records"]);
+  });
+  const readme = wb.addWorksheet("About this export");
+  readme.addRows([["Workspace export",new Date().toISOString()],["Scope","Current workspace only. Transfers are separate from income and expenses."],["Recovery","This workbook is for review and portability. Use a verified encrypted database backup for complete recovery."],["Currency","Amounts retain their stored values. No currency conversion performed."]]);
+  for (const ws of wb.worksheets) {
     ws.getRow(1).font = { bold: true };
     ws.views = [{ state: "frozen", ySplit: 1 }];
   }

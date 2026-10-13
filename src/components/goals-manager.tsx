@@ -14,9 +14,11 @@ import type { GoalDTO } from "@/lib/queries";
 
 export function GoalsManager({
   trigger,
+  defaultOpen = false,
   goals,
 }: {
   trigger: ReactElement;
+  defaultOpen?: boolean;
   goals: GoalDTO[];
 }) {
   const { money } = useFormat();
@@ -34,6 +36,7 @@ export function GoalsManager({
 
   return (
     <ManagerPanel
+      defaultOpen={defaultOpen}
       trigger={trigger}
       title="Savings goals"
       icon={Target}

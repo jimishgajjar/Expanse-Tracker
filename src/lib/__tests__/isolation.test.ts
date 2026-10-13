@@ -20,6 +20,7 @@ vi.mock("@/lib/workspace", () => ({
 }));
 
 // Imported under the mocks above.
+import { getOverviewData } from "@/lib/overview-data";
 import { getAccountsWithBalances, getTransactionsInRange, getRecurring } from "@/lib/queries";
 import { createTransaction, deleteTransaction, updateTransaction, createTransfer, setBudget, createRecurring, updateRecurring } from "@/lib/actions";
 
@@ -167,4 +168,31 @@ describe("workspace isolation", () => {
     expect((await h.db.select().from(schema.transactions)).length).toBe(before); // nothing inserted
     h.role = "owner";
   });
+});
+
+it("overview aggregates preserve exact amounts and never include another workspace", async () => {
+  h.activeWs = ids.wsA;
+  const raw = await getTransactionsInRange("2026-01-01","2027-01-01");
+  for (const range of ["month","year","all"] as const) {
+    const overview = await getOverviewData("2026-01-01","2027-01-01",range);
+    expect(overview.recent.length).toBeLessThanOrEqual(5);
+    expect(overview.chartTransactions.reduce((n,t)=>n+t.amount,0)).toBe(raw.reduce((n,t)=>n+t.amount,0));
+    expect(overview.chartTransactions.some(t=>t.amount===999)).toBe(false);
+  }
+});
+
+
+it("bounds overview payload for a large ledger while retaining totals", async () => {
+  const [w] = await h.db.insert(schema.workspaces).values({name:"Performance fixture",ownerId:h.userId}).returning();
+  h.activeWs = w.id;
+  await h.db.insert(schema.transactions).values(Array.from({length:2000},(_,n)=>({workspaceId:w.id,type:"expense",amount:"12.34",date:`2026-06-${String(n%28+1).padStart(2,"0")}`,note:`Fixture ${n}`})));
+  const raw = await getTransactionsInRange("2026-01-01","2027-01-01");
+  const overview = await getOverviewData("2026-01-01","2027-01-01","year");
+  const before = Buffer.byteLength(JSON.stringify(raw));
+  const after = Buffer.byteLength(JSON.stringify(overview));
+  expect(overview.chartTransactions).toHaveLength(1);
+  expect(overview.recent).toHaveLength(5);
+  expect(overview.chartTransactions[0].amount).toBe(24680);
+  expect(after).toBeLessThan(before/10);
+  console.info(`Overview fixture: ${raw.length} rows, ${before} raw bytes -> ${after} aggregate/recent bytes`);
 });

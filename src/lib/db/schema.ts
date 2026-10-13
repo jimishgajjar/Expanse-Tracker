@@ -295,3 +295,16 @@ export type Tag = typeof tags.$inferSelect;
 export type User = typeof users.$inferSelect;
 export type Workspace = typeof workspaces.$inferSelect;
 export type PushSubscription = typeof pushSubscriptions.$inferSelect;
+
+// Immutable snapshots of edits made through the web and mobile transaction action.
+export const transactionHistory = pgTable("transaction_history", {
+  id: text("id").primaryKey(), workspaceId: ws(), transactionId: text("transaction_id").notNull(),
+  actorId: text("actor_id").references(() => users.id, {onDelete: "set null"}),
+  actorName: text("actor_name").notNull(), before: jsonb("before").$type<Record<string,unknown>>().notNull(),
+  after: jsonb("after").$type<Record<string,unknown>>().notNull(), createdAt: timestamp("created_at").notNull().defaultNow(),
+}, t => [index("history_ws_tx_idx").on(t.workspaceId,t.transactionId,t.createdAt)]);
+export const backupReports = pgTable("backup_reports", {
+  workspaceId: text("workspace_id").primaryKey().references(() => workspaces.id,{onDelete:"cascade"}),
+  verifiedAt: timestamp("verified_at").notNull(), rowCount: integer("row_count").notNull(),
+  destination: text("destination").notNull().default("Encrypted local files"),
+});

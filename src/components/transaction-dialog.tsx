@@ -11,6 +11,7 @@ import {
   ChevronDown,
   FileText,
   Tag,
+  Star,
 } from "lucide-react";
 import {
   Dialog,
@@ -57,6 +58,7 @@ type TxType = "income" | "expense" | "transfer";
 export function TransactionDialog({
   trigger,
   transaction,
+  template,
   accounts,
   categories,
   defaultType = "expense",
@@ -65,6 +67,7 @@ export function TransactionDialog({
 }: {
   trigger: ReactElement;
   transaction?: TransactionDTO;
+  template?: TransactionDTO;
   accounts: AccountDTO[];
   categories: CategoryDTO[];
   defaultType?: "income" | "expense" | "transfer";
@@ -84,15 +87,20 @@ export function TransactionDialog({
   const [open, setOpen] = useState(false);
   const [pending, start] = useTransition();
 
+  const seed = transaction ?? template;
+  const preferenceKey = `capture:${accounts.map(a => a.id).sort().join(":")}`;
+  const [favourites, setFavourites] = useState<string[]>([]);
+  const [recentCategories, setRecentCategories] = useState<string[]>([]);
+  const [addAnother, setAddAnother] = useState(false);
   const init = () => ({
-    type: (transaction?.type ?? defaultType) as TxType,
-    amount: transaction ? String(transaction.amount) : "",
+    type: (seed?.type ?? defaultType) as TxType,
+    amount: seed ? String(seed.amount) : "",
     date: transaction?.date ?? todayISO(),
-    note: transaction?.note ?? "",
+    note: seed?.note ?? "",
     accountId:
-      transaction?.accountId ?? defaultAccountId ?? accounts[0]?.id ?? "",
+      seed?.accountId ?? defaultAccountId ?? accounts[0]?.id ?? "",
     categoryId:
-      transaction?.categoryId ?? defaultCategoryId ?? NONE,
+      seed?.categoryId ?? defaultCategoryId ?? NONE,
     fromAccountId: defaultAccountId ?? accounts[0]?.id ?? "",
     toAccountId:
       accounts.find((a) => a.id !== (defaultAccountId ?? accounts[0]?.id))
@@ -101,7 +109,7 @@ export function TransactionDialog({
       "",
   });
   const [f, setF] = useState(init);
-  const [tags, setTags] = useState<TagRef[]>(transaction?.tags ?? []);
+  const [tags, setTags] = useState<TagRef[]>(seed?.tags ?? []);
   const [detailsOpen, setDetailsOpen] = useState(
     Boolean(transaction?.note || (transaction?.tags && transaction.tags.length > 0)),
   );
@@ -110,13 +118,20 @@ export function TransactionDialog({
     setOpen(o);
     if (o && (isEdit || saved)) {
       setF(init());
-      setTags(transaction?.tags ?? []);
+      setTags(seed?.tags ?? []);
       setDetailsOpen(
         Boolean(transaction?.note || (transaction?.tags && transaction.tags.length > 0)),
       );
       setSaved(false);
     }
-    if (o) setError("");
+    if (o) {
+      setError("");
+      try {
+        const prefs = JSON.parse(localStorage.getItem(preferenceKey) ?? "{}");
+        setFavourites(Array.isArray(prefs.accounts) ? prefs.accounts.filter((id: string) => accounts.some(a => a.id === id)) : []);
+        setRecentCategories(Array.isArray(prefs.categories) ? prefs.categories.filter((id: string) => categories.some(c => c.id === id)) : []);
+      } catch { /* Preferences must not block entry. */ }
+    }
   }
 
   function setType(type: TxType) {
@@ -130,7 +145,8 @@ export function TransactionDialog({
   }
 
   const cats = categories.filter((c) => c.kind === f.type);
-  const accountItems = accounts.map((a) => ({ value: a.id, label: a.name }));
+  const orderedAccounts = [...accounts].sort((a, b) => Number(favourites.includes(b.id)) - Number(favourites.includes(a.id)));
+  const accountItems = orderedAccounts.map((a) => ({ value: a.id, label: `${favourites.includes(a.id) ? "★ " : ""}${a.name}` }));
   const types: TxType[] = isEdit
     ? ["expense", "income"]
     : ["expense", "income", "transfer"];
@@ -182,8 +198,13 @@ export function TransactionDialog({
               ? "Transaction updated"
               : "Transaction added",
         );
-        setSaved(true);
-        setOpen(false);
+        const recent = f.categoryId === NONE ? recentCategories : [f.categoryId, ...recentCategories.filter(id => id !== f.categoryId)].slice(0, 5);
+        setRecentCategories(recent);
+        try { localStorage.setItem(preferenceKey, JSON.stringify({ accounts: favourites, categories: recent })); } catch { /* Browser preference only. */ }
+        setSaved(!addAnother || isEdit);
+        if (addAnother && !isEdit) { setF(current => ({ ...current, amount: "", note: "" })); setTags([]); }
+        else setOpen(false);
+        window.dispatchEvent(new Event("ledger-changed"));
         router.refresh();
       } else {
         setError(res.error);
@@ -370,7 +391,7 @@ export function TransactionDialog({
                     <SelectValue placeholder="From account" />
                   </SelectTrigger>
                   <SelectContent>
-                    {accounts.map((a) => (
+                    {orderedAccounts.map((a) => (
                       <SelectItem key={a.id} value={a.id}>
                         <span className="flex items-center gap-2">
                           <span style={{ color: a.color }}>
@@ -405,7 +426,7 @@ export function TransactionDialog({
                     <SelectValue placeholder="To account" />
                   </SelectTrigger>
                   <SelectContent>
-                    {accounts.map((a) => (
+                    {orderedAccounts.map((a) => (
                       <SelectItem key={a.id} value={a.id}>
                         <span className="flex items-center gap-2">
                           <span style={{ color: a.color }}>
@@ -442,7 +463,7 @@ export function TransactionDialog({
                     <SelectValue placeholder="Select account" />
                   </SelectTrigger>
                   <SelectContent>
-                    {accounts.map((a) => (
+                    {orderedAccounts.map((a) => (
                       <SelectItem key={a.id} value={a.id}>
                         <span className="flex items-center gap-2">
                           <span style={{ color: a.color }}>
@@ -463,6 +484,7 @@ export function TransactionDialog({
                 >
                   Category
                 </Label>
+                {recentCategories.some(id => cats.some(c => c.id === id)) && <div className="mb-2 flex flex-wrap items-center gap-1.5" aria-label="Recent categories"><span className="text-xs text-muted-foreground">Recent</span>{recentCategories.map(id => cats.find(c => c.id === id)).filter(c => c !== undefined).map(c => <Button key={c.id} type="button" variant="outline" size="sm" aria-pressed={f.categoryId === c.id} onClick={() => setF(current => ({ ...current, categoryId: c.id }))}>{c.name}</Button>)}</div>}
                 <CategoryPicker
                   key={f.type}
                   id={fieldId + "-categoryId"}
@@ -545,6 +567,12 @@ export function TransactionDialog({
             )}
           </div>
 
+          {!isEdit && <label className="flex min-h-11 items-center gap-2 text-xs"><input type="checkbox" checked={addAnother} onChange={e => setAddAnother(e.target.checked)} />Save and add another</label>}
+          {f.type !== "transfer" && f.accountId && <Button type="button" variant="ghost" size="sm" aria-pressed={favourites.includes(f.accountId)} onClick={() => {
+            const next = favourites.includes(f.accountId) ? favourites.filter(id => id !== f.accountId) : [...favourites, f.accountId];
+            setFavourites(next);
+            try { localStorage.setItem(preferenceKey, JSON.stringify({ accounts: next, categories: recentCategories })); } catch { /* Browser-only preference. */ }
+          }}><Star className="size-3.5" />{favourites.includes(f.accountId) ? "Remove account from favourites" : "Favourite this account"}</Button>}
           <FormError>{error}</FormError>
 
           {/* Modal Footer */}

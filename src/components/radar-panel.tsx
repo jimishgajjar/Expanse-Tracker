@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import {
   ArrowRight,
   CalendarDays,
@@ -58,10 +59,9 @@ export function RadarPanel({
                 const used = Math.round((b.spent / b.budget) * 100);
                 const isCritical = used >= 90;
                 return (
-                  <button
+                  <Link
                     key={b.categoryId}
-                    type="button"
-                    onClick={onPlanning}
+                    href={`/categories/${b.categoryId}`}
                     className="group block w-full rounded-lg py-2.5 text-left transition-colors hover:bg-muted/40"
                   >
                     <div className="flex items-center gap-2">
@@ -112,7 +112,7 @@ export function RadarPanel({
                           : `${money(b.budget - b.spent)} left`}
                       </span>
                     </div>
-                  </button>
+                  </Link>
                 );
               })}
             </div>

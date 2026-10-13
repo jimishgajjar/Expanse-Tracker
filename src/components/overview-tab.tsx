@@ -8,6 +8,7 @@ import { TrendChart } from "./trend-chart";
 import { TransactionDialog } from "./transaction-dialog";
 import { Button } from "./ui/button";
 import { TransactionRows } from "./transactions-list";
+import { MoneyBrief } from "./money-brief";
 import { RadarPanel } from "./radar-panel";
 import { type RangeType } from "@/lib/dates";
 import type {
@@ -22,6 +23,8 @@ import type {
 export function OverviewTab({
   accounts,
   transactions,
+  recentTransactions = transactions,
+  transferCount,
   transfers,
   categories,
   totalBalance,
@@ -38,6 +41,8 @@ export function OverviewTab({
 }: {
   accounts: AccountDTO[];
   transactions: TransactionDTO[];
+  recentTransactions?: TransactionDTO[];
+  transferCount?: number;
   transfers: TransferDTO[];
   categories: CategoryDTO[];
   totalBalance: number;
@@ -124,6 +129,7 @@ export function OverviewTab({
         showTotal={false}
       />
 
+      <MoneyBrief recurring={recurring} budgets={budgets} expense={expense} comparison={comparison} rangeLabel={rangeLabel} />
       {/* 3. Activity & Budget Grid */}
       <div className="grid items-start gap-4 min-[1200px]:items-stretch min-[1200px]:grid-cols-[minmax(0,1.6fr)_minmax(280px,1fr)]">
         <div className="grid min-w-0">
@@ -149,22 +155,22 @@ export function OverviewTab({
                 </Button>
               </div>
               <TransactionRows
-                transactions={transactions.slice(0, 5)}
+                transactions={recentTransactions.slice(0, 5)}
                 accounts={accounts}
                 categories={categories}
                 canEdit={false}
                 emptyMessage="No transactions in this period."
               />
             </div>
-            {transfers.length > 0 && (
+            {(transferCount ?? transfers.length) > 0 && (
               <button
                 type="button"
                 onClick={onActivity}
                 className="mt-3 flex min-h-11 items-center gap-1.5 text-xs font-medium text-brand hover:underline cursor-pointer sm:min-h-8"
               >
                 <span>
-                  View {transfers.length} transfer
-                  {transfers.length === 1 ? "" : "s"}
+                  View {transferCount ?? transfers.length} transfer
+                  {(transferCount ?? transfers.length) === 1 ? "" : "s"}
                 </span>
                 <ArrowRight className="size-3.5" />
               </button>

@@ -1,11 +1,12 @@
 "use client";
 
+import { useSearchParams } from "next/navigation";
 import { useState } from "react";
-import dynamic from "next/dynamic";
+import { DeferredTools, DeferredPlanning, DeferredAnalytics } from "./deferred-sections";
+import { PagedActivity } from "./paged-activity";
 import {
   CalendarDays,
   Download,
-  Handshake,
   House,
   LogOut,
   Menu,
@@ -14,9 +15,7 @@ import {
   Repeat,
   Settings,
   Tags,
-  Target,
   TrendingUp,
-  Users,
   Wallet,
   type LucideIcon,
 } from "lucide-react";
@@ -33,54 +32,24 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { SettingsProvider } from "@/components/settings-provider";
 import { CategoryManager } from "@/components/category-manager";
 import { RecurringManager } from "@/components/recurring-manager";
-import { GoalsManager } from "@/components/goals-manager";
-import { SplitManager } from "@/components/split-manager";
-import { MembersManager } from "@/components/members-manager";
 import { WorkspaceSwitcher } from "@/components/workspace-switcher";
 import { VerifyBanner } from "@/components/verify-banner";
 import { TransactionDialog } from "@/components/transaction-dialog";
 import { PeriodBar } from "@/components/period-bar";
 import { OverviewTab } from "@/components/overview-tab";
 import { AccountsSection } from "@/components/accounts-section";
-import { PlanningTab } from "@/components/planning-tab";
 import { SettingsTab } from "@/components/settings-tab";
 import type { Comparison } from "@/components/analytics-tab";
-import type { AnalyticsData } from "@/lib/analytics";
 import type { RangeType } from "@/lib/dates";
 import type {
   AccountDTO,
   BudgetProgressDTO,
   CategoryDTO,
-  GoalDTO,
-  MemberDTO,
-  NetWorthPoint,
   RecurringDTO,
-  SplitData,
   TransactionDTO,
-  TransferDTO,
 } from "@/lib/queries";
 import type { WorkspaceSummary } from "@/lib/workspace";
 
-const AnalyticsTab = dynamic(
-  () => import("@/components/analytics-tab").then((m) => m.AnalyticsTab),
-  {
-    loading: () => (
-      <p className="py-12 text-muted-foreground" role="status">
-        Loading insights…
-      </p>
-    ),
-  },
-);
-const TransactionsTab = dynamic(
-  () => import("@/components/transactions-tab").then((m) => m.TransactionsTab),
-  {
-    loading: () => (
-      <p className="py-12 text-muted-foreground" role="status">
-        Loading activity…
-      </p>
-    ),
-  },
-);
 type Tab = "overview" | "transactions" | "analytics" | "accounts" | "planning" | "settings";
 const pages: {
   id: Tab;
@@ -137,7 +106,8 @@ export function Dashboard({
   accounts,
   categories,
   transactions,
-  transfers,
+  recentTransactions,
+  transferCount,
   rangeType,
   anchor,
   rangeLabel,
@@ -148,14 +118,8 @@ export function Dashboard({
   locale,
   currencyCode,
   budgetProgress,
-  netWorth,
   comparison,
-  analytics,
   recurring,
-  goals,
-  split,
-  members,
-  invites,
   userEmail,
   workspaces,
   activeWorkspaceId,
@@ -169,7 +133,8 @@ export function Dashboard({
   accounts: AccountDTO[];
   categories: CategoryDTO[];
   transactions: TransactionDTO[];
-  transfers: TransferDTO[];
+  recentTransactions: TransactionDTO[];
+  transferCount: number;
   rangeType: RangeType;
   anchor: string;
   rangeLabel: string;
@@ -180,14 +145,8 @@ export function Dashboard({
   locale: string;
   currencyCode: string;
   budgetProgress: BudgetProgressDTO[];
-  netWorth: NetWorthPoint[];
   comparison: Comparison;
-  analytics: AnalyticsData;
   recurring: RecurringDTO[];
-  goals: GoalDTO[];
-  split: SplitData;
-  members: MemberDTO[];
-  invites: string[];
   userEmail: string;
   workspaces: WorkspaceSummary[];
   activeWorkspaceId: string;
@@ -198,14 +157,15 @@ export function Dashboard({
   canEdit: boolean;
   initialTab: Tab;
 }) {
-  const [tab, setTab] = useState<Tab>(initialTab);
+  const searchParams = useSearchParams();
+  const requestedTab = searchParams.get("tab") ?? "overview";
+  const tab: Tab = pages.some(p => p.id === requestedTab) ? requestedTab as Tab : initialTab;
   const [moreOpen, setMoreOpen] = useState(false);
-  const showAuthors = members.length > 1;
+  const showAuthors = true;
   const liveAccounts = accounts.filter((a) => !a.archived);
   const page = pages.find((p) => p.id === tab)!;
 
   function changeTab(value: Tab) {
-    setTab(value);
     setMoreOpen(false);
     const url = new URL(window.location.href);
     if (value === "overview") url.searchParams.delete("tab");
@@ -229,26 +189,7 @@ export function Dashboard({
           trigger={toolButton(Repeat, "Subscriptions & bills")}
         />
       )}
-      {canEdit && (
-        <GoalsManager
-          goals={goals}
-          trigger={toolButton(Target, "Savings goals")}
-        />
-      )}
-      {canEdit && (
-        <SplitManager
-          data={split}
-          trigger={toolButton(Handshake, "Shared expenses")}
-        />
-      )}
-      <MembersManager
-        members={members}
-        invites={invites}
-        currentEmail={userEmail}
-        workspaceName={workspaceName}
-        isOwner={isOwner}
-        trigger={toolButton(Users, "Members & sharing")}
-      />
+      <DeferredTools revision={accounts} key={activeWorkspaceId} workspace={activeWorkspaceId} currentEmail={userEmail} workspaceName={workspaceName} isOwner={isOwner} canEdit={canEdit} />
     </>
   );
   const navigation = (
@@ -471,7 +412,9 @@ export function Dashboard({
                 <OverviewTab
                   accounts={accounts}
                   transactions={transactions}
-                  transfers={transfers}
+                  transfers={[]}
+                  recentTransactions={recentTransactions}
+                  transferCount={transferCount}
                   categories={categories}
                   totalBalance={totalBalance}
                   rangeLabel={rangeLabel}
@@ -487,14 +430,7 @@ export function Dashboard({
                 />
               )}
               {tab === "transactions" && (
-                <TransactionsTab
-                  transactions={transactions}
-                  transfers={transfers}
-                  accounts={accounts}
-                  categories={categories}
-                  canEdit={canEdit}
-                  showAuthors={showAuthors}
-                />
+                <PagedActivity key={`${activeWorkspaceId}:${rangeStart}:${rangeEnd}`} start={rangeStart} end={rangeEnd} workspace={activeWorkspaceId} accounts={accounts} categories={categories} canEdit={canEdit} />
               )}
               {tab === "accounts" && (
                 <AccountsSection
@@ -504,19 +440,16 @@ export function Dashboard({
                 />
               )}
               {tab === "planning" && (
-                <PlanningTab
+                <DeferredPlanning workspace={activeWorkspaceId}
                   budgets={budgetProgress}
                   categories={categories}
                   accounts={liveAccounts}
                   recurring={recurring}
-                  goals={goals}
-                  split={split}
                   canEdit={canEdit}
                 />
               )}
               {tab === "analytics" && (
-                <AnalyticsTab
-                  transactions={transactions}
+                <DeferredAnalytics workspace={activeWorkspaceId} anchor={anchor}
                   rangeType={rangeType}
                   rangeStart={rangeStart}
                   rangeEnd={rangeEnd}
@@ -525,9 +458,7 @@ export function Dashboard({
                   categories={categories}
                   accounts={liveAccounts}
                   recurring={recurring}
-                  netWorth={netWorth}
                   comparison={comparison}
-                  analytics={analytics}
                   canEdit={canEdit}
                   showAuthors={showAuthors}
                 />

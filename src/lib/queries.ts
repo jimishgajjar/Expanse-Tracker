@@ -333,7 +333,7 @@ async function tagsByTransaction(db: Awaited<ReturnType<typeof getDb>>, txIds: s
   return map;
 }
 
-export async function getTransactionsInRange(start: string, end: string): Promise<TransactionDTO[]> {
+export async function getTransactionsInRange(start: string, end: string, limit?: number): Promise<TransactionDTO[]> {
   const wid = await getActiveWorkspaceId();
   if (!wid) return [];
   const db = await getDb();
@@ -341,6 +341,7 @@ export async function getTransactionsInRange(start: string, end: string): Promis
     where: and(eq(transactions.workspaceId, wid), gte(transactions.date, start), lt(transactions.date, end)),
     orderBy: [desc(transactions.date), desc(transactions.createdAt)],
     with: { account: true, category: true, creator: true },
+    limit,
   });
   const tagMap = await tagsByTransaction(db, rows.map((t) => t.id));
   return rows.map((t) => ({

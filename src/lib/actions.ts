@@ -1,5 +1,6 @@
 "use server";
 
+import { editWithHistory } from "./transaction-edit";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { and, eq, isNull, or, sql } from "drizzle-orm";
@@ -152,19 +153,16 @@ export async function createTransaction(input: unknown): Promise<Result> {
 export async function updateTransaction(id: string, input: unknown): Promise<Result> {
   try {
     const d = txSchema.partial().parse(input);
-    const { tagIds, ...rest } = d;
-    const patch: Record<string, unknown> = { ...rest };
-    if (d.amount !== undefined) patch.amount = String(d.amount);
     const w = await wid();
     const db = await getDb();
+    const me = await getCurrentUser();
+    if (!me) return {ok:false,error:"Sign in again."};
     await assertWorkspaceReferences(w, { accountIds: [d.accountId], categoryId: d.categoryId, tagIds: d.tagIds });
-    const [owned] = await db.select({ id: transactions.id }).from(transactions).where(and(eq(transactions.id, id), eq(transactions.workspaceId, w))).limit(1);
-    if (!owned) return { ok: false, error: "Transaction not found." };
-    if (Object.keys(patch).length) await db.update(transactions).set(patch).where(and(eq(transactions.id, id), eq(transactions.workspaceId, w)));
-    if (tagIds !== undefined) {
-      await db.delete(transactionTags).where(eq(transactionTags.transactionId, id));
-      if (tagIds.length) await db.insert(transactionTags).values(tagIds.map((tagId) => ({ transactionId: id, tagId })));
-    }
+    const patch: Record<string,unknown> = {};
+    const fields = {type:"type",amount:"amount",date:"date",note:"note",accountId:"account_id",categoryId:"category_id"} as const;
+    for (const key of Object.keys(fields) as (keyof typeof fields)[]) if (d[key] !== undefined) patch[fields[key]] = d[key];
+    const updated = await editWithHistory(db,w,id,{id:me.id,name:me.name || me.email},patch,d.tagIds);
+    if (!updated) return {ok:false,error:"Transaction not found."};
     revalidatePath("/");
     return { ok: true };
   } catch (e) { return fail(e); }

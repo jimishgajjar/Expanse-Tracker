@@ -24,10 +24,12 @@ type Member = { id: string; name: string };
 
 export function SplitManager({
   trigger,
+  defaultOpen = false,
   data,
   canEdit = true,
 }: {
   trigger: ReactElement;
+  defaultOpen?: boolean;
   data: SplitData;
   canEdit?: boolean;
 }) {
@@ -36,6 +38,7 @@ export function SplitManager({
 
   return (
     <ManagerPanel
+      defaultOpen={defaultOpen}
       trigger={trigger}
       title="Shared expenses"
       icon={Handshake}

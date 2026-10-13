@@ -10,11 +10,16 @@ import {
   ArrowUpRight,
   ArrowRightLeft,
   Pencil,
+  Copy,
+  History,
   Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/icon";
 import { TransactionDialog } from "@/components/transaction-dialog";
+import { MoreActions } from "./more-actions";
+import { DropdownMenuItem } from "./ui/dropdown-menu";
+import { TransactionHistory } from "./transaction-history";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import {
   createTransaction,
@@ -91,9 +96,11 @@ export function TransactionRows({
       if (!res.ok) {
         toast.error(res.error);
         router.refresh();
+        window.dispatchEvent(new Event("ledger-changed"));
         return;
       }
       router.refresh();
+        window.dispatchEvent(new Event("ledger-changed"));
       toast.success("Transaction deleted", {
         action: {
           label: "Undo",
@@ -110,6 +117,7 @@ export function TransactionRows({
             if (r.ok) {
               toast.success("Transaction restored");
               router.refresh();
+        window.dispatchEvent(new Event("ledger-changed"));
             } else toast.error(r.error);
           },
         },
@@ -262,6 +270,7 @@ function Row({
       </div>
       {canEdit && (
         <div className="col-start-3 row-span-2 row-start-1 self-center flex items-center gap-1 sm:ml-2">
+
           <TransactionDialog
             transaction={t}
             accounts={accounts}
@@ -278,22 +287,16 @@ function Row({
               </Button>
             }
           />
-          <ConfirmDialog
-            trigger={
-              <Button
-                size="icon-sm"
-                variant="ghost"
-                className="size-8 rounded-lg text-muted-foreground hover:text-negative hover:bg-negative/10 transition-colors sm:opacity-60 sm:group-hover:opacity-100"
-                title="Delete transaction"
-                aria-label={`Delete ${t.note || t.category?.name || "transaction"}`}
-              >
-                <Trash2 className="size-3.5" />
-              </Button>
-            }
-            title="Delete transaction?"
-            description={`${t.note || t.category?.name || "This transaction"} · ${money(t.amount)}`}
-            onConfirm={() => onDelete(t)}
-          />
+          <MoreActions label={`More actions for ${t.note || t.category?.name || "transaction"}`}>
+            <TransactionHistory id={t.id} accounts={accounts} categories={categories} trigger={<DropdownMenuItem closeOnClick={false} nativeButton render={<button type="button" />}><History />Edit history</DropdownMenuItem>} />
+            <TransactionDialog template={t} accounts={accounts} categories={categories} trigger={<DropdownMenuItem closeOnClick={false} nativeButton render={<button type="button" />}><Copy />Repeat transaction</DropdownMenuItem>} />
+            <ConfirmDialog
+              trigger={<DropdownMenuItem variant="destructive" closeOnClick={false} nativeButton render={<button type="button" />}><Trash2 />Delete transaction</DropdownMenuItem>}
+              title="Delete transaction?"
+              description={`${t.note || t.category?.name || "This transaction"} · ${money(t.amount)}`}
+              onConfirm={() => onDelete(t)}
+            />
+          </MoreActions>
         </div>
       )}
     </div>
@@ -333,6 +336,7 @@ export function TransferRows({
       return;
     }
     router.refresh();
+        window.dispatchEvent(new Event("ledger-changed"));
     // Same safety net as transactions: deletion is undoable.
     toast.success("Transfer deleted", {
       action: {
@@ -348,6 +352,7 @@ export function TransferRows({
           if (r.ok) {
             toast.success("Transfer restored");
             router.refresh();
+        window.dispatchEvent(new Event("ledger-changed"));
           } else toast.error(r.error);
         },
       },

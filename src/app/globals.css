@@ -409,3 +409,10 @@ button:focus-visible, a:focus-visible, summary:focus-visible { outline:2px solid
   .detail-activity [data-slot="input"] { min-height:36px; }
   .detail-activity .activity-row [data-slot="button"] { height:32px; min-height:32px; }
 }
+
+/* Density affects reading rhythm, never reduces phone hit targets. */
+@media (min-width: 768px) {
+  html[data-density="comfortable"] .activity-row { padding-top: 1rem; padding-bottom: 1rem; }
+  html[data-density="comfortable"] .dashboard-panel { padding: 1.5rem; }
+  html[data-density="comfortable"] .nav-item { min-height: 2.75rem; }
+}

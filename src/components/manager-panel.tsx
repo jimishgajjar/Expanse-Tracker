@@ -21,6 +21,7 @@ export function ManagerPanel({
   icon: Icon,
   children,
   open,
+  defaultOpen,
   onOpenChange,
 }: {
   trigger: ReactElement;
@@ -29,10 +30,11 @@ export function ManagerPanel({
   icon: LucideIcon;
   children: ReactNode;
   open?: boolean;
+  defaultOpen?: boolean;
   onOpenChange?: (open: boolean) => void;
 }) {
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
+    <Sheet defaultOpen={defaultOpen} open={open} onOpenChange={onOpenChange}>
       <SheetTrigger render={trigger} />
       <SheetContent className="manager-panel gap-0 overflow-hidden p-0 data-[side=right]:w-full data-[side=right]:sm:max-w-[520px]">
         <SheetHeader className="shrink-0 gap-0 border-b border-border bg-card p-5 pr-16">

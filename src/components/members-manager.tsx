@@ -35,6 +35,7 @@ function RoleBadge({ role }: { role: string }) {
 
 export function MembersManager({
   trigger,
+  defaultOpen = false,
   members: initialMembers,
   invites: initialInvites,
   currentEmail,
@@ -42,6 +43,7 @@ export function MembersManager({
   isOwner,
 }: {
   trigger: ReactElement;
+  defaultOpen?: boolean;
   members: MemberDTO[];
   invites: string[];
   currentEmail: string;
@@ -83,6 +85,7 @@ export function MembersManager({
 
   return (
     <ManagerPanel
+      defaultOpen={defaultOpen}
       trigger={trigger}
       title="Members & sharing"
       icon={Users}

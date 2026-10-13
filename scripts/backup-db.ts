@@ -1,18 +1,22 @@
-/** Verified application backup. Never runs migrations or writes on the source.
+/** Verified application backup. Never migrates or alters financial records on the source. Optional reporting writes backup-status metadata.
  * Production: tsx scripts/backup-db.ts --production --env=.vercel/.env.production.local
  * Local:      tsx scripts/backup-db.ts --local-path=.pglite-preview
  * Comparison: append --compare=backups/backup-... (existing financial rows must match).
  * Every backup is restored into a NEW in-memory Postgres and checked before success.
  */
 import { config } from "dotenv";
+import { encryptBackup, decryptBackup } from "../src/lib/backup-envelope";
+import { tmpdir } from "node:os";
 import { createHash } from "node:crypto";
-import { mkdirSync, readFileSync, writeFileSync, cpSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { mkdirSync, readFileSync, writeFileSync, cpSync, existsSync, readdirSync, mkdtempSync } from "node:fs";
+import { join, resolve, relative, dirname } from "node:path";
 import { PGlite } from "@electric-sql/pglite";
 import { drizzle } from "drizzle-orm/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
 import { neon } from "@neondatabase/serverless";
 
+const backupArgs = process.argv.slice(2);
+let migrationsFolder = backupArgs.find(a => a.startsWith("--migrations="))?.slice(13) ?? "./drizzle";
 const TABLES = [
   "users",
   "workspaces",
@@ -35,6 +39,7 @@ const TABLES = [
   "email_verifications",
   "rate_limits",
   "push_subscriptions",
+  ...(existsSync(join(migrationsFolder,"0011_transaction_history.sql")) ? ["transaction_history", "backup_reports"] : []),
 ];
 const FINANCIAL = [
   "users",
@@ -66,7 +71,7 @@ const value = (name: string) =>
   args.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3);
 // Before an additive deployment, use the previous release's migrations to
 // rehearse its still-live schema. The exact migrations are saved in the backup.
-const migrationsFolder = value("migrations") ?? "./drizzle";
+
 const hash = (s: string) => createHash("sha256").update(s).digest("hex");
 function canonical(v: unknown): string {
   if (Array.isArray(v)) return `[${v.map(canonical).join(",")}]`;
@@ -203,7 +208,52 @@ async function verifyRestore(snapshot: Snapshot) {
 }
 
 async function main() {
+  if (value("verify-encrypted")) {
+    const saved = decryptBackup(readFileSync(resolve(value("verify-encrypted")!)), process.env.BACKUP_KEY ?? "") as {snapshot:Snapshot;migrations:Record<string,string>};
+    migrationsFolder = mkdtempSync(join(tmpdir(),"expense-restore-"));
+    for (const [name, contents] of Object.entries(saved.migrations)) {
+      const path = resolve(migrationsFolder,name);
+      if (!path.startsWith(resolve(migrationsFolder)+"/") && !path.startsWith(resolve(migrationsFolder)+"\\")) throw new Error("Invalid migration path in backup.");
+      mkdirSync(dirname(path),{recursive:true}); writeFileSync(path,contents);
+    }
+    TABLES.splice(0,TABLES.length,...Object.keys(saved.snapshot.tables));
+    await verifyRestore(saved.snapshot);
+    console.log("Encrypted backup decrypted and restored successfully in isolated memory.");
+    return;
+  }
   const { snapshot, source } = await capture();
+  if (args.includes("--encrypted")) {
+    const root = resolve(value("output") ?? "backups/encrypted");
+    mkdirSync(root,{recursive:true});
+    const migrations:Record<string,string> = {};
+    for (const entry of readdirSync(migrationsFolder,{recursive:true,withFileTypes:true})) if (entry.isFile()) {
+      const path = join(entry.parentPath,entry.name);
+      migrations[relative(migrationsFolder,path)] = readFileSync(path,"utf8");
+    }
+    const path = join(root,`backup-${snapshot.at.replace(/[:.]/g,"-")}.etb`);
+    writeFileSync(path,encryptBackup({version:1,snapshot,source,migrations},process.env.BACKUP_KEY ?? ""),{mode:0o600,flag:"wx"});
+    const stored = decryptBackup(readFileSync(path),process.env.BACKUP_KEY ?? "") as {snapshot:Snapshot};
+    await verifyRestore(stored.snapshot);
+    if (value("compare-encrypted")) {
+      const baseline = decryptBackup(readFileSync(resolve(value("compare-encrypted")!)),process.env.BACKUP_KEY ?? "") as {snapshot:Snapshot;source:string};
+      if (baseline.source !== source) throw new Error("Backup comparison source mismatch.");
+      for (const table of FINANCIAL) {
+        const current = new Set(stored.snapshot.tables[table].map(row => comparisonRow(table,row)));
+        if (baseline.snapshot.tables[table].some(row => !current.has(comparisonRow(table,row)))) throw new Error(`Existing records changed in ${table}. Investigate without restoring over newer data.`);
+      }
+    }
+    if (value("compare-encrypted")) console.log("Existing financial rows verified unchanged in all compared tables.");
+    const rows = Object.values(snapshot.tables).reduce((n,items) => n+items.length,0);
+    writeFileSync(join(root,"status.json"),JSON.stringify({verifiedAt:snapshot.at,file:path,restoreVerified:true,rows},null,2));
+    if (args.includes("--report-production")) {
+      if (!args.includes("--production") || !snapshot.tables.backup_reports) throw new Error("Backup reporting requires the production backup-status schema.");
+      const client = neon(process.env.DATABASE_URL!);
+      for (const workspace of snapshot.tables.workspaces) await client`INSERT INTO backup_reports(workspace_id,verified_at,row_count) VALUES (${workspace.id},${snapshot.at}::timestamp,${rows}) ON CONFLICT(workspace_id) DO UPDATE SET verified_at=EXCLUDED.verified_at,row_count=EXCLUDED.row_count`;
+    }
+    console.log(JSON.stringify({file:path,rows,restoreVerified:true,encrypted:true}));
+    return;
+  }
+
   const directory = resolve(
     "backups",
     `backup-${new Date().toISOString().replace(/[:.]/g, "-")}`,

@@ -33,8 +33,7 @@ export default function ErrorPage({
         </span>
         <h1 className="mt-5 text-2xl font-semibold tracking-tight">That didn&apos;t load</h1>
         <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-          Something went wrong rendering your tracker. Nothing was changed and no data was lost — this is a display
-          problem, not a problem with your ledger.
+          We couldn’t load your tracker. Try again. If you just saved a change, check your activity before submitting it again.
         </p>
 
         <div className="mt-6 flex flex-wrap gap-3">

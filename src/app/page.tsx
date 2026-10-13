@@ -2,12 +2,12 @@ import { Suspense } from "react";
 import { after } from "next/server";
 import { Dashboard } from "@/components/dashboard";
 import { DashboardSkeleton } from "@/components/dashboard-skeleton";
-import { getAnalytics } from "@/lib/analytics";
+import { getOverviewData } from "@/lib/overview-data";
 import { getRange, RANGE_TYPES, shiftAnchor, todayISO, type RangeType } from "@/lib/dates";
 import {
   getAccountsWithBalances, getBudgetProgress, getCategories,
-  getGoals, getInvites, getMembers, getNetWorthSeries, getRangeTotals, getRecurring, getSettings, getSplitData,
-  getTransactionsInRange, getTransfersInRange, flushNotices, processRecurring,
+  getRangeTotals, getRecurring, getSettings,
+  flushNotices, processRecurring,
 } from "@/lib/queries";
 import { getCurrentUser } from "@/lib/session";
 import { getActiveWorkspace, getUserWorkspaces } from "@/lib/workspace";
@@ -42,8 +42,7 @@ export default async function Page({
   );
 }
 
-/** The expensive half: ~15 queries plus the recurring materialisation. Streams
- *  in behind the skeleton so the shell paints immediately. */
+/** Overview data streams behind the shell. Detailed reports and workspace tools load on demand. */
 async function DashboardData({
   rangeType,
   anchor,
@@ -67,24 +66,17 @@ async function DashboardData({
   // after the response instead of in front of it.
   // Metadata does not depend on posted payments. Start it alongside recurring
   // processing instead of adding another database round trip to every load.
-  const [notices, workspaces, activeWorkspace, categories, settings, goals, split, members, invites] = await Promise.all([
+  const [notices, workspaces, activeWorkspace, categories, settings] = await Promise.all([
     processRecurring(), getUserWorkspaces(), getActiveWorkspace(), getCategories(),
-    getSettings(), getGoals(), getSplitData(), getMembers(), getInvites(),
+    getSettings(),
   ]);
   if (notices.length) after(() => flushNotices(notices));
 
-  const [accounts, transactions, transfers, budgetProgress, netWorth, recurring, prevTotals, analytics] = await Promise.all([
+  const [accounts, overview, budgetProgress, recurring, prevTotals] = await Promise.all([
     getAccountsWithBalances(),
-    getTransactionsInRange(range.start, range.end),
-    getTransfersInRange(range.start, range.end),
-    getBudgetProgress(),
-    getNetWorthSeries(),
-    getRecurring(),
+    getOverviewData(range.start, range.end, rangeType),
+    getBudgetProgress(), getRecurring(),
     prevRange ? getRangeTotals(prevRange.start, prevRange.end) : Promise.resolve(null),
-    // Deeper Insights aggregates. The tab switcher is client-side (no server
-    // round-trip), so this has to load with the rest — hence every query in
-    // here returns grouped rows rather than raw transactions.
-    getAnalytics({ start: range.start, end: range.end }, prevRange),
   ]);
 
   const totalBalance = accounts.reduce((s, a) => s + a.balance, 0);
@@ -92,10 +84,12 @@ async function DashboardData({
 
   return (
     <Dashboard
+      key={activeWorkspace?.id ?? "signed-out"}
       accounts={accounts}
       categories={categories}
-      transactions={transactions}
-      transfers={transfers}
+      transactions={overview.chartTransactions}
+      recentTransactions={overview.recent}
+      transferCount={overview.transferCount}
       rangeType={rangeType}
       anchor={anchor}
       rangeLabel={range.label}
@@ -106,14 +100,8 @@ async function DashboardData({
       locale={settings.locale}
       currencyCode={settings.currencyCode}
       budgetProgress={budgetProgress}
-      netWorth={netWorth}
       comparison={comparison}
-      analytics={analytics}
       recurring={recurring}
-      goals={goals}
-      split={split}
-      members={members}
-      invites={invites}
       userEmail={user.email}
       workspaces={workspaces}
       activeWorkspaceId={activeWorkspace?.id ?? ""}

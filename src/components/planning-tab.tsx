@@ -39,14 +39,14 @@ export function PlanningTab({
   return (
     <div className="space-y-5">
       {/* 1. Monthly Category Budgets */}
-      <BudgetsCard
+      <div id="monthly-budgets" className="scroll-mt-4"><BudgetsCard
         budgets={budgets}
         categories={categories}
         canEdit={canEdit}
-      />
+      /></div>
 
       {/* 2. Subscriptions & Recurring Bills */}
-      <section className="dashboard-panel p-4 sm:p-5">
+      <section id="upcoming-payments" className="dashboard-panel scroll-mt-4 p-4 sm:p-5">
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-4">
           <div>
             <div className="flex items-center gap-2">

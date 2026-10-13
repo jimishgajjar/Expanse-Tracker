@@ -32,6 +32,8 @@ import { DeleteAccountForm } from "@/components/delete-account-form";
 import { NotificationsToggle } from "@/components/notifications-toggle";
 import { CURRENCIES, findCurrencyByCode } from "@/lib/currencies";
 import { updateSettings } from "@/lib/actions";
+import { BackupStatus } from "./backup-status";
+import { DensityControl } from "./display-density";
 import { logout } from "@/lib/auth";
 
 interface SettingsTabProps {
@@ -71,6 +73,8 @@ export function SettingsTab({
 
   return (
     <div className="space-y-6">
+      <section className="dashboard-panel p-4"><DensityControl /></section>
+      <BackupStatus />
       {/* Grid of Settings Cards */}
       <div className="grid gap-6 lg:grid-cols-2">
         {/* CARD 1: DISPLAY & CURRENCY */}
@@ -211,7 +215,7 @@ export function SettingsTab({
               </span>
             </div>
             <p className="text-xs text-muted-foreground">
-              Export all accounts, transactions, transfers, categories, and bills to Excel.
+              Export this workspace’s ledger, transfers, bills, goals, tags, and edit history. For complete recovery, use verified encrypted backups.
             </p>
             <Button
               type="button"
@@ -220,7 +224,7 @@ export function SettingsTab({
               className="rounded-xl border-border/80 font-semibold shadow-xs hover:bg-muted/60"
               onClick={() => window.location.assign("/api/export")}
             >
-              <Download className="mr-1.5 size-4 text-brand" /> Download Backup (.xlsx)
+              <Download className="mr-1.5 size-4 text-brand" /> Download export (.xlsx)
             </Button>
           </div>
 

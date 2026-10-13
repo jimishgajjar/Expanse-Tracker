@@ -5,6 +5,7 @@ import { ArrowLeft, Pencil, Plus, ArrowRightLeft, TrendingUp, TrendingDown } fro
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/icon";
 import { TransactionDialog } from "@/components/transaction-dialog";
+import { ReconcileAccount } from "./reconcile-account";
 import { AccountDialog } from "@/components/account-dialog";
 import { DetailActivity } from "@/components/detail-activity";
 import { useFormat } from "@/components/settings-provider";
@@ -75,7 +76,8 @@ export function AccountDetailView({
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <ReconcileAccount account={account} transactions={transactions} transfers={transfers} />
           {canEdit && (
             <>
               <AccountDialog

@@ -3,6 +3,7 @@ import { Inter, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ServiceWorkerRegister } from "@/components/service-worker-register";
+import { DensityPreference } from "@/components/display-density";
 import { Toaster } from "@/components/ui/sonner";
 
 // Inter is the product's typeface (the Notion register); Geist Mono stays for
@@ -42,6 +43,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       <body className="min-h-full bg-background text-foreground">
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
           {children}
+          <DensityPreference />
           <Toaster richColors position="top-center" />
           <ServiceWorkerRegister />
         </ThemeProvider>
