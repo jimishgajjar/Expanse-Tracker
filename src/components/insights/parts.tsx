@@ -1,8 +1,7 @@
 "use client";
 
-// Shared primitives for the Insights sections. Kept deliberately small and
-// flat: hairlines carry structure, the emerald stays reserved for positive
-// money and active state, and every figure renders tabular (DESIGN.md).
+// Shared primitives for the Insights sections. Clean, single-border surfaces,
+// clear tabular figures, and quiet sophistication.
 
 import type { ReactNode } from "react";
 import { Icon } from "@/components/icon";
@@ -39,7 +38,7 @@ export function DeltaPill({
   );
 }
 
-/** The one Display-scale figure a section is allowed (DESIGN.md, One Hero Rule). */
+/** Primary highlight stat card. */
 export function Hero({
   label,
   value,
@@ -56,24 +55,24 @@ export function Hero({
   children?: ReactNode;
 }) {
   return (
-    <div className={cn("rounded-xl border p-4 sm:p-5", accent && "border-brand/20 bg-brand/[0.04]")}>
-      <div className="text-xs font-medium text-muted-foreground">{label}</div>
-      <div className={cn("amount mt-1 text-3xl font-semibold tracking-tight tabular-nums sm:text-4xl", tone)}>{value}</div>
+    <div className={cn("dashboard-panel p-4 sm:p-5", accent && "bg-brand/[0.04]")}>
+      <div className="text-xs font-semibold text-muted-foreground ">{label}</div>
+      <div className={cn("amount mt-1.5 text-2xl font-semibold tracking-tight tabular-nums", tone)}>{value}</div>
       {note && <div className="mt-1.5 text-xs text-muted-foreground">{note}</div>}
       {children}
     </div>
   );
 }
 
-/** Hairline-divided cells — a statement summary rather than a row of cards. */
+/** Clean grid of stat cells. */
 export function Lattice({ cells }: { cells: { k: string; v: string; tone?: string; sub?: ReactNode }[] }) {
   return (
-    <div className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border bg-border sm:grid-cols-4">
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
       {cells.map((c) => (
-        <div key={c.k} className="bg-card p-3.5">
-          <div className="truncate text-xs font-medium text-muted-foreground">{c.k}</div>
-          <div className={cn("amount mt-1.5 truncate text-lg font-semibold tracking-tight tabular-nums sm:text-xl", c.tone)}>{c.v}</div>
-          {c.sub && <div className="mt-1 truncate">{c.sub}</div>}
+        <div key={c.k} className="dashboard-panel p-4">
+          <div className="truncate text-xs font-semibold text-muted-foreground ">{c.k}</div>
+          <div className={cn("amount mt-1.5 truncate text-lg font-bold tracking-tight tabular-nums sm:text-xl", c.tone)}>{c.v}</div>
+          {c.sub && <div className="mt-1.5 truncate text-xs text-muted-foreground">{c.sub}</div>}
         </div>
       ))}
     </div>
@@ -84,8 +83,8 @@ export function Lattice({ cells }: { cells: { k: string; v: string; tone?: strin
 export function Tile({ color, icon, size = 24 }: { color: string; icon: string; size?: number }) {
   return (
     <span
-      className="grid shrink-0 place-items-center rounded"
-      style={{ width: size, height: size, backgroundColor: `${color}22`, color }}
+      className="grid shrink-0 place-items-center rounded-lg"
+      style={{ width: size, height: size, backgroundColor: `${color}18`, color }}
     >
       <Icon name={icon} size={Math.round(size * 0.55)} />
     </span>

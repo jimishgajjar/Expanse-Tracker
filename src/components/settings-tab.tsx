@@ -74,69 +74,71 @@ export function SettingsTab({
       {/* Grid of Settings Cards */}
       <div className="grid gap-6 lg:grid-cols-2">
         {/* CARD 1: DISPLAY & CURRENCY */}
-        <div className="rounded-2xl border border-border/80 bg-card p-5 sm:p-6 shadow-2xs space-y-5">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="grid size-8 place-items-center rounded-xl bg-brand/10 text-brand">
-                  <Coins className="size-4" />
-                </span>
-                <h2 className="text-base font-bold text-foreground">
-                  Display Currency
-                </h2>
+        <div className="dashboard-panel p-4 sm:p-5 flex flex-col justify-between space-y-5">
+          <div className="space-y-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div className="flex items-center gap-2.5">
+                  <span className="grid size-8 place-items-center rounded-lg bg-brand/10 text-brand">
+                    <Coins className="size-4" />
+                  </span>
+                  <h2 className="text-base font-semibold text-foreground">
+                    Display Currency
+                  </h2>
+                </div>
+                <p className="mt-1.5 text-xs text-muted-foreground leading-relaxed">
+                  Choose the currency symbol and format applied across accounts and ledgers.
+                </p>
               </div>
-              <p className="mt-1.5 text-xs text-muted-foreground leading-relaxed">
-                Choose the currency symbol and format applied across accounts and ledgers.
-              </p>
+
+              <span className="shrink-0 rounded-full border border-border/80 bg-muted/40 px-2.5 py-1 font-mono text-xs font-semibold text-foreground">
+                {activeCurrency.symbol} {activeCurrency.code}
+              </span>
             </div>
 
-            <span className="shrink-0 rounded-full border border-brand/20 bg-brand/10 px-2.5 py-0.5 font-mono text-xs font-bold text-brand">
-              {activeCurrency.symbol} {activeCurrency.code}
-            </span>
-          </div>
-
-          <div className="space-y-2 pt-1">
-            <Label htmlFor={id} className="text-xs font-semibold">
-              Select Currency
-            </Label>
-            <Select
-              disabled={!canEdit}
-              value={code}
-              onValueChange={(v) => setCode(v as string)}
-            >
-              <SelectTrigger
-                id={id}
-                className="h-10 w-full rounded-xl border-border/80 bg-background text-sm font-medium"
+            <div className="space-y-2 pt-1">
+              <Label htmlFor={id} className="text-xs font-medium text-foreground">
+                Select Currency
+              </Label>
+              <Select
+                disabled={!canEdit}
+                value={code}
+                onValueChange={(v) => setCode(v as string)}
               >
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="max-h-64">
-                {CURRENCIES.map((c) => (
-                  <SelectItem key={c.code} value={c.code}>
-                    <span className="inline-block w-8 font-mono font-bold text-brand">
-                      {c.symbol}
-                    </span>
-                    <span className="font-medium">{c.label}</span>
-                    <span className="text-muted-foreground text-xs">
-                      {" "}· {c.code}
-                    </span>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <p className="text-[11px] text-muted-foreground">
-              Changes formatting only. Existing transaction numbers are preserved without conversions.
-            </p>
+                <SelectTrigger
+                  id={id}
+                  className="h-10 w-full rounded-xl border-border/80 bg-background text-sm font-medium"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="max-h-64">
+                  {CURRENCIES.map((c) => (
+                    <SelectItem key={c.code} value={c.code}>
+                      <span className="inline-block w-8 font-mono font-bold text-brand">
+                        {c.symbol}
+                      </span>
+                      <span className="font-medium">{c.label}</span>
+                      <span className="text-muted-foreground text-xs">
+                        {" "}· {c.code}
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-[11px] text-muted-foreground">
+                Changes formatting only. Existing transaction numbers are preserved without conversions.
+              </p>
+            </div>
           </div>
 
           {canEdit && (
-            <div className="pt-1">
+            <div className="pt-2">
               <Button
                 onClick={handleSaveCurrency}
                 disabled={pending || code === currencyCode}
-                className="rounded-xl px-4 text-xs font-semibold shadow-xs"
+                className="rounded-xl px-4 py-2 text-xs font-semibold bg-brand text-brand-foreground shadow-xs hover:bg-brand/90"
               >
-                {pending ? "Saving…" : "Save Currency"}
+                {pending ? "Saving…" : "Save Currency Preference"}
               </Button>
             </div>
           )}
@@ -146,38 +148,38 @@ export function SettingsTab({
 
         {/* CARD 2: ACTIVE WORKSPACE & NOTIFICATIONS */}
         <div className="space-y-6">
-          <div className="rounded-2xl border border-border/80 bg-card p-5 sm:p-6 shadow-2xs space-y-4">
-            <div className="flex items-center gap-2">
-              <span className="grid size-8 place-items-center rounded-xl bg-brand/10 text-brand">
+          <div className="dashboard-panel p-4 sm:p-5 space-y-4">
+            <div className="flex items-center gap-2.5">
+              <span className="grid size-8 place-items-center rounded-lg bg-brand/10 text-brand">
                 <Wallet className="size-4" />
               </span>
-              <h2 className="text-base font-bold text-foreground">
+              <h2 className="text-base font-semibold text-foreground">
                 Active Workspace
               </h2>
             </div>
 
             <div className="grid grid-cols-2 gap-3 text-xs">
               <div className="rounded-xl border border-border/60 bg-muted/20 p-3">
-                <span className="text-muted-foreground text-[11px]">Workspace</span>
-                <p className="mt-1 font-bold text-foreground truncate">
+                <span className="text-muted-foreground text-[11px] font-medium">Workspace</span>
+                <p className="mt-1 font-semibold text-foreground truncate">
                   {workspaceName}
                 </p>
               </div>
               <div className="rounded-xl border border-border/60 bg-muted/20 p-3">
-                <span className="text-muted-foreground text-[11px]">Your Role</span>
-                <p className="mt-1 font-bold text-positive capitalize">
+                <span className="text-muted-foreground text-[11px] font-medium">Your Role</span>
+                <p className="mt-1 font-semibold text-positive capitalize">
                   {canEdit ? "Editor / Manager" : "Viewer"}
                 </p>
               </div>
             </div>
           </div>
 
-          <div className="rounded-2xl border border-border/80 bg-card p-5 sm:p-6 shadow-2xs space-y-3.5">
-            <div className="flex items-center gap-2">
-              <span className="grid size-8 place-items-center rounded-xl bg-brand/10 text-brand">
+          <div className="dashboard-panel p-4 sm:p-5 space-y-3.5">
+            <div className="flex items-center gap-2.5">
+              <span className="grid size-8 place-items-center rounded-lg bg-brand/10 text-brand">
                 <Bell className="size-4" />
               </span>
-              <h2 className="text-base font-bold text-foreground">
+              <h2 className="text-base font-semibold text-foreground">
                 Payment Reminders
               </h2>
             </div>
@@ -189,12 +191,12 @@ export function SettingsTab({
         </div>
 
         {/* CARD 3: DATA PORTABILITY & BACKUP */}
-        <div className="rounded-2xl border border-border/80 bg-card p-5 sm:p-6 shadow-2xs space-y-5">
-          <div className="flex items-center gap-2">
-            <span className="grid size-8 place-items-center rounded-xl bg-brand/10 text-brand">
+        <div className="dashboard-panel p-4 sm:p-5 space-y-5">
+          <div className="flex items-center gap-2.5">
+            <span className="grid size-8 place-items-center rounded-lg bg-brand/10 text-brand">
               <Database className="size-4" />
             </span>
-            <h2 className="text-base font-bold text-foreground">
+            <h2 className="text-base font-semibold text-foreground">
               Data & Backups
             </h2>
           </div>
@@ -204,7 +206,7 @@ export function SettingsTab({
               <span className="flex items-center gap-2 font-semibold text-foreground">
                 <FileSpreadsheet className="size-4 text-brand" /> Full Ledger (.xlsx)
               </span>
-              <span className="rounded bg-brand/10 px-2 py-0.5 text-[10px] font-bold text-brand">
+              <span className="rounded bg-brand/10 px-2 py-0.5 text-[10px] font-semibold text-brand">
                 Excel
               </span>
             </div>
@@ -215,7 +217,7 @@ export function SettingsTab({
               type="button"
               variant="outline"
               size="sm"
-              className="rounded-xl border-border/80 font-semibold"
+              className="rounded-xl border-border/80 font-semibold shadow-xs hover:bg-muted/60"
               onClick={() => window.location.assign("/api/export")}
             >
               <Download className="mr-1.5 size-4 text-brand" /> Download Backup (.xlsx)
@@ -236,12 +238,12 @@ export function SettingsTab({
         </div>
 
         {/* CARD 4: ACCOUNT CREDENTIALS & SECURITY */}
-        <div className="rounded-2xl border border-border/80 bg-card p-5 sm:p-6 shadow-2xs space-y-5">
-          <div className="flex items-center gap-2">
-            <span className="grid size-8 place-items-center rounded-xl bg-brand/10 text-brand">
+        <div className="dashboard-panel p-4 sm:p-5 space-y-5">
+          <div className="flex items-center gap-2.5">
+            <span className="grid size-8 place-items-center rounded-lg bg-brand/10 text-brand">
               <ShieldCheck className="size-4" />
             </span>
-            <h2 className="text-base font-bold text-foreground">
+            <h2 className="text-base font-semibold text-foreground">
               Account & Credentials
             </h2>
           </div>
@@ -261,7 +263,7 @@ export function SettingsTab({
                 type="submit"
                 variant="outline"
                 size="sm"
-                className="rounded-xl border-border/80 text-xs font-semibold hover:bg-negative/10 hover:text-negative"
+                className="rounded-xl border-border/80 text-xs font-semibold hover:bg-negative/10 hover:text-negative shadow-xs"
               >
                 <LogOut className="mr-1 size-3.5" /> Sign out
               </Button>
@@ -277,7 +279,7 @@ export function SettingsTab({
           </div>
 
           {/* Danger Zone */}
-          <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-3.5 space-y-2">
+          <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 space-y-2">
             <div className="flex items-center gap-1.5 text-destructive font-semibold text-xs">
               <ShieldAlert className="size-3.5" />
               <span>Danger Zone</span>

@@ -5,14 +5,8 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { FormError } from "./form-error";
 import { parseBudgetInput } from "@/lib/budget-input";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
+import { Gauge } from "lucide-react";
+import { ManagerPanel } from "./manager-panel";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/icon";
@@ -33,17 +27,10 @@ export function BudgetManager({
   budgets.forEach((b) => (current[b.categoryId] = b.budget));
 
   return (
-    <Sheet>
-      <SheetTrigger render={trigger} />
-      <SheetContent className="flex w-full flex-col gap-0 p-0 sm:max-w-md">
-        <SheetHeader className="border-b p-4">
-          <SheetTitle>Monthly budgets</SheetTitle>
-          <SheetDescription>
-            Set a monthly limit per expense category. Save each category
-            separately. Clear an amount and select Remove to delete its limit.
-          </SheetDescription>
-        </SheetHeader>
-        <div className="max-h-[calc(100dvh-7rem)] space-y-2 overflow-y-auto p-4">
+    <ManagerPanel trigger={trigger} title="Monthly budgets" icon={Gauge}
+      description="Set a monthly limit for each expense category. Each category saves separately.">
+        <p className="text-xs text-muted-foreground">Clear an amount and select Remove to delete its limit.</p>
+        <div className="space-y-3">
           {expenseCats.map((c) => (
             <BudgetRow
               key={`${c.id}:${current[c.id] ?? ""}`}
@@ -57,8 +44,7 @@ export function BudgetManager({
             </p>
           )}
         </div>
-      </SheetContent>
-    </Sheet>
+    </ManagerPanel>
   );
 }
 

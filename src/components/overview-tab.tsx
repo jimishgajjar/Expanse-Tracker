@@ -1,4 +1,5 @@
 "use client";
+
 import { ArrowRight, Plus } from "lucide-react";
 import { AccountsSection } from "./accounts-section";
 import { SummaryCards } from "./summary-cards";
@@ -17,6 +18,7 @@ import type {
   TransactionDTO,
   TransferDTO,
 } from "@/lib/queries";
+
 export function OverviewTab({
   accounts,
   transactions,
@@ -51,18 +53,21 @@ export function OverviewTab({
   onPlanning: () => void;
 }) {
   const income = transactions
-      .filter((t) => t.type === "income")
-      .reduce((s, t) => s + t.amount, 0),
-    expense = transactions
-      .filter((t) => t.type === "expense")
-      .reduce((s, t) => s + t.amount, 0);
+    .filter((t) => t.type === "income")
+    .reduce((s, t) => s + t.amount, 0);
+  const expense = transactions
+    .filter((t) => t.type === "expense")
+    .reduce((s, t) => s + t.amount, 0);
+
   const activeAccounts = accounts.filter((a) => !a.archived);
   const fresh =
     accounts.every((a) => a.income === 0 && a.expense === 0) &&
     transfers.length === 0;
+
   const watch = budgets
     .filter((b) => b.budget > 0 && b.spent / b.budget >= 0.8)
     .sort((a, b) => b.spent / b.budget - a.spent / a.budget);
+
   const upcoming = recurring
     .filter(
       (r) =>
@@ -71,16 +76,20 @@ export function OverviewTab({
     )
     .sort((a, b) => a.nextDate.localeCompare(b.nextDate))
     .slice(0, 3);
+
+  const net = income - expense;
+
   return (
-    <div className="space-y-4">
+    <div className="overview-layout space-y-5">
+      {/* Onboarding State */}
       {fresh && canEdit && (
-        <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-brand/30 bg-gradient-to-r from-brand/10 via-card to-background p-5 shadow-xs">
+        <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-border/70 bg-card p-6 shadow-xs">
           <div>
-            <h2 className="text-base font-bold tracking-tight text-foreground">
-              Your money, all in one calm place.
+            <h2 className="text-base font-semibold tracking-tight text-foreground">
+              Welcome to your finances
             </h2>
             <p className="mt-1 text-xs text-muted-foreground">
-              Start by logging your first expense or income. Your accounts and default categories are ready.
+              Add your first transaction to start seeing analytics, account trends, and budget tracking.
             </p>
           </div>
           <TransactionDialog
@@ -89,64 +98,73 @@ export function OverviewTab({
             trigger={
               <Button className="rounded-xl font-semibold shadow-xs">
                 <Plus className="size-4" />
-                Add your first transaction
+                Add transaction
               </Button>
             }
           />
         </div>
       )}
+
+      {/* 1. Summary Cards */}
       <SummaryCards
         totalBalance={totalBalance}
         income={income}
         expense={expense}
-        net={income - expense}
+        net={net}
         rangeLabel={rangeLabel}
         accountsCount={accounts.length}
         comparison={comparison}
       />
+
+      {/* 2. Accounts Section */}
       <AccountsSection
         accounts={accounts}
         categories={categories}
         canEdit={canEdit}
+        showTotal={false}
       />
-      <div className="grid items-start gap-4 xl:items-stretch xl:grid-cols-[minmax(0,1.7fr)_minmax(280px,1fr)]">
+
+      {/* 3. Activity & Budget Grid */}
+      <div className="grid items-start gap-4 min-[1200px]:items-stretch min-[1200px]:grid-cols-[minmax(0,1.6fr)_minmax(280px,1fr)]">
         <div className="grid min-w-0">
-          <section className="rounded-2xl border border-border/80 bg-card p-5 shadow-xs">
-            <div className="mb-3 flex items-center justify-between gap-2 border-b border-border/60 pb-3">
-              <div>
-                <h2 className="text-sm font-semibold tracking-tight text-foreground">
-                  Recent activity
-                </h2>
-                <p className="mt-0.5 text-xs text-muted-foreground">
-                  Income and expenses · {rangeLabel}
-                </p>
+          <section className="dashboard-panel flex flex-col justify-between p-4 sm:p-5">
+            <div>
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2 border-b border-border/60 pb-3">
+                <div>
+                  <h2 className="text-sm font-semibold tracking-tight text-foreground">
+                    Recent activity
+                  </h2>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Income and expenses · {rangeLabel}
+                  </p>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={onActivity}
+                  className="group/btn gap-1 text-xs font-medium text-muted-foreground hover:text-foreground rounded-lg"
+                >
+                  <span>View all</span>
+                  <ArrowRight className="size-3.5 transition-transform group-hover/btn:translate-x-0.5" />
+                </Button>
               </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={onActivity}
-                className="group gap-1 text-xs font-semibold text-muted-foreground hover:text-foreground"
-              >
-                <span>All activity</span>
-                <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
-              </Button>
+              <TransactionRows
+                transactions={transactions.slice(0, 5)}
+                accounts={accounts}
+                categories={categories}
+                canEdit={false}
+                emptyMessage="No transactions in this period."
+              />
             </div>
-            <TransactionRows
-              transactions={transactions.slice(0, 5)}
-              accounts={accounts}
-              categories={categories}
-              canEdit={false}
-              emptyMessage="No transactions in this period. Add one or choose a different period."
-            />
             {transfers.length > 0 && (
               <button
                 type="button"
                 onClick={onActivity}
-                className="mt-3 flex items-center gap-1.5 text-xs font-medium text-brand hover:underline"
+                className="mt-3 flex min-h-11 items-center gap-1.5 text-xs font-medium text-brand hover:underline cursor-pointer sm:min-h-8"
               >
                 <span>
                   View {transfers.length} transfer
-                  {transfers.length === 1 ? "" : "s"} in Activity
+                  {transfers.length === 1 ? "" : "s"}
                 </span>
                 <ArrowRight className="size-3.5" />
               </button>
@@ -155,18 +173,16 @@ export function OverviewTab({
         </div>
         <RadarPanel watch={watch} upcoming={upcoming} onPlanning={onPlanning} />
       </div>
-      <div className="grid items-start gap-4 xl:items-stretch xl:grid-cols-2">
-        <div className="grid min-w-0">
-          <TrendChart
-            transactions={transactions}
-            rangeType={rangeType}
-            start={rangeStart}
-            end={rangeEnd}
-          />
-        </div>
-        <div className="grid min-w-0">
-          <CategoryDonut transactions={transactions} />
-        </div>
+
+      {/* 4. Trend & Category Distribution */}
+      <div className="grid items-start gap-4 min-[1200px]:items-stretch min-[1200px]:grid-cols-2">
+        <TrendChart
+          transactions={transactions}
+          rangeType={rangeType}
+          start={rangeStart}
+          end={rangeEnd}
+        />
+        <CategoryDonut transactions={transactions} />
       </div>
     </div>
   );

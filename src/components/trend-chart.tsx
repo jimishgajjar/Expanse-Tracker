@@ -2,7 +2,6 @@
 
 import { useId, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, ChartNoAxesCombined } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Button } from "./ui/button";
 import { useFormat } from "./settings-provider";
 import { cn } from "@/lib/utils";
@@ -54,29 +53,29 @@ export function TrendChart({
   const selectedNet = selected ? selected.income - selected.expense : 0;
 
   return (
-    <Card className="gap-4 rounded-2xl border border-border/80 bg-card shadow-xs">
-      <CardHeader className="flex flex-wrap items-center justify-between gap-y-2 border-b border-border/60 pb-3">
+    <section aria-label="Income vs expense chart" className="dashboard-panel flex min-w-0 flex-col gap-4 p-4 sm:p-5">
+      <div className="flex flex-wrap items-center justify-between gap-y-2 border-b border-border/60 pb-3">
         <div>
-          <CardTitle className="text-sm font-semibold tracking-tight text-foreground">
-            Income vs Expense
-          </CardTitle>
+          <h3 className="text-sm font-semibold tracking-tight text-foreground">
+            Income vs expense
+          </h3>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            Activity curve over selected period
+            A view of your selected period
           </p>
         </div>
-        <div className="flex gap-3 text-xs text-muted-foreground">
-          <span className="flex items-center gap-1.5 font-medium">
-            <span className="size-2 rounded-full bg-positive" />
-            Income
-          </span>
-          <span className="flex items-center gap-1.5 font-medium">
-            <span className="size-2 rounded-full bg-negative" />
-            Expense
-          </span>
+          <div className="flex gap-3 text-xs text-muted-foreground">
+            <span className="flex items-center gap-1.5 font-semibold">
+              <span className="size-2 rounded-full bg-positive" />
+              Income
+            </span>
+            <span className="flex items-center gap-1.5 font-semibold">
+              <span className="size-2 rounded-full bg-negative" />
+              Expense
+            </span>
+          </div>
         </div>
-      </CardHeader>
 
-      <CardContent>
+        <div className="flex-1">
         {!hasActivity ? (
           <div className="grid min-h-52 place-content-center text-center">
             <div className="mx-auto mb-3 grid size-10 place-items-center rounded-xl bg-muted text-muted-foreground">
@@ -92,7 +91,7 @@ export function TrendChart({
         ) : (
           <>
             <p className="mb-3 text-[11px] text-muted-foreground">
-              Hover, tap a bar, or use arrow keys to inspect exact date totals.
+              Hover, tap a bar, or use the arrow buttons to inspect exact totals.
             </p>
 
             <div className="flex gap-2">
@@ -237,7 +236,7 @@ export function TrendChart({
             </div>
           </>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </section>
   );
 }

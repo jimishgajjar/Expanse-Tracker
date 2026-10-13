@@ -29,23 +29,23 @@ export function RadarPanel({
   return (
     <section
       aria-labelledby="radar-title"
-      className="flex flex-col overflow-hidden rounded-2xl border border-border/80 bg-card shadow-xs"
+      className="dashboard-panel flex flex-col overflow-hidden"
     >
-      <div className="flex items-start justify-between gap-3 border-b border-border/70 p-4">
+      <div className="flex items-start justify-between gap-3 border-b border-border/60 p-4 sm:px-5">
         <div>
           <h2 id="radar-title" className="text-sm font-semibold tracking-tight text-foreground">
             On your radar
           </h2>
-          <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
-            Upcoming bills & category budget velocity
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            Upcoming payments and budget alerts
           </p>
         </div>
-        <span className="grid size-8 shrink-0 place-items-center rounded-xl bg-brand/10 text-brand ring-1 ring-brand/20 shadow-2xs">
+        <span className="grid size-8 shrink-0 place-items-center text-muted-foreground">
           <CalendarDays className="size-4" aria-hidden />
         </span>
       </div>
 
-      <div className="flex-1 px-4">
+      <div className="flex-1 px-4 sm:px-5">
         {/* 1. Budget Alerts */}
         {watch.length > 0 && (
           <div className="py-3">
@@ -124,7 +124,7 @@ export function RadarPanel({
           <div className={cn("py-3", watch.length > 0 && "border-t border-border/60")}>
             <div className="mb-2 flex items-center justify-between gap-2">
               <h3 className="text-xs font-semibold text-muted-foreground">
-                Next scheduled bills
+                Next scheduled
               </h3>
               <span className="text-[11px] font-medium text-muted-foreground">
                 {upcoming.length} upcoming
@@ -151,7 +151,7 @@ export function RadarPanel({
                     key={r.id}
                     type="button"
                     onClick={onPlanning}
-                    className="group flex w-full items-center gap-3 rounded-lg py-2.5 text-left transition-colors hover:bg-muted/40"
+                    className="group flex min-h-16 w-full items-center gap-3 rounded-lg py-3 text-left transition-colors hover:bg-muted/40"
                   >
                     <time
                       dateTime={r.nextDate}
@@ -176,18 +176,18 @@ export function RadarPanel({
                     </time>
 
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                         <span className="truncate text-xs font-semibold text-foreground">
                           {r.note || "Recurring payment"}
                         </span>
                         <span
                           className={cn(
-                            "rounded px-1.5 py-0.2 text-[9px] font-bold uppercase tracking-wider",
+                            "text-[10px] font-medium",
                             isOverdue
-                              ? "bg-negative/10 text-negative"
+                              ? "text-negative"
                               : isToday
-                                ? "bg-brand/10 text-brand"
-                                : "bg-muted text-muted-foreground",
+                                ? "text-brand"
+                                : "text-muted-foreground",
                           )}
                         >
                           {timing}
@@ -228,10 +228,10 @@ export function RadarPanel({
               <Check className="size-4" aria-hidden />
             </div>
             <p className="text-xs font-semibold text-foreground">
-              Everything is on track
+              Nothing needs your attention
             </p>
             <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground max-w-xs mx-auto">
-              No budget alerts and no recurring payments due in the immediate days.
+              No budget alerts or scheduled payments to show.
             </p>
           </div>
         )}
@@ -244,7 +244,7 @@ export function RadarPanel({
           className="w-full justify-between text-xs font-semibold text-brand hover:text-brand hover:bg-brand/5"
           onClick={onPlanning}
         >
-          <span>Open planning & budgets</span>
+          <span>Open planning</span>
           <ArrowRight className="size-3.5" />
         </Button>
       </div>

@@ -4,11 +4,20 @@ import { useId, useState, useTransition, type ReactElement } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
+  ArrowDownLeft,
+  ArrowRightLeft,
+  ArrowUpRight,
+  Calendar,
+  ChevronDown,
+  FileText,
+  Tag,
+} from "lucide-react";
+import {
   Dialog,
   DialogClose,
   DialogContent,
-  DialogFooter,
   DialogHeader,
+  DialogDescription,
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
@@ -28,6 +37,8 @@ import { CategoryPicker } from "./category-picker";
 import { TagInput } from "@/components/tag-input";
 import { cn } from "@/lib/utils";
 import { todayISO } from "@/lib/dates";
+import { useSettings } from "@/components/settings-provider";
+import { CURRENCIES } from "@/lib/currencies";
 import {
   createTransaction,
   createTransfer,
@@ -50,6 +61,7 @@ export function TransactionDialog({
   categories,
   defaultType = "expense",
   defaultAccountId,
+  defaultCategoryId,
 }: {
   trigger: ReactElement;
   transaction?: TransactionDTO;
@@ -57,8 +69,14 @@ export function TransactionDialog({
   categories: CategoryDTO[];
   defaultType?: "income" | "expense" | "transfer";
   defaultAccountId?: string;
+  defaultCategoryId?: string;
 }) {
   const fieldId = useId();
+  const { currency: currencySymbol, locale } = useSettings();
+  const currencyInfo = CURRENCIES.find(
+    (currency) => currency.symbol === currencySymbol && currency.locale === locale,
+  );
+
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
   const isEdit = !!transaction;
@@ -73,7 +91,8 @@ export function TransactionDialog({
     note: transaction?.note ?? "",
     accountId:
       transaction?.accountId ?? defaultAccountId ?? accounts[0]?.id ?? "",
-    categoryId: transaction?.categoryId ?? NONE,
+    categoryId:
+      transaction?.categoryId ?? defaultCategoryId ?? NONE,
     fromAccountId: defaultAccountId ?? accounts[0]?.id ?? "",
     toAccountId:
       accounts.find((a) => a.id !== (defaultAccountId ?? accounts[0]?.id))
@@ -83,12 +102,18 @@ export function TransactionDialog({
   });
   const [f, setF] = useState(init);
   const [tags, setTags] = useState<TagRef[]>(transaction?.tags ?? []);
+  const [detailsOpen, setDetailsOpen] = useState(
+    Boolean(transaction?.note || (transaction?.tags && transaction.tags.length > 0)),
+  );
 
   function onOpenChange(o: boolean) {
     setOpen(o);
     if (o && (isEdit || saved)) {
       setF(init());
       setTags(transaction?.tags ?? []);
+      setDetailsOpen(
+        Boolean(transaction?.note || (transaction?.tags && transaction.tags.length > 0)),
+      );
       setSaved(false);
     }
     if (o) setError("");
@@ -177,65 +202,136 @@ export function TransactionDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogTrigger render={trigger} />
       <DialogContent
-        className="transaction-sheet sm:max-w-lg"
+        className="transaction-sheet sm:max-w-[520px]"
         // Edit dialogs are launched inside a menu. Keep typing in this portal
         // from reaching the parent menu's keyboard navigation/typeahead.
         onKeyDown={(event) => event.stopPropagation()}
       >
-        <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
+        <DialogHeader className="border-b border-border pb-4">
+          <div className="flex items-center gap-3">
+            <span
+              className={cn(
+                "grid size-9 shrink-0 place-items-center rounded-lg transition-colors",
+                f.type === "expense" && "bg-negative/10 text-negative border-negative/20",
+                f.type === "income" && "bg-positive/10 text-positive border-positive/20",
+                f.type === "transfer" && "bg-brand/10 text-brand border-brand/20",
+              )}
+            >
+              {f.type === "expense" && <ArrowUpRight className="size-4.5" />}
+              {f.type === "income" && <ArrowDownLeft className="size-4.5" />}
+              {f.type === "transfer" && <ArrowRightLeft className="size-4.5" />}
+            </span>
+            <div className="min-w-0">
+              <DialogTitle className="text-base font-semibold tracking-tight text-foreground">
+                {title}
+              </DialogTitle>
+              <DialogDescription className="mt-1">
+                {f.type === "transfer"
+                  ? "Move money between your connected accounts"
+                  : isEdit
+                    ? "Update the details for this entry in your ledger"
+                    : f.type === "expense"
+                      ? "Record an outgoing payment or expense"
+                      : "Record a deposit or incoming income"}
+              </DialogDescription>
+            </div>
+          </div>
         </DialogHeader>
-        <form onSubmit={submit} className="form-layout">
+
+        <form onSubmit={submit} className="transaction-form grid min-w-0 gap-4">
+          {/* Segmented Type Picker */}
           <div
             className={cn(
-              "grid gap-2 rounded-lg bg-muted p-1",
+              "grid min-w-0 gap-1 rounded-lg bg-muted/60 p-1",
               types.length === 3 ? "grid-cols-3" : "grid-cols-2",
             )}
           >
-            {types.map((t) => (
-              <button
-                key={t}
-                type="button"
-                aria-pressed={f.type === t}
-                onClick={() => setType(t)}
-                className={cn(
-                  "min-h-11 rounded-md py-1.5 text-sm font-medium capitalize transition-colors",
-                  f.type === t
-                    ? t === "income"
-                      ? "bg-positive/15 text-positive"
-                      : t === "expense"
-                        ? "bg-negative/15 text-negative"
-                        : "bg-foreground/10 text-foreground"
-                    : "text-muted-foreground hover:text-foreground",
-                )}
-              >
-                {t}
-              </button>
-            ))}
+            {types.map((t) => {
+              const isActive = f.type === t;
+              return (
+                <button
+                  key={t}
+                  type="button"
+                  aria-pressed={isActive}
+                  onClick={() => setType(t)}
+                  className={cn(
+                    "flex min-h-11 min-w-0 items-center justify-center gap-1.5 rounded-md py-2 text-xs font-medium sm:min-h-9 capitalize transition-all duration-150 cursor-pointer",
+                    isActive
+                      ? t === "income"
+                        ? "bg-card text-positive shadow-xs"
+                        : t === "expense"
+                          ? "bg-card text-negative shadow-xs"
+                          : "bg-card text-brand shadow-xs"
+                      : "text-muted-foreground hover:text-foreground hover:bg-card/40",
+                  )}
+                >
+                  {t === "income" && <ArrowDownLeft className="size-3.5" />}
+                  {t === "expense" && <ArrowUpRight className="size-3.5" />}
+                  {t === "transfer" && <ArrowRightLeft className="size-3.5" />}
+                  <span>{t}</span>
+                </button>
+              );
+            })}
           </div>
 
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <div className="grid gap-1.5">
-              <Label htmlFor={fieldId + "-amount"}>Amount</Label>
-              <Input
-                id={fieldId + "-amount"}
-                className="h-14 text-2xl font-semibold md:text-2xl"
-                type="number"
-                step="0.01"
-                min="0.01"
-                inputMode="decimal"
-                value={f.amount}
-                onChange={(e) => {
-                  const amount = e.currentTarget.value;
-                  setF((s) => ({ ...s, amount }));
-                }}
-                placeholder="0.00"
-                autoFocus
-                required
-              />
+          {/* Hero Amount & Date Card */}
+          <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-12">
+            {/* Amount Input */}
+            <div className="sm:col-span-7 min-w-0 rounded-lg border border-border bg-background p-3 focus-within:border-brand/70 focus-within:ring-2 focus-within:ring-brand/15 transition-all">
+              <div className="flex items-center justify-between text-xs font-semibold text-muted-foreground mb-1">
+                <Label
+                  htmlFor={fieldId + "-amount"}
+                  className="cursor-pointer text-xs font-medium text-muted-foreground"
+                >
+                  Amount
+                </Label>
+                <span className="font-mono text-[10px] text-muted-foreground/70">
+                  {currencyInfo?.code ?? currencySymbol}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span
+                  className={cn(
+                    "text-xl font-medium select-none",
+                    f.type === "income"
+                      ? "text-positive"
+                      : f.type === "expense"
+                        ? "text-negative"
+                        : "text-brand",
+                  )}
+                >
+                  {currencySymbol}
+                </span>
+                <Input
+                  id={fieldId + "-amount"}
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  inputMode="decimal"
+                  value={f.amount}
+                  onChange={(e) => {
+                    const amount = e.currentTarget.value;
+                    setF((s) => ({ ...s, amount }));
+                  }}
+                  placeholder="0.00"
+                  autoFocus
+                  required
+                  className="transaction-amount h-10 min-w-0 border-0 bg-transparent p-0 text-2xl md:text-2xl font-semibold tabular-nums tracking-tight text-foreground shadow-none focus-visible:ring-0 focus-visible:outline-none placeholder:text-muted-foreground/40"
+                />
+              </div>
             </div>
-            <div className="grid gap-1.5">
-              <Label htmlFor={fieldId + "-date"}>Date</Label>
+
+            {/* Date Input */}
+            <div className="sm:col-span-5 min-w-0 rounded-lg border border-border bg-background p-3 focus-within:border-brand/70 focus-within:ring-2 focus-within:ring-brand/15 transition-all flex flex-col justify-between">
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground mb-1">
+                <Calendar className="size-3 text-muted-foreground" />
+                <Label
+                  htmlFor={fieldId + "-date"}
+                  className="cursor-pointer text-xs font-medium text-muted-foreground"
+                >
+                  Date
+                </Label>
+              </div>
               <Input
                 id={fieldId + "-date"}
                 type="date"
@@ -245,14 +341,21 @@ export function TransactionDialog({
                   setF((s) => ({ ...s, date }));
                 }}
                 required
+                className="h-10 min-w-0 max-w-full border-0 bg-transparent p-0 text-base sm:text-sm font-medium text-foreground shadow-none focus-visible:ring-0 focus-visible:outline-none"
               />
             </div>
           </div>
 
+          {/* Account & Category Controls */}
           {f.type === "transfer" ? (
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div className="grid gap-1.5">
-                <Label htmlFor={fieldId + "-fromAccountId"}>From account</Label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label
+                  htmlFor={fieldId + "-fromAccountId"}
+                  className="text-xs font-semibold text-foreground"
+                >
+                  From account
+                </Label>
                 <Select
                   value={f.fromAccountId}
                   onValueChange={(v) =>
@@ -262,21 +365,32 @@ export function TransactionDialog({
                 >
                   <SelectTrigger
                     id={fieldId + "-fromAccountId"}
-                    className="w-full"
+                    className="h-11 w-full min-w-0 rounded-lg border-border/80 bg-background text-sm font-medium"
                   >
-                    <SelectValue placeholder="From" />
+                    <SelectValue placeholder="From account" />
                   </SelectTrigger>
                   <SelectContent>
                     {accounts.map((a) => (
                       <SelectItem key={a.id} value={a.id}>
-                        <Icon name={a.icon} color={a.color} /> {a.name}
+                        <span className="flex items-center gap-2">
+                          <span style={{ color: a.color }}>
+                            <Icon name={a.icon} size={15} />
+                          </span>
+                          <span>{a.name}</span>
+                        </span>
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
-              <div className="grid gap-1.5">
-                <Label htmlFor={fieldId + "-toAccountId"}>To account</Label>
+
+              <div className="space-y-1.5">
+                <Label
+                  htmlFor={fieldId + "-toAccountId"}
+                  className="text-xs font-semibold text-foreground"
+                >
+                  To account
+                </Label>
                 <Select
                   value={f.toAccountId}
                   onValueChange={(v) =>
@@ -286,14 +400,19 @@ export function TransactionDialog({
                 >
                   <SelectTrigger
                     id={fieldId + "-toAccountId"}
-                    className="w-full"
+                    className="h-11 w-full min-w-0 rounded-lg border-border/80 bg-background text-sm font-medium"
                   >
-                    <SelectValue placeholder="To" />
+                    <SelectValue placeholder="To account" />
                   </SelectTrigger>
                   <SelectContent>
                     {accounts.map((a) => (
                       <SelectItem key={a.id} value={a.id}>
-                        <Icon name={a.icon} color={a.color} /> {a.name}
+                        <span className="flex items-center gap-2">
+                          <span style={{ color: a.color }}>
+                            <Icon name={a.icon} size={15} />
+                          </span>
+                          <span>{a.name}</span>
+                        </span>
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -301,9 +420,14 @@ export function TransactionDialog({
               </div>
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div className="grid gap-1.5">
-                <Label htmlFor={fieldId + "-accountId"}>Account</Label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label
+                  htmlFor={fieldId + "-accountId"}
+                  className="text-xs font-semibold text-foreground"
+                >
+                  Account
+                </Label>
                 <Select
                   value={f.accountId}
                   onValueChange={(v) =>
@@ -311,20 +435,34 @@ export function TransactionDialog({
                   }
                   items={accountItems}
                 >
-                  <SelectTrigger id={fieldId + "-accountId"} className="w-full">
-                    <SelectValue placeholder="Account" />
+                  <SelectTrigger
+                    id={fieldId + "-accountId"}
+                    className="h-11 w-full min-w-0 rounded-lg border-border/80 bg-background text-sm font-medium"
+                  >
+                    <SelectValue placeholder="Select account" />
                   </SelectTrigger>
                   <SelectContent>
                     {accounts.map((a) => (
                       <SelectItem key={a.id} value={a.id}>
-                        <Icon name={a.icon} color={a.color} /> {a.name}
+                        <span className="flex items-center gap-2">
+                          <span style={{ color: a.color }}>
+                            <Icon name={a.icon} size={15} />
+                          </span>
+                          <span>{a.name}</span>
+                        </span>
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
-              <div className="grid gap-1.5 sm:col-span-2">
-                <Label htmlFor={fieldId + "-categoryId"}>Category</Label>
+
+              <div className="space-y-1.5">
+                <Label
+                  htmlFor={fieldId + "-categoryId"}
+                  className="text-xs font-semibold text-foreground"
+                >
+                  Category
+                </Label>
                 <CategoryPicker
                   key={f.type}
                   id={fieldId + "-categoryId"}
@@ -339,60 +477,117 @@ export function TransactionDialog({
             </div>
           )}
 
-          <details className="rounded-xl border p-3">
-            <summary className="flex min-h-11 cursor-pointer items-center text-sm font-medium">
-              Notes & tags{" "}
-              <span className="ml-1 font-normal text-muted-foreground">
-                Optional
+          {/* Notes & Tags Collapsible Card */}
+          <div className="min-w-0 rounded-lg border border-border bg-card p-3">
+            <button
+              type="button"
+              onClick={() => setDetailsOpen(!detailsOpen)}
+              aria-expanded={detailsOpen}
+              aria-controls={fieldId + "-details"}
+              className="flex w-full items-center justify-between text-xs font-semibold text-foreground cursor-pointer"
+            >
+              <span className="flex items-center gap-2">
+                <FileText className="size-3.5 text-muted-foreground" />
+                <span>Note & tags</span>
+                <span className="text-[10px] font-normal text-muted-foreground">
+                  {f.note || tags.length > 0
+                    ? `(${[f.note ? "note" : "", tags.length ? `${tags.length} tags` : ""].filter(Boolean).join(", ")})`
+                    : "Optional"}
+                </span>
               </span>
-            </summary>
-            <div className="mt-3 space-y-3">
-              {f.type !== "transfer" && (
-                <div className="grid gap-1.5">
-                  <Label htmlFor={fieldId + "-tags"}>Tags</Label>
-                  <TagInput
-                    id={fieldId + "-tags"}
-                    value={tags}
-                    onChange={setTags}
+              <ChevronDown
+                className={cn(
+                  "size-3.5 text-muted-foreground transition-transform duration-200",
+                  detailsOpen && "rotate-180",
+                )}
+              />
+            </button>
+
+            {detailsOpen && (
+              <div id={fieldId + "-details"} className="mt-3 space-y-3 pt-3 border-t border-border/60 animate-in fade-in-50 duration-150">
+                <div className="space-y-1.5">
+                  <Label
+                    htmlFor={fieldId + "-note"}
+                    className="text-xs font-medium text-foreground"
+                  >
+                    Note
+                  </Label>
+                  <Input
+                    id={fieldId + "-note"}
+                    maxLength={200}
+                    value={f.note}
+                    onChange={(e) => {
+                      const note = e.currentTarget.value;
+                      setF((s) => ({ ...s, note }));
+                    }}
+                    placeholder="e.g. Grocery run, coffee, client invoice..."
+                    className="h-10 rounded-lg border-border/80 bg-background text-sm"
                   />
                 </div>
-              )}
 
-              <div className="grid gap-1.5">
-                <Label htmlFor={fieldId + "-note"}>Note</Label>
-                <Input
-                  id={fieldId + "-note"}
-                  maxLength={200}
-                  value={f.note}
-                  onChange={(e) => {
-                    const note = e.currentTarget.value;
-                    setF((s) => ({ ...s, note }));
-                  }}
-                  placeholder="Optional description"
-                />
+                {f.type !== "transfer" && (
+                  <div className="space-y-1.5">
+                    <Label
+                      htmlFor={fieldId + "-tags"}
+                      className="text-xs font-medium text-foreground flex items-center gap-1.5"
+                    >
+                      <Tag className="size-3 text-muted-foreground" />
+                      <span>Tags</span>
+                    </Label>
+                    <TagInput
+                      id={fieldId + "-tags"}
+                      value={tags}
+                      onChange={setTags}
+                    />
+                  </div>
+                )}
               </div>
-            </div>
-          </details>
+            )}
+          </div>
+
           <FormError>{error}</FormError>
-          {!isEdit && (
-            <p className="text-xs text-muted-foreground">
-              Your draft stays here until you save or leave this page.
-            </p>
-          )}
-          <DialogFooter className="mt-2">
-            <DialogClose render={<Button type="button" variant="outline" />}>
-              Cancel
-            </DialogClose>
-            <Button type="submit" disabled={pending}>
-              {pending
-                ? "Saving…"
-                : isEdit
-                  ? "Save changes"
-                  : f.type === "transfer"
-                    ? "Add transfer"
-                    : "Add transaction"}
-            </Button>
-          </DialogFooter>
+
+          {/* Modal Footer */}
+          <div className="flex flex-wrap items-center justify-end gap-3 border-t border-border pt-4">
+            <div className="mr-auto text-[11px] text-muted-foreground">
+              {!isEdit ? (
+                <span>Not saved yet</span>
+              ) : (
+                <span>Editing existing entry</span>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2 justify-end">
+              <DialogClose
+                render={
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="min-h-11 rounded-lg px-4 text-sm sm:min-h-9"
+                  />
+                }
+              >
+                Cancel
+              </DialogClose>
+              <Button
+                type="submit"
+                disabled={pending}
+                className={cn(
+                  "min-h-11 rounded-lg bg-brand px-4 text-sm font-medium text-brand-foreground hover:bg-brand/90 sm:min-h-9",
+                )}
+              >
+                {pending
+                  ? "Saving…"
+                  : isEdit
+                    ? "Save changes"
+                    : f.type === "transfer"
+                      ? "Add transfer"
+                      : f.type === "income"
+                        ? "Add income"
+                        : "Add expense"}
+              </Button>
+            </div>
+          </div>
         </form>
       </DialogContent>
     </Dialog>

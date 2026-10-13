@@ -66,12 +66,12 @@
 */
 /* Light surfaces with cool ink and an attractive, vibrant emerald accent. */
 :root {
-  --background: #f8faf9;
-  --foreground: #0f1715;
+  --background: #f6f8f7;
+  --foreground: #090e0c;
   --card: #ffffff;
-  --card-foreground: #0f1715;
+  --card-foreground: #090e0c;
   --popover: #ffffff;
-  --popover-foreground: #0f1715;
+  --popover-foreground: #090e0c;
   --primary: #059669;
   --primary-foreground: #ffffff;
   --brand: #059669;
@@ -79,21 +79,21 @@
   /* Drench ground for brand surfaces (landing hero, auth panel). */
   --brand-deep: #047857;
   --brand-deep-foreground: #ecfdf5;
-  --hover: rgba(15, 23, 21, 0.05);
-  --canvas-muted: rgba(15, 23, 21, 0.025);
-  --secondary: #f0f4f2;
-  --secondary-foreground: #0f1715;
-  --muted: #f0f4f2;
-  --muted-foreground: #5a6b64;
-  --accent: #e6f0ec;
-  --accent-foreground: #0f1715;
+  --hover: rgba(9, 14, 12, 0.05);
+  --canvas-muted: rgba(9, 14, 12, 0.025);
+  --secondary: #edf2ef;
+  --secondary-foreground: #090e0c;
+  --muted: #edf2ef;
+  --muted-foreground: #52635c;
+  --accent: #e5ede8;
+  --accent-foreground: #090e0c;
   --destructive: #e11d48;
   --positive: #059669;
   --positive-foreground: #ffffff;
   --negative: #e11d48;
   --negative-foreground: #ffffff;
-  --border: rgba(15, 23, 21, 0.08);
-  --input: rgba(15, 23, 21, 0.12);
+  --border: rgba(9, 14, 12, 0.08);
+  --input: rgba(9, 14, 12, 0.12);
   --ring: #059669;
   --chart-1: #059669;
   --chart-2: #0284c7;
@@ -103,41 +103,41 @@
   /* 10px base radius; controls and surfaces derive their sizes from it. */
   --radius: 0.625rem;
   --sidebar: #ffffff;
-  --sidebar-foreground: #0f1715;
+  --sidebar-foreground: #090e0c;
   --sidebar-primary: #059669;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #f0f4f2;
-  --sidebar-accent-foreground: #0f1715;
-  --sidebar-border: rgba(15, 23, 21, 0.08);
+  --sidebar-accent: #edf2ef;
+  --sidebar-accent-foreground: #090e0c;
+  --sidebar-border: rgba(9, 14, 12, 0.08);
   --sidebar-ring: #059669;
 }
 
-/* Deep carbon dark theme: #0a0f0d ground, #111815 surfaces, platinum ink,
-   vibrant emerald & neon rose accents, 8% white hairlines. */
+/* Deep obsidian neutral black theme: #09090b ground, #111113 surfaces, clean zinc ink,
+   neutral hairlines, zero green wash. */
 .dark {
-  --background: #0a0f0d;
-  --foreground: #ecf2ee;
-  --card: #111815;
-  --card-foreground: #ecf2ee;
-  --popover: #141d19;
-  --popover-foreground: #ecf2ee;
+  --background: #09090b;
+  --foreground: #fafafa;
+  --card: #111113;
+  --card-foreground: #fafafa;
+  --popover: #111113;
+  --popover-foreground: #fafafa;
   --primary: #10b981;
-  --primary-foreground: #022016;
+  --primary-foreground: #09090b;
   --brand: #10b981;
-  --brand-foreground: #022016;
+  --brand-foreground: #09090b;
   --brand-deep: #064e3b;
   --brand-deep-foreground: #ecfdf5;
-  --hover: rgba(255, 255, 255, 0.06);
-  --canvas-muted: rgba(255, 255, 255, 0.03);
-  --secondary: #16201b;
-  --secondary-foreground: #ecf2ee;
-  --muted: #16201b;
-  --muted-foreground: #8a9c94;
-  --accent: #19241f;
-  --accent-foreground: #ecf2ee;
+  --hover: rgba(255, 255, 255, 0.05);
+  --canvas-muted: rgba(255, 255, 255, 0.02);
+  --secondary: #18181b;
+  --secondary-foreground: #fafafa;
+  --muted: #18181b;
+  --muted-foreground: #a1a1aa;
+  --accent: #1e1e22;
+  --accent-foreground: #fafafa;
   --destructive: #fb7185;
   --positive: #10b981;
-  --positive-foreground: #022016;
+  --positive-foreground: #09090b;
   --negative: #fb7185;
   --negative-foreground: #2a080e;
   --border: rgba(255, 255, 255, 0.08);
@@ -148,12 +148,12 @@
   --chart-3: #fbbf24;
   --chart-4: #fb7185;
   --chart-5: #a78bfa;
-  --sidebar: #0e1411;
-  --sidebar-foreground: #ecf2ee;
+  --sidebar: #0c0c0e;
+  --sidebar-foreground: #fafafa;
   --sidebar-primary: #10b981;
-  --sidebar-primary-foreground: #022016;
-  --sidebar-accent: #16201b;
-  --sidebar-accent-foreground: #ecf2ee;
+  --sidebar-primary-foreground: #09090b;
+  --sidebar-accent: #18181b;
+  --sidebar-accent-foreground: #fafafa;
   --sidebar-border: rgba(255, 255, 255, 0.08);
   --sidebar-ring: #10b981;
 }
@@ -246,11 +246,106 @@
 }
 
 /* Household workspace: content stays readable; navigation recedes. */
-.app-shell { background: #f8faf9; }
-.dark .app-shell { background: #0a0f0d; }
-.nav-item { display:flex; align-items:center; gap:12px; width:100%; min-height:44px; padding:9px 12px; border-radius:10px; font-size:13.5px; font-weight:500; color:var(--muted-foreground); text-align:left; transition:background 150ms ease,color 150ms ease,transform 100ms ease; }
-.nav-item:hover { background:var(--muted); color:var(--foreground); }
-.nav-item-active { color:var(--brand); background:color-mix(in srgb,var(--brand) 12%,transparent); font-weight:600; box-shadow: inset 3px 0 0 var(--brand); }
+.app-shell, .workspace-surface {
+  --brand: #087f6b;
+  --positive: #087f6b;
+  --negative: #b84343;
+  --foreground: #1c2925;
+  --muted-foreground: #64716b;
+  --border: #e1e7e3;
+  background: #f7f9f8;
+}
+.dark .app-shell, .dark .workspace-surface {
+  --brand: #5bc4a8;
+  --positive: #5bc4a8;
+  --negative: #f28e8a;
+  --foreground: #edf2ef;
+  --muted-foreground: #a2afa8;
+  --border: #29342e;
+  background: #101613;
+}
+.dashboard-panel, .balance-summary {
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--card);
+}
+.balance-summary { overflow: hidden; }
+.balance-summary-main { display: grid; }
+.balance-summary-total { padding: 24px; border-top: 3px solid var(--brand); }
+.balance-summary-period { min-width: 0; padding: 20px 24px; border-top: 1px solid var(--border); }
+.balance-summary-metrics { display: grid; gap: 20px; }
+.balance-summary-note {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 11px 24px;
+  border-top: 1px solid var(--border);
+  background: var(--canvas-muted);
+  color: var(--muted-foreground);
+  font-size: 11px;
+}
+@media (min-width: 480px) {
+  .balance-summary-metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+}
+/* Keep the balance and cash flow on one line on typical laptop screens. */
+@media (min-width: 75rem) {
+  .balance-summary-main { grid-template-columns: minmax(220px, 1fr) minmax(0, 2.1fr); }
+  .balance-summary-total { padding: 24px; border-top: 0; border-left: 3px solid var(--brand); }
+  .balance-summary-period { border-top: 0; border-left: 1px solid var(--border); }
+}
+@media (max-width: 479px) {
+  .balance-summary-total, .balance-summary-period { padding: 20px; }
+  .balance-summary-metrics > div { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; }
+  .balance-summary-metrics dt { grid-column: 1; }
+  .balance-summary-metrics dd:first-of-type { grid-column: 2; grid-row: 1 / 3; margin: 0; align-self: center; font-size: 18px; }
+  .balance-summary-metrics dd + dd { grid-column: 1; margin: 0; }
+  .balance-summary-note { padding: 12px 20px; }
+  .account-card-link { display: flex; align-items: center; gap: 12px; padding-right: 40px; }
+  .account-card-name { flex: 1; padding-right: 0; }
+  .account-card-name h3 { white-space: normal; overflow-wrap: anywhere; }
+  .account-card-balance { margin-top: 0; text-align: right; }
+  .account-card-balance .amount { font-size: 17px; }
+  .account-card-balance > svg { display: none; }
+}
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted-foreground);
+  text-align: left;
+  transition: background-color 160ms, color 160ms;
+  position: relative;
+}
+.nav-item:hover {
+  background: var(--muted);
+  color: var(--foreground);
+}
+.nav-item:active {
+  transform: scale(0.98);
+}
+.nav-item-active {
+  color: var(--foreground);
+  background: color-mix(in srgb, var(--brand) 9%, transparent);
+  font-weight: 600;
+}
+.nav-item-active::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 9px;
+  bottom: 9px;
+  width: 3px;
+  border-radius: 0 4px 4px 0;
+  background: var(--brand);
+}
 button:focus-visible, a:focus-visible, summary:focus-visible { outline:2px solid var(--ring); outline-offset:3px; }
 .pb-safe { padding-bottom:max(8px, env(safe-area-inset-bottom)); }
 .surface-enter { animation:surface-enter 180ms ease-out; }
@@ -264,7 +359,16 @@ button:focus-visible, a:focus-visible, summary:focus-visible { outline:2px solid
 @media (prefers-reduced-motion:reduce) { .surface-enter { animation:none; } }
 
 /* Shared form rhythm and touch targets across editing surfaces. */
-.form-layout { display:grid; gap:20px; }
+.form-layout { display:grid; min-width:0; gap:16px; }
+.form-layout > *, .transaction-form > *, .transaction-form .grid > * { min-width:0; }
+.workspace-surface { color:var(--foreground); }
+.workspace-surface[data-slot="dialog-content"],
+.workspace-surface[data-slot="popover-content"] { background:var(--card); }
+.workspace-surface input[type="date"] { max-width:100%; min-width:0; }
+.workspace-surface .transaction-amount[data-slot="input"] { font-size:24px; }
+.workspace-surface [data-slot="select-value"] { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.manager-panel-body form { min-width:0; }
+.manager-panel-body form .grid > * { min-width:0; }
 .manager-panel [data-slot="button"],
 .manager-panel [data-slot="input"],
 .manager-panel [data-slot="select-trigger"],
@@ -291,6 +395,8 @@ button:focus-visible, a:focus-visible, summary:focus-visible { outline:2px solid
   .manager-panel [data-slot="tabs-list"] { padding:2px; }
 }
 .app-shell h1 { font-size:1.5rem; line-height:1.3; }
+.app-shell [data-slot="card"] { border-radius:12px; box-shadow:none; }
+.app-shell [data-slot="card-title"] { font-weight:600; }
 
 /* Denser detail ledgers without changing overview or touch controls. */
 .detail-activity .activity-date-groups { display:grid; gap:8px; }

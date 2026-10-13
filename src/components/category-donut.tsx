@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import { useMemo, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Icon } from "@/components/icon";
 import { useFormat } from "@/components/settings-provider";
 import { colorFor } from "@/lib/colors";
@@ -19,8 +19,8 @@ type Seg = {
 };
 
 function Donut({ segments, total }: { segments: Seg[]; total: number }) {
-  const size = 180,
-    stroke = 24,
+  const size = 152,
+    stroke = 18,
     r = (size - stroke) / 2,
     c = 2 * Math.PI * r,
     cx = size / 2;
@@ -99,14 +99,14 @@ export function CategoryDonut({
   const { money } = useFormat();
 
   return (
-    <Card className="gap-3 rounded-2xl border border-border/80 bg-card shadow-xs">
-      <CardHeader className="flex flex-wrap items-center justify-between gap-y-2 border-b border-border/60 pb-3">
+    <Card className="min-w-0 gap-4 rounded-xl border border-border bg-card py-4 shadow-none sm:py-5">
+      <CardHeader className="flex flex-wrap items-center justify-between gap-y-2 border-b border-border/60 px-4 pb-3 sm:px-5">
         <div>
-          <CardTitle className="text-sm font-semibold tracking-tight text-foreground">
-            {kind === "expense" ? "Spending by Category" : "Income by Source"}
-          </CardTitle>
+          <h2 className="text-sm font-semibold tracking-tight text-foreground">
+            {kind === "expense" ? "Spending by category" : "Income by category"}
+          </h2>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            Distribution across categories
+            Where your money {kind === "expense" ? "goes" : "comes from"}
           </p>
         </div>
         <div className="flex gap-1 rounded-lg bg-muted/60 p-1 text-xs">
@@ -117,7 +117,7 @@ export function CategoryDonut({
               onClick={() => setKind(k)}
               aria-pressed={kind === k}
               className={cn(
-                "min-h-7 rounded-md px-3 py-1 text-xs font-medium capitalize transition-all",
+                "min-h-11 rounded-md px-3 py-1 text-xs font-medium capitalize transition-colors sm:min-h-8",
                 kind === k
                   ? k === "expense"
                     ? "bg-background text-negative font-bold shadow-xs"
@@ -131,7 +131,7 @@ export function CategoryDonut({
         </div>
       </CardHeader>
 
-      <CardContent className="@container pt-1">
+      <CardContent className="@container flex flex-1 flex-col justify-center px-4 pt-1 sm:px-5">
         {segments.length === 0 ? (
           <div className="py-12 text-center">
             <p className="text-sm font-medium text-foreground">
@@ -142,15 +142,15 @@ export function CategoryDonut({
             </p>
           </div>
         ) : (
-          <div className="flex flex-col items-center gap-6 @[36rem]:flex-row">
+          <div className="flex flex-col items-center gap-4 @[24rem]:flex-row">
             {/* Donut representation */}
             <div className="relative shrink-0 my-2">
               <Donut segments={segments} total={total} />
               <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground">
-                  {kind === "expense" ? "Total Spent" : "Total Earned"}
+                <span className="text-[11px] text-muted-foreground">
+                  {kind === "expense" ? "Spent" : "Earned"}
                 </span>
-                <span className="amount max-w-32 break-all text-center text-lg font-bold text-foreground">
+                <span className="amount mt-1 max-w-28 break-words text-center text-base font-semibold text-foreground">
                   {money(total)}
                 </span>
               </div>
@@ -159,10 +159,10 @@ export function CategoryDonut({
             {/* Category breakdown rows with visual share bars */}
             <div className="min-w-0 w-full flex-1">
               <p className="mb-2 text-[11px] font-medium text-muted-foreground">
-                Ranked by volume · Click category for history
+                Select a category to view its history
               </p>
 
-              <ul className="max-h-80 divide-y divide-border/60 overflow-y-auto pr-1">
+              <ul className="max-h-60 divide-y divide-border/60 overflow-y-auto pr-1">
                 {segments.map((s) => {
                   const percent = total > 0 ? Math.round((s.value / total) * 100) : 0;
                   const itemContent = (

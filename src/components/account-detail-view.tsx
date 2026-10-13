@@ -1,10 +1,12 @@
 "use client";
-import { Pencil, Plus } from "lucide-react";
+
+import Link from "next/link";
+import { ArrowLeft, Pencil, Plus, ArrowRightLeft, TrendingUp, TrendingDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/icon";
 import { TransactionDialog } from "@/components/transaction-dialog";
 import { AccountDialog } from "@/components/account-dialog";
-import { DetailActivity, DetailStat } from "@/components/detail-activity";
+import { DetailActivity } from "@/components/detail-activity";
 import { useFormat } from "@/components/settings-provider";
 import { cn } from "@/lib/utils";
 import type {
@@ -32,74 +34,133 @@ export function AccountDetailView({
   const { money, balanceMoney } = useFormat();
   const transferNet =
     account.balance - account.initialBalance - account.income + account.expense;
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
+      {/* Top Header & Breadcrumb */}
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <div className="flex min-w-0 items-center gap-4">
-          <span
-            className="grid size-12 shrink-0 place-items-center rounded-xl"
-            style={{
-              backgroundColor: `${account.color}22`,
-              color: account.color,
-            }}
+        <div>
+          <Link
+            href="/?tab=accounts"
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors mb-2"
           >
-            <Icon name={account.icon} size={24} />
-          </span>
-          <div className="min-w-0">
-            <p className="mb-1 text-xs font-medium text-muted-foreground capitalize">
-              {account.type} account{account.archived ? " · Archived" : ""}
-            </p>
-            <h1 className="break-words text-3xl font-semibold tracking-tight">
-              {account.name}
-            </h1>
+            <ArrowLeft className="size-3.5" />
+            <span>Back to accounts</span>
+          </Link>
+          <div className="flex items-center gap-3">
+            <span
+              className="grid size-11 shrink-0 place-items-center rounded-xl shadow-xs"
+              style={{
+                backgroundColor: `${account.color}15`,
+                color: account.color,
+              }}
+            >
+              <Icon name={account.icon} size={22} />
+            </span>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+                  {account.name}
+                </h1>
+                {account.archived && (
+                  <span className="rounded-md bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                    Archived
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground capitalize mt-0.5">
+                {account.type} Account
+              </p>
+            </div>
           </div>
         </div>
-        {canEdit && (
-          <AccountDialog
-            account={account}
-            trigger={
-              <Button variant="outline" className="min-h-11">
-                <Pencil className="size-4" />
-                Edit account
-              </Button>
-            }
-          />
-        )}
+
+        <div className="flex items-center gap-2">
+          {canEdit && (
+            <>
+              <AccountDialog
+                account={account}
+                trigger={
+                  <Button variant="outline" size="sm" className="h-9 rounded-xl px-3 text-xs font-medium gap-1.5 shadow-2xs hover:bg-muted/60">
+                    <Pencil className="size-3.5" />
+                    Edit account
+                  </Button>
+                }
+              />
+              <TransactionDialog
+                accounts={accounts}
+                categories={categories}
+                defaultAccountId={account.id}
+                trigger={
+                  <Button size="sm" className="h-9 rounded-xl px-3.5 text-xs font-semibold gap-1.5 bg-brand text-brand-foreground shadow-xs hover:bg-brand/90 active:scale-[0.98]">
+                    <Plus className="size-3.5" />
+                    Add transaction
+                  </Button>
+                }
+              />
+            </>
+          )}
+        </div>
       </div>
-      <section
-        aria-label="Account balance"
-        className="rounded-xl border bg-card p-5 sm:p-7"
-      >
-        <p className="text-sm text-muted-foreground">Current balance</p>
+
+      {/* Account Balance Hero Card */}
+      <div className="dashboard-panel p-4 sm:p-5">
+        <p className="text-xs font-semibold  text-muted-foreground">
+          Current balance
+        </p>
         <p
           className={cn(
-            "amount mt-2 break-all text-4xl font-semibold tracking-tight sm:text-5xl",
-            account.balance < 0 && "text-negative",
+            "font-mono tabular-nums text-3xl font-semibold tracking-tight mt-1",
+            account.balance < 0 ? "text-negative" : "text-foreground",
           )}
         >
           {balanceMoney(account.balance)}
         </p>
-        <p className="mt-3 text-xs text-muted-foreground">
-          All-time balance, including transfers. Activity filters apply below.
-        </p>
-        <dl className="mt-6 grid grid-cols-2 gap-x-4 gap-y-6 border-t pt-5 xl:grid-cols-4">
-          <DetailStat
-            label="Opening balance"
-            value={money(account.initialBalance)}
-          />
-          <DetailStat
-            label="Total income"
-            value={money(account.income)}
-            tone="text-positive"
-          />
-          <DetailStat
-            label="Total expenses"
-            value={money(account.expense)}
-            tone="text-negative"
-          />
-          <DetailStat label="Net transfers" value={balanceMoney(transferNet)} />
-        </dl>
-      </section>
+
+        {/* 4-Metric Grid */}
+        <div className="mt-4 pt-4 border-t border-border/60 grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+          <div className="min-w-0">
+            <span className="text-[11px] font-medium text-muted-foreground">
+              Opening balance
+            </span>
+            <p className="font-mono text-sm sm:text-base font-semibold text-foreground mt-0.5 tabular-nums">
+              {money(account.initialBalance)}
+            </p>
+          </div>
+
+          <div className="min-w-0">
+            <span className="text-[11px] font-medium text-muted-foreground flex items-center gap-1">
+              <TrendingUp className="size-3 text-positive" />
+              Total In
+            </span>
+            <p className="font-mono text-sm sm:text-base font-semibold text-positive mt-0.5 tabular-nums">
+              +{money(account.income)}
+            </p>
+          </div>
+
+          <div className="min-w-0">
+            <span className="text-[11px] font-medium text-muted-foreground flex items-center gap-1">
+              <TrendingDown className="size-3 text-negative" />
+              Total Out
+            </span>
+            <p className="font-mono text-sm sm:text-base font-semibold text-negative mt-0.5 tabular-nums">
+              -{money(account.expense)}
+            </p>
+          </div>
+
+          <div className="min-w-0">
+            <span className="text-[11px] font-medium text-muted-foreground flex items-center gap-1">
+              <ArrowRightLeft className="size-3 text-muted-foreground" />
+              Net transfers
+            </span>
+            <p className="font-mono text-sm sm:text-base font-semibold text-foreground mt-0.5 tabular-nums">
+              {balanceMoney(transferNet)}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Account Activity Ledger */}
       <DetailActivity
         transactions={transactions}
         transfers={transfers}
@@ -107,21 +168,6 @@ export function AccountDetailView({
         categories={categories}
         accountId={account.id}
         canEdit={canEdit}
-        action={
-          canEdit && (
-            <TransactionDialog
-              accounts={accounts}
-              categories={categories}
-              defaultAccountId={account.id}
-              trigger={
-                <Button className="min-h-11">
-                  <Plus className="size-4" />
-                  Add transaction
-                </Button>
-              }
-            />
-          )
-        }
       />
     </div>
   );

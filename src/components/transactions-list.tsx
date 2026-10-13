@@ -13,8 +13,6 @@ import {
   Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { MoreActions } from "./more-actions";
-import { DropdownMenuItem } from "./ui/dropdown-menu";
 import { Icon } from "@/components/icon";
 import { TransactionDialog } from "@/components/transaction-dialog";
 import { ConfirmDialog } from "@/components/confirm-dialog";
@@ -263,42 +261,39 @@ function Row({
         </span>
       </div>
       {canEdit && (
-        <div className="col-start-3 row-span-2 row-start-1 self-center">
-          <MoreActions
-            label={`Actions for ${t.note || t.category?.name || "transaction"}`}
-          >
-            <TransactionDialog
-              transaction={t}
-              accounts={accounts}
-              categories={categories}
-              trigger={
-                <DropdownMenuItem
-                  closeOnClick={false}
-                  nativeButton
-                  render={<button type="button" />}
-                >
-                  <Pencil />
-                  Edit transaction
-                </DropdownMenuItem>
-              }
-            />
-            <ConfirmDialog
-              trigger={
-                <DropdownMenuItem
-                  variant="destructive"
-                  closeOnClick={false}
-                  nativeButton
-                  render={<button type="button" />}
-                >
-                  <Trash2 />
-                  Delete transaction
-                </DropdownMenuItem>
-              }
-              title="Delete transaction?"
-              description={`${t.note || t.category?.name || "This transaction"} · ${money(t.amount)}`}
-              onConfirm={() => onDelete(t)}
-            />
-          </MoreActions>
+        <div className="col-start-3 row-span-2 row-start-1 self-center flex items-center gap-1 sm:ml-2">
+          <TransactionDialog
+            transaction={t}
+            accounts={accounts}
+            categories={categories}
+            trigger={
+              <Button
+                size="icon-sm"
+                variant="ghost"
+                className="size-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors sm:opacity-60 sm:group-hover:opacity-100"
+                title="Edit transaction"
+                aria-label={`Edit ${t.note || t.category?.name || "transaction"}`}
+              >
+                <Pencil className="size-3.5" />
+              </Button>
+            }
+          />
+          <ConfirmDialog
+            trigger={
+              <Button
+                size="icon-sm"
+                variant="ghost"
+                className="size-8 rounded-lg text-muted-foreground hover:text-negative hover:bg-negative/10 transition-colors sm:opacity-60 sm:group-hover:opacity-100"
+                title="Delete transaction"
+                aria-label={`Delete ${t.note || t.category?.name || "transaction"}`}
+              >
+                <Trash2 className="size-3.5" />
+              </Button>
+            }
+            title="Delete transaction?"
+            description={`${t.note || t.category?.name || "This transaction"} · ${money(t.amount)}`}
+            onConfirm={() => onDelete(t)}
+          />
         </div>
       )}
     </div>
@@ -400,16 +395,17 @@ export function TransferRows({
                     {money(t.amount)}
                   </div>
                   {canEdit && (
-                    <div className="col-start-3 row-span-2 row-start-1 self-center">
+                    <div className="col-start-3 row-span-2 row-start-1 self-center flex items-center gap-1 sm:ml-2">
                       <ConfirmDialog
                         trigger={
                           <Button
-                            size="icon"
-                            className="size-11 text-muted-foreground"
+                            size="icon-sm"
+                            className="size-8 rounded-lg text-muted-foreground hover:text-negative hover:bg-negative/10 transition-colors sm:opacity-60 sm:group-hover:opacity-100"
                             variant="ghost"
+                            title="Delete transfer"
                             aria-label="Delete transfer"
                           >
-                            <Trash2 className="size-4" />
+                            <Trash2 className="size-3.5" />
                           </Button>
                         }
                         title="Delete transfer?"

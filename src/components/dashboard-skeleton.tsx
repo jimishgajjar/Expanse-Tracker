@@ -15,17 +15,34 @@ export function DashboardSkeleton() {
         ))}
       </aside>
       <div className="min-w-0 lg:pl-60" aria-hidden="true">
-        <div className="flex h-16 items-center border-b bg-background px-4 sm:px-7 xl:px-10">
+        <div className="flex h-12 items-center border-b bg-card px-4 sm:px-6 xl:px-8">
           <Skeleton className="h-5 w-40" />
         </div>
-        <div className="mx-auto max-w-[1440px] space-y-6 px-4 pt-6 pb-28 sm:px-7 sm:pt-8 xl:px-10">
+        <div className="mx-auto max-w-[1440px] space-y-5 px-4 pt-5 pb-28 sm:px-6 sm:pt-6 xl:px-8">
           <div className="space-y-3">
             <Skeleton className="h-9 w-44" />
             <Skeleton className="h-5 w-64 max-w-full" />
           </div>
-          <Skeleton className="h-40 w-full rounded-xl sm:h-16" />
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {[0, 1, 2, 3].map((i) => (
+          <Skeleton className="h-32 w-full rounded-lg sm:h-11" />
+          <div className="balance-summary">
+            <div className="balance-summary-main">
+              <div className="balance-summary-total space-y-3">
+                <Skeleton className="h-3 w-24" />
+                <Skeleton className="h-10 w-48 max-w-full" />
+                <Skeleton className="h-3 w-36" />
+              </div>
+              <div className="balance-summary-period space-y-5">
+                <Skeleton className="h-3 w-32" />
+                <div className="balance-summary-metrics">
+                  {[0, 1, 2].map((i) => <Skeleton key={i} className="h-14 w-full" />)}
+                </div>
+              </div>
+            </div>
+            <div className="balance-summary-note"><Skeleton className="h-3 w-64 max-w-full" /></div>
+          </div>
+          <Skeleton className="h-5 w-28" />
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {[0, 1, 2].map((i) => (
               <div key={i} className="rounded-xl border border-border/80 bg-card p-4 space-y-3">
                 <div className="flex justify-between items-center">
                   <Skeleton className="h-3 w-20" />
@@ -36,7 +53,7 @@ export function DashboardSkeleton() {
               </div>
             ))}
           </div>
-          <div className="grid gap-6 xl:grid-cols-[1.7fr_1fr]">
+          <div className="grid gap-4 min-[1200px]:grid-cols-[1.6fr_1fr]">
             <Skeleton className="h-72 w-full rounded-xl" />
             <Skeleton className="h-72 w-full rounded-xl" />
           </div>

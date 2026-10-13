@@ -64,3 +64,13 @@ Cash-flow charts offer labeled axes, keyboard and touch selection, and exact amo
 
 ## Compact workspace density
 Use a compact finance-terminal rhythm inspired by the requested Groww reference: 24px page headings, 14px section headings, 12px secondary labels, 16px section gaps and padding. Desktop navigation uses a 208px rail; tool sheets are 480px with 36px pointer controls. Touch controls remain 44px. Account links and all actions remain visible; charts stay side by side on wide screens. Mobile cash-flow totals use full-width rows to keep long currency amounts intact.
+
+## October dashboard refinement
+
+The current dashboard keeps the established fixed 240px desktop sidebar. Use a flat neutral canvas, restrained emerald accents, 24px page titles, and 14px section titles. Avoid decorative gradients, duplicated balances, and status badges that do not convey state.
+
+The overview starts with one financial summary: current balance on the left and selected-period income, expenses, and net cash flow on the right at laptop widths. On phones, cash-flow values become aligned rows. Clearly distinguish current balance from period totals; transfers remain excluded from cash flow. Show prior-period comparisons only when the comparison is meaningful.
+
+Accounts follow immediately with direct history links and visible income, expense, and transfer actions. Phone cards put account identity and balance on the same row while retaining 44px action targets. Recent activity and the planning radar share the next row; income versus expense and category breakdown share the row below. Use subtle 12px surface corners and hairline dividers. Match paired panel heights and keep all chart navigation and category links available.
+
+These are presentation changes only. Preserve existing database contracts, balance calculations, permissions, and mutation confirmations. Use the isolated local preview database for validation; no live-data migration is required.

@@ -24,6 +24,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FormError } from "./form-error";
 import { Label } from "@/components/ui/label";
+import { Icon } from "@/components/icon";
 import { IconPicker } from "@/components/icon-picker";
 import { ColorPicker } from "@/components/color-picker";
 import { createAccount, updateAccount } from "@/lib/actions";
@@ -106,17 +107,26 @@ export function AccountDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogTrigger render={trigger} />
-      <DialogContent className="form-dialog">
-        <DialogHeader>
+      <DialogContent className="form-dialog sm:max-w-[520px]">
+        <DialogHeader className="border-b border-border pb-4">
           <DialogTitle>{isEdit ? "Edit account" : "New account"}</DialogTitle>
           <DialogDescription>
             Choose how this account appears in your tracker.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={submit} className="form-layout">
+          <div className="flex min-w-0 items-center gap-3 rounded-lg border border-border bg-muted/25 p-3">
+            <span className="grid size-10 shrink-0 place-items-center rounded-lg" style={{ backgroundColor: `${f.color}18`, color: f.color }}>
+              <Icon name={f.icon} size={20} />
+            </span>
+            <div className="min-w-0">
+              <p className="break-words text-sm font-medium">{f.name.trim() || "Your new account"}</p>
+              <p className="text-xs text-muted-foreground">{TYPES.find((type) => type.value === f.type)?.label}</p>
+            </div>
+          </div>
           <div className="grid gap-1.5">
             <Label htmlFor={fieldId + "-name"}>Name</Label>
-            <div className="flex gap-2">
+            <div className="flex min-w-0 items-center gap-2">
               <IconPicker
                 value={f.icon}
                 color={f.color}
@@ -126,7 +136,7 @@ export function AccountDialog({
                 id={fieldId + "-name"}
                 value={f.name}
                 onChange={(e) => setF((s) => ({ ...s, name: e.target.value }))}
-                placeholder="e.g. HDFC Bank"
+                placeholder="e.g. Everyday account"
                 autoFocus
                 maxLength={60}
                 required
@@ -173,7 +183,7 @@ export function AccountDialog({
             </div>
           </div>
           <div className="grid gap-1.5">
-            <Label>Colour</Label>
+            <p className="text-xs font-medium">Account colour</p>
             <ColorPicker
               value={f.color}
               onChange={(color) => setF((s) => ({ ...s, color }))}

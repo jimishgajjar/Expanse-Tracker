@@ -140,7 +140,7 @@ export async function Landing() {
               {/* Product Eyebrow Pill */}
               <div className="inline-flex items-center gap-2 rounded-full border border-brand/30 bg-brand/10 px-3.5 py-1 text-xs font-semibold text-brand">
                 <span className="size-1.5 rounded-full bg-brand animate-pulse" />
-                <span>The Sovereign Ledger for Personal & Household Wealth</span>
+                <span>Simple & Private Personal Finance</span>
               </div>
 
               <h1 className="mt-5 text-[clamp(2.4rem,4.8vw,3.75rem)] leading-[1.08] font-bold tracking-[-0.035em] text-balance">
@@ -160,7 +160,7 @@ export async function Landing() {
 
               <div className="mt-8 flex flex-wrap items-center gap-3">
                 <Link href="/signup" className={primary}>
-                  Open your private vault <ArrowRight className="ml-1.5 size-4" />
+                  Get started free <ArrowRight className="ml-1.5 size-4" />
                 </Link>
                 <a href="#features" className={quiet}>
                   Explore capabilities
@@ -284,7 +284,7 @@ export async function Landing() {
                     Accounts that always add up without double-counting
                   </h3>
                   <p className="mt-2 text-sm leading-relaxed text-muted-foreground max-w-xl">
-                    Checking accounts, high-yield savings vaults, everyday rewards cards, and
+                    Checking accounts, high-yield savings, everyday rewards cards, and
                     physical cash. Internal transfers move money between accounts with
                     separate transfer records, so they do not inflate expense charts.
                   </p>
@@ -299,10 +299,10 @@ export async function Landing() {
                       </div>
                       <div>
                         <p className="font-semibold text-foreground">
-                          Internal Vault Transfer: Checking → High-Yield Savings
+                          Internal Transfer: Checking → High-Yield Savings
                         </p>
                         <p className="text-[11px] text-muted-foreground">
-                          Capital allocation · 0% artificial expense inflation
+                          Account transfer · 0% artificial expense inflation
                         </p>
                       </div>
                     </div>
@@ -323,13 +323,13 @@ export async function Landing() {
                         {format(salary * 0.42)}
                       </p>
                       <p className="mt-1 text-[11px] text-muted-foreground">
-                        Operating liquidity
+                        Everyday checking
                       </p>
                     </div>
 
                     <div className="rounded-xl border border-border/60 bg-muted/20 p-3.5">
                       <div className="flex items-center justify-between text-xs text-muted-foreground">
-                        <span>Vault Savings</span>
+                        <span>Savings Account</span>
                         <PiggyBank className="size-3.5 text-brand" />
                       </div>
                       <p className="amount mt-2 text-base font-bold text-foreground">

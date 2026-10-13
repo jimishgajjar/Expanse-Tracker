@@ -1,7 +1,6 @@
 "use client";
 
 import { format, parseISO } from "date-fns";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useFormat } from "@/components/settings-provider";
 import type { NetWorthPoint } from "@/lib/queries";
 
@@ -22,27 +21,32 @@ export function NetWorthChart({ series }: { series: NetWorthPoint[] }) {
   const monthLabel = (k: string) => format(parseISO(`${k}-01`), "MMM yy");
 
   return (
-    <Card className="gap-3">
-      <CardHeader>
-        <CardTitle>Net worth over time</CardTitle>
-        <span className="ml-auto font-mono text-sm font-semibold">{money(last)}</span>
-      </CardHeader>
-      <CardContent>
+    <div className="dashboard-panel p-4 sm:p-5 space-y-4">
+      <div className="flex items-center justify-between border-b border-border/60 pb-3">
+        <div>
+          <h3 className="text-sm font-semibold tracking-tight text-foreground">
+            Net Worth History
+          </h3>
+          <p className="mt-0.5 text-xs text-muted-foreground">Portfolio valuation over time</p>
+        </div>
+        <span className="font-mono text-sm font-semibold text-positive">{money(last)}</span>
+      </div>
+      <div>
         <svg viewBox={`0 0 ${W} ${H}`} className="h-36 w-full" preserveAspectRatio="none">
           <defs>
             <linearGradient id="nw-grad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="var(--positive)" stopOpacity="0.35" />
+              <stop offset="0%" stopColor="var(--positive)" stopOpacity="0.25" />
               <stop offset="100%" stopColor="var(--positive)" stopOpacity="0" />
             </linearGradient>
           </defs>
           <path d={area} fill="url(#nw-grad)" />
           <path d={line} fill="none" stroke="var(--positive)" strokeWidth="2" vectorEffect="non-scaling-stroke" />
         </svg>
-        <div className="mt-1 flex justify-between text-[10px] text-muted-foreground">
+        <div className="mt-2 flex justify-between text-[11px] font-medium text-muted-foreground">
           <span>{monthLabel(series[0].key)}</span>
           <span>{monthLabel(series[series.length - 1].key)}</span>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }

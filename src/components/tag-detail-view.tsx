@@ -74,8 +74,8 @@ export function TagDetailView({
     .reduce((s, t) => s + t.amount, 0);
   const total = transactions.length;
   return (
-    <div className="space-y-6">
-      <div className="rounded-xl border bg-card p-5 sm:p-7">
+    <div className="space-y-5">
+      <div className="dashboard-panel p-4 sm:p-5">
         <div className="flex flex-wrap items-center gap-2">
           {editing ? (
             <>

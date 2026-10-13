@@ -39,9 +39,9 @@ export function PeriodBar({
   }
 
   return (
-    <div className="flex min-w-0 flex-col-reverse gap-3 rounded-2xl border border-border/80 bg-card p-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between shadow-xs">
+    <div className="period-toolbar flex min-w-0 flex-col-reverse gap-2 border-b border-border pb-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
       {/* Segmented Range Switcher */}
-      <div className="grid min-w-0 grid-cols-3 gap-1 rounded-xl bg-muted/60 p-1 sm:flex sm:gap-1">
+      <div className="grid min-w-0 grid-cols-3 gap-1 sm:flex">
         {RANGE_TYPES.map((rt) => {
           const isActive = rangeType === rt;
           return (
@@ -51,9 +51,9 @@ export function PeriodBar({
               onClick={() => push({ range: rt })}
               aria-pressed={isActive}
               className={cn(
-                "min-h-9 flex-1 rounded-lg px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-all sm:flex-none",
+                "min-h-11 flex-1 rounded-md px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-colors sm:min-h-8 sm:flex-none",
                 isActive
-                  ? "bg-background text-foreground font-semibold shadow-xs ring-1 ring-border/50"
+                  ? "bg-brand/10 text-brand font-semibold"
                   : "text-muted-foreground hover:bg-background/40 hover:text-foreground",
               )}
             >
@@ -131,7 +131,7 @@ export function PeriodBar({
           <ChevronLeft className="size-4" />
         </Button>
 
-        <span className="min-w-0 flex-1 text-center sm:min-w-[10rem] px-2 text-sm font-semibold tracking-tight text-foreground">
+        <span className="min-w-0 flex-1 text-center sm:min-w-[9rem] px-2 text-xs font-medium text-foreground">
           {rangeLabel}
         </span>
 

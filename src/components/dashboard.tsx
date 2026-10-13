@@ -92,7 +92,7 @@ const pages: {
     id: "overview",
     label: "Overview",
     icon: House,
-    description: "A little clarity for your everyday money.",
+    description: "Your balances, recent activity, and what comes next.",
   },
   {
     id: "transactions",
@@ -285,35 +285,60 @@ export function Dashboard({
         >
           Skip to content
         </a>
-        <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 min-w-60 max-w-60 shrink-0 flex-col overflow-y-auto border-r border-border/80 bg-sidebar px-3 py-4 lg:flex">
-          <div className="mb-6 flex items-center justify-between px-3">
+        <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 min-w-60 max-w-60 shrink-0 flex-col overflow-y-auto border-r border-border bg-sidebar px-3 py-5 lg:flex">
+          {/* Brand & Workspace Hub */}
+          <div className="mb-4 px-2">
             <div className="flex items-center gap-2.5">
-              <span className="grid size-8 place-items-center rounded-xl bg-gradient-to-tr from-brand to-emerald-400 text-white shadow-sm shadow-brand/25">
+              <span className="grid size-8 place-items-center rounded-lg bg-brand text-brand-foreground shadow-xs">
                 <Wallet className="size-4" />
               </span>
-              <div>
-                <span className="block text-sm font-bold tracking-tight text-foreground">
+              <div className="min-w-0">
+                <span className="block text-sm font-semibold tracking-tight text-foreground truncate">
                   Expense Tracker
                 </span>
-                <span className="block text-[10px] font-medium text-muted-foreground">
-                  Personal Ledger
+                <span className="block text-[11px] text-muted-foreground truncate">
+                  {workspaceName}
                 </span>
               </div>
             </div>
+
+            {/* Quick Action Button right in sidebar */}
+            {canEdit && (
+              <div className="mt-3.5">
+                <TransactionDialog
+                  accounts={liveAccounts}
+                  categories={categories}
+                  trigger={
+                    <button
+                      type="button"
+                      className="group flex w-full items-center justify-between rounded-lg border border-border/80 bg-card hover:bg-muted/60 px-2.5 py-1.5 text-xs font-medium text-foreground transition-colors cursor-pointer shadow-2xs"
+                    >
+                      <span className="flex items-center gap-2">
+                        <Plus className="size-3.5 text-brand" />
+                        <span>New transaction</span>
+                      </span>
+                    </button>
+                  }
+                />
+              </div>
+            )}
           </div>
+
           <div>
-            <p className="px-3 pb-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70">
-              Navigation
+            <p className="px-3 pb-2 text-[11px] font-medium text-muted-foreground">
+              Workspace
             </p>
             {navigation}
           </div>
-          <div className="mt-6 border-t border-border/60 pt-4">
-            <p className="px-3 pb-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70">
-              Workspace
+
+          <div className="mt-5 border-t border-border/50 pt-3.5">
+            <p className="px-3 pb-2 text-[11px] font-medium text-muted-foreground">
+              Manage
             </p>
             <div className="grid gap-1">{tools}</div>
           </div>
-          <div className="mt-auto shrink-0 space-y-1 border-t border-border/60 pt-4">
+
+          <div className="mt-auto shrink-0 space-y-1.5 border-t border-border/50 pt-3.5">
             <button
               type="button"
               onClick={() => changeTab("settings")}
@@ -333,25 +358,24 @@ export function Dashboard({
               <Download className="size-[18px] text-muted-foreground group-hover:text-foreground transition-colors" />
               <span>Export data</span>
             </a>
-            <div className="mt-3 flex items-center justify-between gap-2 rounded-xl border border-border/70 bg-card/60 p-2.5 shadow-2xs">
+            <div className="mt-2 flex items-center justify-between gap-2 rounded-xl border border-border/70 bg-card/60 p-2 shadow-2xs">
               <button
                 type="button"
                 onClick={() => changeTab("settings")}
-                className="flex min-w-0 flex-1 items-center gap-2.5 text-left hover:opacity-85 transition-opacity cursor-pointer"
+                className="flex min-w-0 flex-1 items-center gap-2 text-left hover:opacity-85 transition-opacity cursor-pointer"
               >
-                <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-gradient-to-tr from-brand/20 to-brand/10 text-xs font-bold text-brand ring-1 ring-brand/25">
+                <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-muted text-xs font-semibold text-foreground">
                   {userEmail[0]?.toUpperCase()}
                 </span>
                 <div className="min-w-0 flex-1">
                   <span
-                    className="block truncate text-xs font-semibold text-foreground"
+                    className="block truncate text-xs font-medium text-foreground"
                     title={userEmail}
                   >
                     {userEmail}
                   </span>
-                  <span className="flex items-center gap-1.5 text-[10px] font-medium text-muted-foreground">
-                    <span className="size-1.5 rounded-full bg-positive animate-pulse" />
-                    Settings & Profile
+                  <span className="block text-[10px] text-muted-foreground">
+                    Preferences
                   </span>
                 </div>
               </button>
@@ -360,7 +384,7 @@ export function Dashboard({
                   type="submit"
                   title="Log out"
                   aria-label="Log out"
-                  className="grid size-7 shrink-0 place-items-center rounded-lg text-muted-foreground hover:bg-negative/10 hover:text-negative transition-colors"
+                  className="grid size-7 shrink-0 place-items-center rounded-lg text-muted-foreground hover:bg-negative/10 hover:text-negative transition-colors cursor-pointer"
                 >
                   <LogOut className="size-3.5" />
                 </button>
@@ -369,8 +393,8 @@ export function Dashboard({
           </div>
         </aside>
         <div className="min-w-0 lg:pl-60">
-          <header className="sticky top-0 z-20 border-b border-border/70 bg-background/85 backdrop-blur-md pt-safe">
-            <div className="mx-auto flex h-14 max-w-[1600px] items-center justify-between gap-3 px-4 sm:px-5 xl:px-6">
+          <header className="border-b border-border bg-card pt-safe">
+            <div className="mx-auto flex h-12 max-w-[1440px] items-center justify-between gap-3 px-4 sm:px-6 xl:px-8">
               <div className="flex min-w-0 items-center gap-2 sm:gap-2.5">
                 <Wallet className="size-4 shrink-0 text-brand lg:hidden" />
                 <span className="truncate text-sm font-semibold text-foreground">
@@ -397,33 +421,6 @@ export function Dashboard({
                 <ThemeToggle />
                 <button
                   type="button"
-                  onClick={() => changeTab("settings")}
-                  className={cn(
-                    "grid size-9 place-items-center rounded-lg border border-border/70 transition-colors cursor-pointer",
-                    tab === "settings"
-                      ? "bg-brand/10 text-brand border-brand/30"
-                      : "bg-card/60 text-muted-foreground hover:bg-muted hover:text-foreground",
-                  )}
-                  title="Settings"
-                  aria-label="Settings"
-                >
-                  <Settings className="size-4" />
-                </button>
-                <form action={logout}>
-                  <Button
-                    type="submit"
-                    variant="ghost"
-                    size="sm"
-                    className="h-9 gap-1.5 rounded-lg px-2 text-xs font-medium text-muted-foreground hover:bg-negative/10 hover:text-negative transition-colors sm:px-2.5"
-                    title="Log out"
-                    aria-label="Log out"
-                  >
-                    <LogOut className="size-4" />
-                    <span className="hidden sm:inline">Log out</span>
-                  </Button>
-                </form>
-                <button
-                  type="button"
                   className="grid size-9 place-items-center rounded-lg hover:bg-muted lg:hidden"
                   onClick={() => setMoreOpen(true)}
                   aria-label="Open navigation"
@@ -435,12 +432,12 @@ export function Dashboard({
           </header>
           <main
             id="main-content"
-            className="mx-auto max-w-[1600px] space-y-4 px-4 pt-4 pb-28 sm:px-5 sm:pt-5 lg:pb-8 xl:px-6"
+            className="mx-auto max-w-[1440px] space-y-5 px-4 pt-5 pb-28 sm:px-6 sm:pt-6 lg:pb-8 xl:px-8"
           >
             {!emailVerified && <VerifyBanner email={userEmail} />}
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div>
-                <h1 className="text-xl font-bold tracking-tight sm:text-2xl text-foreground">
+                <h1 className="text-2xl font-semibold tracking-[-0.035em] text-foreground">
                   {page.label}
                 </h1>
                 <p className="mt-0.5 text-xs text-muted-foreground">
@@ -452,8 +449,8 @@ export function Dashboard({
                   accounts={liveAccounts}
                   categories={categories}
                   trigger={
-                    <Button className="hidden h-10 rounded-xl px-4 sm:inline-flex font-semibold bg-gradient-to-r from-brand via-emerald-600 to-teal-600 hover:from-brand/95 hover:to-teal-500 text-white shadow-md shadow-brand/20 hover:shadow-lg hover:shadow-brand/25 active:scale-[0.98] transition-all">
-                      <Plus className="size-4" />
+                    <Button className="hidden h-9 rounded-lg px-3.5 sm:inline-flex text-xs font-medium bg-brand text-brand-foreground shadow-none hover:bg-brand/90">
+                      <Plus className="size-3.5 mr-1.5" />
                       Add transaction
                     </Button>
                   }

@@ -34,10 +34,10 @@ export function ManagerPanel({
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetTrigger render={trigger} />
-      <SheetContent className="manager-panel gap-0 overflow-hidden p-0 data-[side=right]:w-full data-[side=right]:sm:max-w-[480px]">
-        <SheetHeader className="shrink-0 gap-0 border-b bg-card p-4 pr-14">
+      <SheetContent className="manager-panel gap-0 overflow-hidden p-0 data-[side=right]:w-full data-[side=right]:sm:max-w-[520px]">
+        <SheetHeader className="shrink-0 gap-0 border-b border-border bg-card p-5 pr-16">
           <div className="flex items-start gap-3">
-            <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-brand/10 text-brand">
+            <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-brand/10 text-brand">
               <Icon className="size-5" aria-hidden />
             </span>
             <div className="min-w-0">
@@ -50,10 +50,10 @@ export function ManagerPanel({
             </div>
           </div>
         </SheetHeader>
-        <div className="manager-panel-body min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain bg-muted/15 p-4">
+        <div className="manager-panel-body min-h-0 min-w-0 flex-1 space-y-5 overflow-x-hidden overflow-y-auto overscroll-contain bg-background p-4 sm:p-5">
           {children}
         </div>
-        <div className="flex shrink-0 justify-end border-t bg-card px-4 py-2">
+        <div className="flex shrink-0 justify-end border-t border-border bg-card px-5 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
           <SheetClose
             render={
               <Button
@@ -83,9 +83,9 @@ export function PanelCreate({
   return (
     <details
       open={defaultOpen || undefined}
-      className="group/create rounded-xl border bg-card"
+      className="group/create overflow-hidden rounded-xl border border-border bg-card"
     >
-      <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-semibold text-brand [&::-webkit-details-marker]:hidden">
+      <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2.5 rounded-lg px-4 py-3 text-sm font-medium text-brand [&::-webkit-details-marker]:hidden">
         <Plus className="size-4 shrink-0" aria-hidden />
         {title}
         <ChevronDown
@@ -93,7 +93,7 @@ export function PanelCreate({
           aria-hidden
         />
       </summary>
-      <div className="border-t p-3 [&>form]:border-0 [&>form]:bg-transparent [&>form]:p-0">
+      <div className="border-t border-border p-4 [&>form]:border-0 [&>form]:bg-transparent [&>form]:p-0">
         {children}
       </div>
     </details>
@@ -108,7 +108,7 @@ export function PanelSection({
   children: ReactNode;
 }) {
   return (
-    <section className="space-y-3 rounded-xl border bg-card p-3">
+    <section className="space-y-4 rounded-xl border border-border bg-card p-4">
       <h3 className="text-sm font-semibold">{title}</h3>
       {children}
     </section>

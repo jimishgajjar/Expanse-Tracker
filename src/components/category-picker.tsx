@@ -48,7 +48,7 @@ export function CategoryPicker({
     >
       <PopoverTrigger
         render={<button type="button" id={id} />}
-        className="flex min-h-11 w-full items-center gap-2.5 rounded-lg border border-input px-3 py-2 text-left text-sm hover:bg-muted/40"
+        className="flex min-h-11 min-w-0 w-full items-center gap-2.5 rounded-lg border border-input px-3 py-2 text-left text-sm hover:bg-muted/40"
       >
         <span
           className="grid size-7 shrink-0 place-items-center rounded-md"
@@ -94,7 +94,7 @@ export function CategoryPicker({
           role="group"
           aria-label={`${kind} categories`}
         >
-          <div className="grid grid-cols-2 gap-1.5">
+          <div className="grid grid-cols-1 gap-1 sm:grid-cols-2">
             {matches.map((category) => (
               <button
                 key={category.id}
@@ -102,7 +102,7 @@ export function CategoryPicker({
                 aria-pressed={value === category.id}
                 onClick={() => choose(category.id)}
                 className={cn(
-                  "flex min-h-11 items-center gap-2 rounded-lg border px-2 py-2 text-left text-sm transition-colors hover:bg-muted",
+                  "flex min-h-11 items-center gap-2 rounded-lg border px-2 py-2 text-left text-xs transition-colors hover:bg-muted",
                   value === category.id
                     ? "border-brand bg-brand/5"
                     : "border-transparent",

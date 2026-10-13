@@ -187,42 +187,103 @@ export function TransactionsTab({
     });
   return (
     <div className="space-y-4">
+      {/* Metric Cards */}
       <div
         className={cn(
-          "grid divide-x divide-border rounded-md border border-border bg-canvas-muted",
-          isTransfer ? "grid-cols-2" : "grid-cols-3",
+          "grid gap-3.5",
+          isTransfer ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1 sm:grid-cols-3",
         )}
       >
         {isTransfer ? (
           <>
-            <StripCell label="Transfers" value={String(total)} />
-            <StripCell label="Total moved" value={money(transferTotal)} />
+            <div className="rounded-2xl border border-border/70 bg-card p-4 sm:p-5 shadow-xs flex items-center justify-between">
+              <div>
+                <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Transfers Count
+                </span>
+                <p className="font-mono text-2xl font-bold text-foreground mt-0.5 tabular-nums">
+                  {total}
+                </p>
+              </div>
+              <span className="rounded-md bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                Transfers
+              </span>
+            </div>
+            <div className="rounded-2xl border border-border/70 bg-card p-4 sm:p-5 shadow-xs flex items-center justify-between">
+              <div>
+                <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Total Transferred
+                </span>
+                <p className="font-mono text-2xl font-bold text-foreground mt-0.5 tabular-nums">
+                  {money(transferTotal)}
+                </p>
+              </div>
+              <span className="rounded-md bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                Total
+              </span>
+            </div>
           </>
         ) : (
           <>
-            <StripCell
-              label="In"
-              value={money(totals.inc)}
-              tone="text-positive"
-            />
-            <StripCell
-              label="Out"
-              value={money(totals.exp)}
-              tone="text-negative"
-            />
-            <StripCell
-              label="Net"
-              value={signedMoney(totals.net)}
-              tone={totals.net < 0 ? "text-negative" : "text-positive"}
-            />
+            <div className="rounded-2xl border border-border/70 bg-card p-4 sm:p-5 shadow-xs flex items-center justify-between">
+              <div>
+                <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Income
+                </span>
+                <p className="font-mono text-2xl font-bold text-positive mt-0.5 tabular-nums">
+                  {money(totals.inc)}
+                </p>
+              </div>
+              <span className="rounded-md bg-positive/10 text-positive px-2 py-0.5 text-xs font-semibold">
+                Inflow
+              </span>
+            </div>
+
+            <div className="rounded-2xl border border-border/70 bg-card p-4 sm:p-5 shadow-xs flex items-center justify-between">
+              <div>
+                <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Expenses
+                </span>
+                <p className="font-mono text-2xl font-bold text-negative mt-0.5 tabular-nums">
+                  {money(totals.exp)}
+                </p>
+              </div>
+              <span className="rounded-md bg-negative/10 text-negative px-2 py-0.5 text-xs font-semibold">
+                Outflow
+              </span>
+            </div>
+
+            <div className="rounded-2xl border border-border/70 bg-card p-4 sm:p-5 shadow-xs flex items-center justify-between">
+              <div>
+                <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Net Balance
+                </span>
+                <p
+                  className={cn(
+                    "font-mono text-2xl font-bold mt-0.5 tabular-nums",
+                    totals.net >= 0 ? "text-positive" : "text-negative",
+                  )}
+                >
+                  {signedMoney(totals.net)}
+                </p>
+              </div>
+              <span
+                className={cn(
+                  "rounded-md px-2 py-0.5 text-xs font-semibold",
+                  totals.net >= 0 ? "bg-positive/10 text-positive" : "bg-negative/10 text-negative",
+                )}
+              >
+                {totals.net >= 0 ? "Net Surplus" : "Net Deficit"}
+              </span>
+            </div>
           </>
         )}
       </div>
 
       <div className="space-y-4">
-        <div className="flex items-center justify-between gap-2 border-b border-border">
-          {/* Database view tabs: underlined, not a sunken pill. */}
-          <div className="grid min-w-0 w-full grid-cols-4 gap-0.5 sm:flex sm:w-auto">
+        {/* Segmented Glass Pillbox */}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="inline-flex rounded-xl bg-muted/70 p-1 border border-border/60 gap-1 shadow-2xs">
             {TYPE_TABS.map((t) => (
               <button
                 key={t.value}
@@ -233,11 +294,10 @@ export function TransactionsTab({
                 }}
                 aria-pressed={tab === t.value}
                 className={cn(
-                  "relative min-h-11 min-w-0 rounded-sm px-2 py-2 text-xs font-medium transition-colors hover:bg-hover sm:px-3 sm:text-sm",
-                  "after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:bg-foreground after:opacity-0 after:transition-opacity",
+                  "min-h-8 rounded-lg px-3.5 py-1 text-xs font-semibold transition-all duration-200 active:scale-[0.98]",
                   tab === t.value
-                    ? "text-foreground after:opacity-100"
-                    : "text-muted-foreground hover:text-foreground",
+                    ? "bg-card text-foreground shadow-xs font-bold"
+                    : "text-muted-foreground hover:text-foreground hover:bg-card/50",
                 )}
               >
                 {t.label}
@@ -246,9 +306,9 @@ export function TransactionsTab({
           </div>
           <span
             aria-live="polite"
-            className="hidden shrink-0 text-xs text-muted-foreground sm:block"
+            className="text-xs font-semibold text-muted-foreground"
           >
-            {total} result{total === 1 ? "" : "s"}
+            {total} record{total === 1 ? "" : "s"} found
           </span>
         </div>
 
@@ -330,29 +390,33 @@ export function TransactionsTab({
               </Button>
             )}
           </div>
-        ) : tab === "all" ? (
-          <ActivityRows
-            entries={activity.slice(start, start + pageSize)}
-            accounts={accounts}
-            categories={categories}
-            canEdit={canEdit}
-            showAuthors={showAuthors}
-          />
-        ) : isTransfer ? (
-          <TransferRows
-            transfers={filteredTransfers.slice(start, start + pageSize)}
-            accounts={accounts}
-            canEdit={canEdit}
-          />
         ) : (
-          <TransactionRows
-            transactions={filteredTx.slice(start, start + pageSize)}
-            allTransactions={filteredTx}
-            accounts={accounts}
-            categories={categories}
-            canEdit={canEdit}
-            showAuthors={showAuthors}
-          />
+          <div className="rounded-2xl border border-border/70 bg-card p-4 sm:p-6 shadow-xs">
+            {tab === "all" ? (
+              <ActivityRows
+                entries={activity.slice(start, start + pageSize)}
+                accounts={accounts}
+                categories={categories}
+                canEdit={canEdit}
+                showAuthors={showAuthors}
+              />
+            ) : isTransfer ? (
+              <TransferRows
+                transfers={filteredTransfers.slice(start, start + pageSize)}
+                accounts={accounts}
+                canEdit={canEdit}
+              />
+            ) : (
+              <TransactionRows
+                transactions={filteredTx.slice(start, start + pageSize)}
+                allTransactions={filteredTx}
+                accounts={accounts}
+                categories={categories}
+                canEdit={canEdit}
+                showAuthors={showAuthors}
+              />
+            )}
+          </div>
         )}
 
         {total > pageSize && (
@@ -415,32 +479,6 @@ export function TransactionsTab({
             </div>
           </div>
         )}
-      </div>
-    </div>
-  );
-}
-
-function StripCell({
-  label,
-  value,
-  tone,
-}: {
-  label: string;
-  value: string;
-  tone?: string;
-}) {
-  return (
-    <div className="min-w-0 px-3 py-3 sm:px-4">
-      <div className="truncate text-xs font-medium text-muted-foreground">
-        {label}
-      </div>
-      <div
-        className={cn(
-          "amount mt-1 truncate text-[0.95rem] font-semibold tracking-tight sm:text-lg",
-          tone,
-        )}
-      >
-        {value}
       </div>
     </div>
   );
