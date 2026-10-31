@@ -296,7 +296,9 @@ export type User = typeof users.$inferSelect;
 export type Workspace = typeof workspaces.$inferSelect;
 export type PushSubscription = typeof pushSubscriptions.$inferSelect;
 
-// Immutable snapshots of edits made through the web and mobile transaction action.
+// Immutable creation/edit snapshots. `create:<sha256>` IDs also retain retry
+// receipts after transaction deletion; do not prune them or add a transaction FK
+// cascade without designing a replacement idempotency retention policy.
 export const transactionHistory = pgTable("transaction_history", {
   id: text("id").primaryKey(), workspaceId: ws(), transactionId: text("transaction_id").notNull(),
   actorId: text("actor_id").references(() => users.id, {onDelete: "set null"}),

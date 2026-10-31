@@ -24,5 +24,5 @@ export async function POST(req: Request) {
   const body = await req.json().catch(() => null);
   const res = await createTransaction(body);
   if (!res.ok) return NextResponse.json({ error: res.error ?? "Couldn't save." }, { status: 400 });
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, data: res.data }, { headers: { "Cache-Control": "private, no-store" } });
 }

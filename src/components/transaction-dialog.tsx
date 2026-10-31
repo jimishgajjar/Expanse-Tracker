@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState, useTransition, type ReactElement } from "react";
+import { useId, useRef, useState, useTransition, type ReactElement } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
@@ -92,6 +92,8 @@ export function TransactionDialog({
   const open = controlledOpen !== undefined ? controlledOpen : internalOpen;
   const setOpen = controlledOnOpenChange ?? setInternalOpen;
   const [pending, start] = useTransition();
+  const requestId = useRef<string | null>(null);
+  const submitting = useRef(false);
 
   const seed = transaction ?? template;
   const preferenceKey = `capture:${accounts.map((a) => a.id).sort().join(":")}`;
@@ -193,6 +195,7 @@ export function TransactionDialog({
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
+    if (submitting.current) return;
     setError("");
     if (!Number.isFinite(Number(f.amount)) || Number(f.amount) <= 0) {
       setError("Enter an amount greater than zero.");
@@ -206,62 +209,71 @@ export function TransactionDialog({
       setError("Choose two different accounts for a transfer.");
       return;
     }
+    submitting.current = true;
     start(async () => {
-      let res;
-      if (f.type === "transfer") {
-        res = await createTransfer({
-          amount: Number(f.amount),
-          date: f.date,
-          note: f.note,
-          fromAccountId: f.fromAccountId,
-          toAccountId: f.toAccountId,
-        });
-      } else {
-        const payload = {
-          type: f.type,
-          amount: Number(f.amount),
-          date: f.date,
-          note: f.note,
-          accountId: f.accountId,
-          categoryId: f.categoryId === NONE ? null : f.categoryId,
-          tagIds: tags.map((t) => t.id),
-        };
-        res = isEdit
-          ? await updateTransaction(transaction!.id, payload)
-          : await createTransaction(payload);
-      }
-      if (res.ok) {
-        toast.success(
-          f.type === "transfer"
-            ? "Transfer added"
-            : isEdit
-              ? "Transaction updated"
-              : "Transaction added",
-        );
-        const recent =
-          f.categoryId === NONE
-            ? recentCategories
-            : [f.categoryId, ...recentCategories.filter((id) => id !== f.categoryId)].slice(0, 6);
-        setRecentCategories(recent);
-        try {
-          localStorage.setItem(
-            preferenceKey,
-            JSON.stringify({ accounts: favourites, categories: recent }),
-          );
-        } catch {
-          /* Browser preference only. */
-        }
-        setSaved(!addAnother || isEdit);
-        if (addAnother && !isEdit) {
-          setF((current) => ({ ...current, amount: "", note: "" }));
-          setTags([]);
+      try {
+        let res;
+        if (f.type === "transfer") {
+          res = await createTransfer({
+            amount: Number(f.amount),
+            date: f.date,
+            note: f.note,
+            fromAccountId: f.fromAccountId,
+            toAccountId: f.toAccountId,
+          });
         } else {
-          setOpen(false);
+          const payload = {
+            type: f.type,
+            amount: Number(f.amount),
+            date: f.date,
+            note: f.note,
+            accountId: f.accountId,
+            categoryId: f.categoryId === NONE ? null : f.categoryId,
+            tagIds: tags.map((t) => t.id),
+          };
+          if (!isEdit) requestId.current ??= crypto.randomUUID();
+          res = isEdit
+            ? await updateTransaction(transaction!.id, payload)
+            : await createTransaction({ ...payload, requestId: requestId.current });
         }
-        window.dispatchEvent(new Event("ledger-changed"));
-        router.refresh();
-      } else {
-        setError(res.error);
+        if (res.ok) {
+          requestId.current = null;
+          toast.success(
+            f.type === "transfer"
+              ? "Transfer added"
+              : isEdit
+                ? "Transaction updated"
+                : "Transaction added",
+          );
+          const recent =
+            f.categoryId === NONE
+              ? recentCategories
+              : [f.categoryId, ...recentCategories.filter((id) => id !== f.categoryId)].slice(0, 6);
+          setRecentCategories(recent);
+          try {
+            localStorage.setItem(
+              preferenceKey,
+              JSON.stringify({ accounts: favourites, categories: recent }),
+            );
+          } catch {
+            /* Browser preference only. */
+          }
+          setSaved(!addAnother || isEdit);
+          if (addAnother && !isEdit) {
+            setF((current) => ({ ...current, amount: "", note: "" }));
+            setTags([]);
+          } else {
+            setOpen(false);
+          }
+          window.dispatchEvent(new Event("ledger-changed"));
+          router.refresh();
+        } else {
+          setError(res.error);
+        }
+      } catch {
+        setError("Couldn't confirm the save. Retry without changing the form, or check Activity first.");
+      } finally {
+        submitting.current = false;
       }
     });
   }

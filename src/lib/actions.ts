@@ -1,11 +1,12 @@
 "use server";
 
 import { editWithHistory } from "./transaction-edit";
+import { createWithHistory, TransactionCreateError } from "./transaction-create";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { and, eq, isNull, or, sql } from "drizzle-orm";
 import { getDb } from "./db";
-import { accounts, appSettings, budgets, categories, goals, recurring, splits, tags, transactionTags, transactions, transfers, workspaceMembers } from "./db/schema";
+import { accounts, appSettings, budgets, categories, goals, recurring, splits, tags, transactions, transfers, workspaceMembers } from "./db/schema";
 import { assertWorkspaceReferences } from "./workspace-references";
 import { findCurrencyByCode } from "./currencies";
 import { getActiveRole, getActiveWorkspaceId, getUserWorkspaces } from "./workspace";
@@ -132,22 +133,20 @@ const txSchema = z.object({
   tagIds: z.array(z.string()).transform((ids) => [...new Set(ids)]).optional(),
 });
 
-export async function createTransaction(input: unknown): Promise<Result> {
+export async function createTransaction(input: unknown): Promise<Result<{ id: string; replayed: boolean }>> {
   try {
-    const d = txSchema.parse(input);
     const w = await wid();
     const me = await getCurrentUser();
+    if (!me) return { ok: false, error: "Sign in again." };
     const db = await getDb();
-    await assertWorkspaceReferences(w, { accountIds: [d.accountId], categoryId: d.categoryId, tagIds: d.tagIds });
-    const [row] = await db.insert(transactions).values({
-      workspaceId: w, type: d.type, amount: String(d.amount), date: d.date,
-      note: d.note ?? "", accountId: d.accountId, categoryId: d.categoryId ?? null,
-      createdBy: me?.id ?? null,
-    }).returning({ id: transactions.id });
-    if (d.tagIds?.length) await db.insert(transactionTags).values(d.tagIds.map((tagId) => ({ transactionId: row.id, tagId })));
+    const data = await createWithHistory(db, w, { id: me.id, name: me.name || me.email || "Workspace member" }, input);
     revalidatePath("/");
-    return { ok: true };
-  } catch (e) { return fail(e); }
+    return { ok: true, data };
+  } catch (e) {
+    if (e instanceof z.ZodError || e instanceof TransactionCreateError) return fail(e);
+    // Database errors can include parameterized financial data. Do not expose them.
+    return { ok: false, error: "Couldn't confirm the save. Retry without changing the form, or check Activity first." };
+  }
 }
 
 export async function updateTransaction(id: string, input: unknown): Promise<Result> {

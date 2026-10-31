@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -40,6 +40,8 @@ export default function TransactionForm({ asTab = false }: { asTab?: boolean }) 
   const [showDate, setShowDate] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const requestId = useRef<string | null>(null);
+  const submitting = useRef(false);
 
   // The native Add tab may mount while bootstrap data is still loading.
   useEffect(() => {
@@ -62,9 +64,11 @@ export default function TransactionForm({ asTab = false }: { asTab?: boolean }) 
   if (!token) return <Redirect href="/login" />;
 
   async function save() {
-    const value = parseFloat(amount.replace(",", "."));
-    if (!value || value <= 0) return setError("Enter an amount greater than 0.");
+    if (submitting.current) return;
+    const value = Number(amount.replace(",", "."));
+    if (!Number.isFinite(value) || value <= 0) return setError("Enter an amount greater than 0.");
     if (type !== "transfer" && !accountId) return setError("Pick an account.");
+    submitting.current = true;
     setBusy(true);
     setError(null);
     try {
@@ -78,13 +82,22 @@ export default function TransactionForm({ asTab = false }: { asTab?: boolean }) 
       } else {
         const body = { type, amount: value, date, accountId, categoryId: categoryId || null, note: note.trim(), tagIds };
         if (isEdit) await api(`/transactions/${editing!.id}`, { method: "PATCH", body });
-        else await api("/transactions", { method: "POST", body });
+        else {
+          // Uniqueness marker only, never a credential. Retain after network errors
+          // (including reload failures after a successful write) until acknowledged.
+          requestId.current ??= `native-${Date.now()}-${Array.from({ length: 3 }, () => Math.random().toString(36).slice(2)).join("")}`;
+          await api("/transactions", { method: "POST", body: { ...body, requestId: requestId.current } });
+        }
       }
       await reload();
+      requestId.current = null;
+      if (asTab && !isEdit) { setAmount(""); setNote(""); setTagIds([]); }
       tapSuccess();
       dismiss();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Couldn't save.");
+    } finally {
+      submitting.current = false;
       setBusy(false);
     }
   }

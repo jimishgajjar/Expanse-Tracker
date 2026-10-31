@@ -13,8 +13,10 @@
     "db:studio": "drizzle-kit studio",
     "db:seed": "tsx scripts/seed.ts",
     "test": "vitest run",
+    "benchmark:ledger": "tsx scripts/benchmark-ledger.ts",
     "dev:preview": "node scripts/local-preview.mjs",
     "build:preview": "node scripts/local-preview.mjs build",
+    "start:preview": "node scripts/local-preview.mjs start",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

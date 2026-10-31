@@ -48,7 +48,21 @@ describe("server activity pagination", () => {
     expect((await queryActivity(db,"w",filters({page:999}))).page).toBe(3);
     const tagged = await queryActivity(db,"w",filters({search:"holiday"}));
     expect(tagged.transactions.map(t=>t.id)).toEqual(["t1"]);
+    expect(tagged.transactions[0]).toMatchObject({
+      type: "expense", amount: 10, note: "Coffee", accountId: "a", categoryId: "food",
+      account: { name: "Bank" }, category: { name: "Food" },
+      tags: [{ id: "tag", name: "Holiday" }],
+    });
     expect((await queryActivity(db,"w",filters({category:"food"}))).transferred).toBe(0);
+  });
+  it("hydrates only the selected page without changing transfer details or empty-filter totals", async () => {
+    const transfers = await queryActivity(db,"w",filters({type:"transfer"}));
+    expect(transfers.transactions).toEqual([]);
+    expect(transfers.transfers).toEqual([{id:"move",amount:50,date:"2026-10-03",note:"",fromAccountId:"a",toAccountId:"b"}]);
+    expect(transfers.income).toBe(0);
+    expect(transfers.expense).toBe(0);
+    const empty = await queryActivity(db,"w",filters({search:"no matching fixture"}));
+    expect(empty).toMatchObject({total:0,income:0,expense:0,transferred:0,pages:1,page:1,transactions:[],transfers:[]});
   });
 });
 

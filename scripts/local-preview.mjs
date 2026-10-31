@@ -17,6 +17,8 @@ const env = {
 const command =
   process.argv[2] === "build"
     ? ["build"]
+    : process.argv[2] === "start"
+      ? ["start", "--hostname", "127.0.0.1", "--port", "3107"]
     : ["dev", "--hostname", "127.0.0.1", "--port", "3107"];
 console.log(
   "Isolated preview: embedded demo database; external database, email and push disabled.",
