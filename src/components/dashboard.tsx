@@ -2,7 +2,7 @@
 
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { DeferredTools, DeferredPlanning, DeferredAnalytics } from "./deferred-sections";
 import { PagedActivity } from "./paged-activity";
 import { CommandPalette, CommandSearchTrigger } from "./command-palette";
@@ -174,6 +174,17 @@ export function Dashboard({
   const [commandOpen, setCommandOpen] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogType, setDialogType] = useState<"expense" | "income" | "transfer">("expense");
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.key === "k" || e.key === "K" || e.code === "KeyK") && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        setCommandOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
   const showAuthors = true;
   const liveAccounts = accounts.filter((a) => !a.archived);
   const page = pages.find((p) => p.id === tab)!;

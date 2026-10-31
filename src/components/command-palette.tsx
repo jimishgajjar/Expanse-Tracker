@@ -55,15 +55,16 @@ export function CommandPalette({
   const { setTheme, theme } = useTheme();
 
   useEffect(() => {
+    if (controlledOpen !== undefined) return;
     const down = (e: KeyboardEvent) => {
-      if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
+      if ((e.key === "k" || e.key === "K" || e.code === "KeyK") && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
         setOpen(!open);
       }
     };
-    document.addEventListener("keydown", down);
-    return () => document.removeEventListener("keydown", down);
-  }, [open, setOpen]);
+    window.addEventListener("keydown", down);
+    return () => window.removeEventListener("keydown", down);
+  }, [controlledOpen, open, setOpen]);
 
   const runCommand = (command: () => void) => {
     setOpen(false);
@@ -84,20 +85,27 @@ export function CommandPalette({
         {/* Quick Actions */}
         <CommandGroup heading="Quick actions">
           {onOpenNewTransaction && (
-            <CommandItem onSelect={() => runCommand(onOpenNewTransaction)}>
+            <CommandItem
+              value="new transaction add expense income record payment"
+              onSelect={() => runCommand(onOpenNewTransaction)}
+            >
               <Plus className="size-4 text-brand" />
               <span>New transaction</span>
               <CommandShortcut>N</CommandShortcut>
             </CommandItem>
           )}
           {onOpenNewTransfer && (
-            <CommandItem onSelect={() => runCommand(onOpenNewTransfer)}>
+            <CommandItem
+              value="new transfer move money between accounts"
+              onSelect={() => runCommand(onOpenNewTransfer)}
+            >
               <ArrowRightLeft className="size-4 text-brand" />
               <span>New transfer</span>
               <CommandShortcut>T</CommandShortcut>
             </CommandItem>
           )}
           <CommandItem
+            value="export financial data csv json download"
             onSelect={() =>
               runCommand(() => {
                 window.location.href = "/api/export";
@@ -108,6 +116,7 @@ export function CommandPalette({
             <span>Export financial data</span>
           </CommandItem>
           <CommandItem
+            value="toggle theme switch dark light mode appearance"
             onSelect={() =>
               runCommand(() => {
                 setTheme(theme === "dark" ? "light" : "dark");
@@ -123,27 +132,45 @@ export function CommandPalette({
 
         {/* Navigation */}
         <CommandGroup heading="Navigation">
-          <CommandItem onSelect={() => runCommand(() => onNavigateTab("overview"))}>
+          <CommandItem
+            value="overview home dashboard net worth summary"
+            onSelect={() => runCommand(() => onNavigateTab("overview"))}
+          >
             <House className="size-4" />
             <span>Overview</span>
           </CommandItem>
-          <CommandItem onSelect={() => runCommand(() => onNavigateTab("transactions"))}>
+          <CommandItem
+            value="activity ledger transactions history search"
+            onSelect={() => runCommand(() => onNavigateTab("transactions"))}
+          >
             <Receipt className="size-4" />
             <span>Activity ledger</span>
           </CommandItem>
-          <CommandItem onSelect={() => runCommand(() => onNavigateTab("accounts"))}>
+          <CommandItem
+            value="accounts balances bank cards cash"
+            onSelect={() => runCommand(() => onNavigateTab("accounts"))}
+          >
             <Wallet className="size-4" />
             <span>Accounts</span>
           </CommandItem>
-          <CommandItem onSelect={() => runCommand(() => onNavigateTab("planning"))}>
+          <CommandItem
+            value="planning bills subscriptions recurring savings goals"
+            onSelect={() => runCommand(() => onNavigateTab("planning"))}
+          >
             <CalendarDays className="size-4" />
             <span>Planning and bills</span>
           </CommandItem>
-          <CommandItem onSelect={() => runCommand(() => onNavigateTab("analytics"))}>
+          <CommandItem
+            value="insights analytics trends reports charts cash flow"
+            onSelect={() => runCommand(() => onNavigateTab("analytics"))}
+          >
             <TrendingUp className="size-4" />
             <span>Insights and analytics</span>
           </CommandItem>
-          <CommandItem onSelect={() => runCommand(() => onNavigateTab("settings"))}>
+          <CommandItem
+            value="settings preferences profile currency locale configuration"
+            onSelect={() => runCommand(() => onNavigateTab("settings"))}
+          >
             <Settings className="size-4" />
             <span>Settings</span>
           </CommandItem>
@@ -157,6 +184,7 @@ export function CommandPalette({
             {accounts.map((a) => (
               <CommandItem
                 key={a.id}
+                value={`account ${a.name} ${a.type}`}
                 onSelect={() => runCommand(() => router.push(`/accounts/${a.id}`))}
               >
                 <span style={{ color: a.color }}>
@@ -179,6 +207,7 @@ export function CommandPalette({
             {categories.slice(0, 15).map((c) => (
               <CommandItem
                 key={c.id}
+                value={`category ${c.name} ${c.kind}`}
                 onSelect={() => runCommand(() => router.push(`/categories/${c.id}`))}
               >
                 <span style={{ color: c.color }}>
