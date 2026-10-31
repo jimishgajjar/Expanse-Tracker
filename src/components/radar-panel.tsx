@@ -68,8 +68,8 @@ export function RadarPanel({
                       <span
                         className="grid size-6 shrink-0 place-items-center rounded-md"
                         style={{
-                          backgroundColor: `${b.color || "#0f7b6c"}18`,
-                          color: b.color || "#0f7b6c",
+                          backgroundColor: b.color ? `${b.color}18` : "var(--hover)",
+                          color: b.color || "var(--brand)",
                         }}
                       >
                         <Icon name={b.icon} size={14} />
@@ -95,7 +95,7 @@ export function RadarPanel({
                     >
                       <div
                         className={cn(
-                          "h-full rounded-full transition-all",
+                          "h-full rounded-full transition-[background-color] duration-150 motion-reduce:transition-none",
                           isCritical ? "bg-negative" : "bg-amber-500",
                         )}
                         style={{ width: `${Math.min(100, used)}%` }}
@@ -167,7 +167,7 @@ export function RadarPanel({
                               : "bg-muted text-foreground border border-border/40",
                       )}
                     >
-                      <span className="text-[10px] uppercase font-bold tracking-tight opacity-75">
+                      <span className="text-[11px] font-semibold text-muted-foreground">
                         {format(date, "MMM")}
                       </span>
                       <span className="amount text-sm font-bold leading-tight">

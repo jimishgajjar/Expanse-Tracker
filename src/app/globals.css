@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
+@import "./base.css" layer(base);
 
 @custom-variant dark (&:is(.dark *));
 
@@ -112,49 +113,49 @@
   --sidebar-ring: #059669;
 }
 
-/* Deep obsidian neutral black theme: #09090b ground, #111113 surfaces, clean zinc ink,
-   neutral hairlines, zero green wash. */
+/* Emerald-infused dark mode: deep forest ground, emerald slate surfaces,
+   crisp mint-tinted ink, translucent emerald hairlines and vibrant emerald accents. */
 .dark {
-  --background: #09090b;
-  --foreground: #fafafa;
-  --card: #111113;
-  --card-foreground: #fafafa;
-  --popover: #111113;
-  --popover-foreground: #fafafa;
+  --background: #07100b;
+  --foreground: #edf5f0;
+  --card: #0c1812;
+  --card-foreground: #edf5f0;
+  --popover: #0f1f17;
+  --popover-foreground: #edf5f0;
   --primary: #10b981;
-  --primary-foreground: #09090b;
+  --primary-foreground: #041a10;
   --brand: #10b981;
-  --brand-foreground: #09090b;
+  --brand-foreground: #041a10;
   --brand-deep: #064e3b;
   --brand-deep-foreground: #ecfdf5;
-  --hover: rgba(255, 255, 255, 0.05);
-  --canvas-muted: rgba(255, 255, 255, 0.02);
-  --secondary: #18181b;
-  --secondary-foreground: #fafafa;
-  --muted: #18181b;
-  --muted-foreground: #a1a1aa;
-  --accent: #1e1e22;
-  --accent-foreground: #fafafa;
+  --hover: rgba(52, 211, 153, 0.08);
+  --canvas-muted: rgba(16, 185, 129, 0.035);
+  --secondary: #13241b;
+  --secondary-foreground: #d1fae5;
+  --muted: #122219;
+  --muted-foreground: #8fa79b;
+  --accent: #172c21;
+  --accent-foreground: #edf5f0;
   --destructive: #fb7185;
   --positive: #10b981;
-  --positive-foreground: #09090b;
+  --positive-foreground: #041a10;
   --negative: #fb7185;
   --negative-foreground: #2a080e;
-  --border: rgba(255, 255, 255, 0.08);
-  --input: rgba(255, 255, 255, 0.12);
+  --border: rgba(52, 211, 153, 0.12);
+  --input: rgba(52, 211, 153, 0.18);
   --ring: #10b981;
   --chart-1: #10b981;
   --chart-2: #38bdf8;
   --chart-3: #fbbf24;
   --chart-4: #fb7185;
   --chart-5: #a78bfa;
-  --sidebar: #0c0c0e;
-  --sidebar-foreground: #fafafa;
+  --sidebar: #050d08;
+  --sidebar-foreground: #edf5f0;
   --sidebar-primary: #10b981;
-  --sidebar-primary-foreground: #09090b;
-  --sidebar-accent: #18181b;
-  --sidebar-accent-foreground: #fafafa;
-  --sidebar-border: rgba(255, 255, 255, 0.08);
+  --sidebar-primary-foreground: #041a10;
+  --sidebar-accent: #122219;
+  --sidebar-accent-foreground: #edf5f0;
+  --sidebar-border: rgba(52, 211, 153, 0.1);
   --sidebar-ring: #10b981;
 }
 
@@ -262,7 +263,7 @@
   --foreground: #edf2ef;
   --muted-foreground: #a2afa8;
   --border: #29342e;
-  background: #101613;
+  background: #07100b;
 }
 .dashboard-panel, .balance-summary {
   min-width: 0;

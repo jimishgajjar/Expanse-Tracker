@@ -18,19 +18,29 @@ type Seg = {
   icon: string;
 };
 
-function Donut({ segments, total }: { segments: Seg[]; total: number }) {
-  const size = 152,
-    stroke = 18,
-    r = (size - stroke) / 2,
-    c = 2 * Math.PI * r,
-    cx = size / 2;
+function Donut({
+  segments,
+  total,
+  hoveredId,
+  onHover,
+}: {
+  segments: Seg[];
+  total: number;
+  hoveredId: string | null;
+  onHover: (id: string | null) => void;
+}) {
+  const size = 160;
+  const stroke = 18;
+  const r = (size - stroke) / 2;
+  const c = 2 * Math.PI * r;
+  const cx = size / 2;
 
   return (
     <svg
       viewBox={`0 0 ${size} ${size}`}
       width={size}
       height={size}
-      className="-rotate-90 transition-transform duration-500 ease-out-expo"
+      className="-rotate-90"
       aria-hidden="true"
     >
       <circle
@@ -42,6 +52,10 @@ function Donut({ segments, total }: { segments: Seg[]; total: number }) {
         strokeWidth={stroke}
       />
       {segments.map((s, index) => {
+        const segId = s.id ?? "uncategorized";
+        const isHovered = hoveredId === segId;
+        const hasHover = hoveredId !== null;
+
         const offset = total
           ? (segments
               .slice(0, index)
@@ -50,18 +64,24 @@ function Donut({ segments, total }: { segments: Seg[]; total: number }) {
             c
           : 0;
         const dash = total ? (s.value / total) * c : 0;
+
         return (
           <circle
-            key={s.id ?? "uncategorized"}
+            key={segId}
             cx={cx}
             cy={cx}
             r={r}
             fill="none"
             stroke={s.color}
-            strokeWidth={stroke}
+            strokeWidth={isHovered ? stroke + 4 : stroke}
             strokeDasharray={`${dash} ${c - dash}`}
             strokeDashoffset={-offset}
-            className="transition-all duration-300 hover:opacity-85"
+            className="cursor-pointer transition-opacity duration-200 motion-reduce:transition-none"
+            style={{
+              opacity: hasHover ? (isHovered ? 1 : 0.4) : 1,
+            }}
+            onMouseEnter={() => onHover(segId)}
+            onMouseLeave={() => onHover(null)}
           />
         );
       })}
@@ -75,6 +95,7 @@ export function CategoryDonut({
   transactions: TransactionDTO[];
 }) {
   const [kind, setKind] = useState<"expense" | "income">("expense");
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
 
   const segments = useMemo<Seg[]>(() => {
     const map = new Map<string, Seg>();
@@ -98,30 +119,37 @@ export function CategoryDonut({
   const total = segments.reduce((s, x) => s + x.value, 0);
   const { money } = useFormat();
 
+  const activeSegment = hoveredId
+    ? segments.find((s) => (s.id ?? "uncategorized") === hoveredId)
+    : null;
+
   return (
-    <Card className="min-w-0 gap-4 rounded-xl border border-border bg-card py-4 shadow-none sm:py-5">
-      <CardHeader className="flex flex-wrap items-center justify-between gap-y-2 border-b border-border/60 px-4 pb-3 sm:px-5">
+    <Card className="dashboard-panel min-w-0 flex flex-col justify-between rounded-xl border border-border/80 bg-card p-4 sm:p-5 shadow-none">
+      <CardHeader className="flex flex-wrap items-center justify-between gap-y-2 border-b border-border/60 pb-3 p-0">
         <div>
           <h2 className="text-sm font-semibold tracking-tight text-foreground">
             {kind === "expense" ? "Spending by category" : "Income by category"}
           </h2>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            Where your money {kind === "expense" ? "goes" : "comes from"}
+            {kind === "expense" ? "Where your money goes" : "Sources of your revenue"}
           </p>
         </div>
-        <div className="flex gap-1 rounded-lg bg-muted/60 p-1 text-xs">
+        <div className="flex gap-1 rounded-lg border border-border/60 bg-muted/40 p-1 text-xs">
           {(["expense", "income"] as const).map((k) => (
             <button
               key={k}
               type="button"
-              onClick={() => setKind(k)}
+              onClick={() => {
+                setKind(k);
+                setHoveredId(null);
+              }}
               aria-pressed={kind === k}
               className={cn(
-                "min-h-11 rounded-md px-3 py-1 text-xs font-medium capitalize transition-colors sm:min-h-8",
+                "rounded-md px-3 py-1 text-xs font-semibold capitalize transition-colors duration-150 cursor-pointer motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-brand active:scale-[0.98]",
                 kind === k
                   ? k === "expense"
-                    ? "bg-background text-negative font-bold shadow-xs"
-                    : "bg-background text-positive font-bold shadow-xs"
+                    ? "bg-card text-negative shadow-xs border border-negative/25 font-bold"
+                    : "bg-card text-positive shadow-xs border border-positive/25 font-bold"
                   : "text-muted-foreground hover:text-foreground",
               )}
             >
@@ -131,7 +159,7 @@ export function CategoryDonut({
         </div>
       </CardHeader>
 
-      <CardContent className="@container flex flex-1 flex-col justify-center px-4 pt-1 sm:px-5">
+      <CardContent className="flex flex-1 flex-col justify-center p-0 pt-4">
         {segments.length === 0 ? (
           <div className="py-12 text-center">
             <p className="text-sm font-medium text-foreground">
@@ -142,31 +170,51 @@ export function CategoryDonut({
             </p>
           </div>
         ) : (
-          <div className="flex flex-col items-center gap-4 @[24rem]:flex-row">
-            {/* Donut representation */}
-            <div className="relative shrink-0 my-2">
-              <Donut segments={segments} total={total} />
-              <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-[11px] text-muted-foreground">
-                  {kind === "expense" ? "Spent" : "Earned"}
+          <div className="flex flex-col items-center gap-5 sm:flex-row">
+            {/* Interactive SVG Donut */}
+            <div className="relative shrink-0 my-1">
+              <Donut
+                segments={segments}
+                total={total}
+                hoveredId={hoveredId}
+                onHover={setHoveredId}
+              />
+              <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center p-2 text-center">
+                <span className="text-[11px] font-medium text-muted-foreground truncate max-w-[100px]">
+                  {activeSegment ? activeSegment.name : kind === "expense" ? "Total spent" : "Total earned"}
                 </span>
-                <span className="amount mt-1 max-w-28 break-words text-center text-base font-semibold text-foreground">
-                  {money(total)}
+                <span className="amount mt-0.5 max-w-[120px] break-words text-center text-sm sm:text-base font-bold text-foreground">
+                  {money(activeSegment ? activeSegment.value : total)}
                 </span>
+                {activeSegment && total > 0 && (
+                  <span className="mt-0.5 rounded-full bg-brand/10 px-1.5 py-0.2 text-[10px] font-semibold text-brand">
+                    {Math.round((activeSegment.value / total) * 100)}%
+                  </span>
+                )}
               </div>
             </div>
 
-            {/* Category breakdown rows with visual share bars */}
+            {/* Category rows with bidirectional hover sync */}
             <div className="min-w-0 w-full flex-1">
               <p className="mb-2 text-[11px] font-medium text-muted-foreground">
-                Select a category to view its history
+                Hover or select a category to inspect its share
               </p>
 
               <ul className="max-h-60 divide-y divide-border/60 overflow-y-auto pr-1">
                 {segments.map((s) => {
+                  const segId = s.id ?? "uncategorized";
+                  const isHovered = hoveredId === segId;
                   const percent = total > 0 ? Math.round((s.value / total) * 100) : 0;
+
                   const itemContent = (
-                    <div className="w-full space-y-1.5 py-1">
+                    <div
+                      className={cn(
+                        "w-full space-y-1.5 rounded-lg px-2 py-1.5 transition-colors duration-150 cursor-pointer motion-reduce:transition-none",
+                        isHovered ? "bg-muted/60" : "hover:bg-muted/30",
+                      )}
+                      onMouseEnter={() => setHoveredId(segId)}
+                      onMouseLeave={() => setHoveredId(null)}
+                    >
                       <div className="flex items-center gap-2.5">
                         <span
                           className="grid size-7 shrink-0 place-items-center rounded-md"
@@ -191,10 +239,10 @@ export function CategoryDonut({
                         )}
                       </div>
 
-                      {/* Percentage share track */}
+                      {/* Percentage share bar */}
                       <div className="h-1 w-full overflow-hidden rounded-full bg-muted/80">
                         <div
-                          className="h-full rounded-full transition-all"
+                          className="h-full rounded-full"
                           style={{
                             width: `${percent}%`,
                             backgroundColor: s.color,
@@ -205,19 +253,16 @@ export function CategoryDonut({
                   );
 
                   return (
-                    <li key={s.id ?? "uncategorized"}>
+                    <li key={segId}>
                       {s.id ? (
                         <Link
                           href={`/categories/${s.id}`}
-                          title={`${s.name}: ${money(s.value)} (${percent}%)`}
-                          className="flex min-h-11 items-center rounded-lg px-1.5 py-1 transition-colors hover:bg-muted/40"
+                          className="block focus-visible:outline-2 focus-visible:outline-brand rounded-lg"
                         >
                           {itemContent}
                         </Link>
                       ) : (
-                        <div className="flex min-h-11 items-center px-1.5 py-1">
-                          {itemContent}
-                        </div>
+                        itemContent
                       )}
                     </li>
                   );

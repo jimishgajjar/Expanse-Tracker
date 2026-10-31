@@ -23,6 +23,7 @@ export function TrendChart({
   const { money, signedMoney } = useFormat();
   const id = useId();
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  const [activeSeries, setActiveSeries] = useState<"all" | "income" | "expense">("all");
 
   const data = useMemo(
     () =>
@@ -63,19 +64,37 @@ export function TrendChart({
             A view of your selected period
           </p>
         </div>
-          <div className="flex gap-3 text-xs text-muted-foreground">
-            <span className="flex items-center gap-1.5 font-semibold">
-              <span className="size-2 rounded-full bg-positive" />
-              Income
-            </span>
-            <span className="flex items-center gap-1.5 font-semibold">
-              <span className="size-2 rounded-full bg-negative" />
-              Expense
-            </span>
-          </div>
+        <div className="flex items-center gap-1.5 text-xs">
+          <button
+            type="button"
+            onClick={() => setActiveSeries(activeSeries === "income" ? "all" : "income")}
+            className={cn(
+              "flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-semibold transition-colors duration-150 cursor-pointer motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-brand",
+              activeSeries === "income"
+                ? "bg-positive/15 text-positive font-bold"
+                : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            <span className="size-2 rounded-full bg-positive" />
+            Income
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveSeries(activeSeries === "expense" ? "all" : "expense")}
+            className={cn(
+              "flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-semibold transition-colors duration-150 cursor-pointer motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-brand",
+              activeSeries === "expense"
+                ? "bg-negative/15 text-negative font-bold"
+                : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            <span className="size-2 rounded-full bg-negative" />
+            Expense
+          </button>
         </div>
+      </div>
 
-        <div className="flex-1">
+      <div className="flex-1">
         {!hasActivity ? (
           <div className="grid min-h-52 place-content-center text-center">
             <div className="mx-auto mb-3 grid size-10 place-items-center rounded-xl bg-muted text-muted-foreground">
@@ -91,14 +110,14 @@ export function TrendChart({
         ) : (
           <>
             <p className="mb-3 text-[11px] text-muted-foreground">
-              Hover, tap a bar, or use the arrow buttons to inspect exact totals.
+              Hover or tap a bar, or use the arrow buttons to inspect exact totals.
             </p>
 
             <div className="flex gap-2">
               {/* Y-axis markers */}
               <div
                 aria-hidden
-                className="flex h-44 min-w-12 shrink-0 flex-col justify-between text-right text-[10px] font-medium text-muted-foreground tabular-nums"
+                className="flex h-44 min-w-12 shrink-0 flex-col justify-between text-right text-[10px] font-medium text-muted-foreground tabular-nums select-none"
               >
                 <span>{money(max)}</span>
                 <span>{money(max / 2)}</span>
@@ -114,7 +133,7 @@ export function TrendChart({
                   {/* Subtle horizontal grid lines */}
                   <div
                     aria-hidden
-                    className="pointer-events-none absolute inset-x-0 top-1 flex h-44 flex-col justify-between"
+                    className="pointer-events-none absolute inset-x-0 top-1 flex h-44 flex-col justify-between select-none"
                   >
                     <span className="border-t border-dashed border-border/50" />
                     <span className="border-t border-dashed border-border/50" />
@@ -123,6 +142,9 @@ export function TrendChart({
 
                   {data.map((d, i) => {
                     const isSelected = selectedKey === d.key;
+                    const showIncome = activeSeries === "all" || activeSeries === "income";
+                    const showExpense = activeSeries === "all" || activeSeries === "expense";
+
                     return (
                       <button
                         key={d.key}
@@ -134,30 +156,34 @@ export function TrendChart({
                         onFocus={() => setSelectedKey(d.key)}
                         onClick={() => setSelectedKey(d.key)}
                         className={cn(
-                          "group relative min-w-0 flex-1 rounded-md transition-colors focus-visible:outline-offset-0",
-                          isSelected ? "bg-brand/10" : "hover:bg-muted/40",
+                          "group relative min-w-0 flex-1 rounded-md transition-colors duration-150 cursor-pointer focus-visible:outline-offset-0 motion-reduce:transition-none",
+                          isSelected ? "bg-brand/15" : "hover:bg-muted/40",
                         )}
                       >
                         <span className="flex h-44 items-end justify-center gap-0.5 px-0.5">
-                          <span
-                            className={cn(
-                              "w-1/2 max-w-3.5 rounded-t-md bg-positive shadow-2xs transition-all",
-                              d.income > 0 && "min-h-0.5",
-                              "group-hover:brightness-110",
-                            )}
-                            style={{ height: `${(d.income / max) * 100}%` }}
-                          />
-                          <span
-                            className={cn(
-                              "w-1/2 max-w-3.5 rounded-t-md bg-negative shadow-2xs transition-all",
-                              d.expense > 0 && "min-h-0.5",
-                              "group-hover:brightness-110",
-                            )}
-                            style={{ height: `${(d.expense / max) * 100}%` }}
-                          />
+                          {showIncome && (
+                            <span
+                              className={cn(
+                                "w-1/2 max-w-3.5 rounded-t-md bg-positive shadow-2xs transition-[filter,opacity] duration-150 motion-reduce:transition-none",
+                                d.income > 0 && "min-h-0.5",
+                                "group-hover:brightness-110",
+                              )}
+                              style={{ height: `${(d.income / max) * 100}%` }}
+                            />
+                          )}
+                          {showExpense && (
+                            <span
+                              className={cn(
+                                "w-1/2 max-w-3.5 rounded-t-md bg-negative shadow-2xs transition-[filter,opacity] duration-150 motion-reduce:transition-none",
+                                d.expense > 0 && "min-h-0.5",
+                                "group-hover:brightness-110",
+                              )}
+                              style={{ height: `${(d.expense / max) * 100}%` }}
+                            />
+                          )}
                         </span>
 
-                        <span className="mt-2 block h-6 text-[10px] font-medium leading-4 text-muted-foreground">
+                        <span className="mt-2 block h-6 text-[10px] font-medium leading-4 text-muted-foreground truncate">
                           {i % Math.max(1, Math.ceil(data.length / 10)) === 0 ||
                           isSelected
                             ? d.label
@@ -215,7 +241,7 @@ export function TrendChart({
                 <Button
                   variant="outline"
                   size="icon"
-                  className="size-8 rounded-lg"
+                  className="size-8 rounded-lg transition-transform active:scale-95 motion-reduce:transition-none motion-reduce:transform-none"
                   aria-label="Previous chart date"
                   disabled={index <= 0}
                   onClick={() => move(-1)}
@@ -225,7 +251,7 @@ export function TrendChart({
                 <Button
                   variant="outline"
                   size="icon"
-                  className="size-8 rounded-lg"
+                  className="size-8 rounded-lg transition-transform active:scale-95 motion-reduce:transition-none motion-reduce:transform-none"
                   aria-label="Next chart date"
                   disabled={index === data.length - 1}
                   onClick={() => move(1)}

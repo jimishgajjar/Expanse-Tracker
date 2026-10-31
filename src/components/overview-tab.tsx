@@ -148,10 +148,10 @@ export function OverviewTab({
                   variant="ghost"
                   size="sm"
                   onClick={onActivity}
-                  className="group/btn gap-1 text-xs font-medium text-muted-foreground hover:text-foreground rounded-lg"
+                  className="group/btn gap-1 text-xs font-medium text-muted-foreground hover:text-foreground rounded-lg focus-visible:outline-2 focus-visible:outline-brand active:scale-[0.98] disabled:opacity-50"
                 >
                   <span>View all</span>
-                  <ArrowRight className="size-3.5 transition-transform group-hover/btn:translate-x-0.5" />
+                  <ArrowRight className="size-3.5 transition-transform motion-reduce:transition-none motion-reduce:transform-none group-hover/btn:translate-x-0.5" />
                 </Button>
               </div>
               <TransactionRows
@@ -166,7 +166,7 @@ export function OverviewTab({
               <button
                 type="button"
                 onClick={onActivity}
-                className="mt-3 flex min-h-11 items-center gap-1.5 text-xs font-medium text-brand hover:underline cursor-pointer sm:min-h-8"
+                className="mt-3 flex min-h-11 items-center gap-1.5 text-xs font-medium text-brand hover:underline cursor-pointer sm:min-h-8 focus-visible:outline-2 focus-visible:outline-brand active:scale-[0.98] disabled:opacity-50"
               >
                 <span>
                   View {transferCount ?? transfers.length} transfer

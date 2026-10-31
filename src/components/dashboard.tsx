@@ -1,6 +1,7 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { useState } from "react";
 import { DeferredTools, DeferredPlanning, DeferredAnalytics } from "./deferred-sections";
 import { PagedActivity } from "./paged-activity";
@@ -129,6 +130,7 @@ export function Dashboard({
   emailVerified,
   canEdit,
   initialTab,
+  bankDemoAvailable = false,
 }: {
   accounts: AccountDTO[];
   categories: CategoryDTO[];
@@ -156,10 +158,16 @@ export function Dashboard({
   emailVerified: boolean;
   canEdit: boolean;
   initialTab: Tab;
+  bankDemoAvailable?: boolean;
 }) {
   const searchParams = useSearchParams();
   const requestedTab = searchParams.get("tab") ?? "overview";
-  const tab: Tab = pages.some(p => p.id === requestedTab) ? requestedTab as Tab : initialTab;
+  const [activeTab, setActiveTab] = useState<Tab>(() =>
+    pages.some((p) => p.id === requestedTab) ? (requestedTab as Tab) : initialTab,
+  );
+  const tab: Tab = pages.some((p) => p.id === requestedTab)
+    ? (requestedTab as Tab)
+    : activeTab;
   const [moreOpen, setMoreOpen] = useState(false);
   const showAuthors = true;
   const liveAccounts = accounts.filter((a) => !a.archived);
@@ -167,6 +175,7 @@ export function Dashboard({
 
   function changeTab(value: Tab) {
     setMoreOpen(false);
+    setActiveTab(value);
     const url = new URL(window.location.href);
     if (value === "overview") url.searchParams.delete("tab");
     else url.searchParams.set("tab", value);
@@ -203,7 +212,7 @@ export function Dashboard({
           onClick={() => changeTab(item.id)}
           aria-current={tab === item.id ? "page" : undefined}
           className={cn(
-            "nav-item relative group",
+            "nav-item relative group focus-visible:outline-2 focus-visible:outline-brand disabled:opacity-50",
             tab === item.id && "nav-item-active font-semibold",
           )}
         >
@@ -433,11 +442,26 @@ export function Dashboard({
                 <PagedActivity key={`${activeWorkspaceId}:${rangeStart}:${rangeEnd}`} start={rangeStart} end={rangeEnd} workspace={activeWorkspaceId} accounts={accounts} categories={categories} canEdit={canEdit} />
               )}
               {tab === "accounts" && (
-                <AccountsSection
-                  accounts={accounts}
-                  categories={categories}
-                  canEdit={canEdit}
-                />
+                <div className="space-y-4">
+                  {bankDemoAvailable && isOwner && (
+                    <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-card p-4">
+                      <div>
+                        <h2 className="text-sm font-semibold">Bank connections · local demo</h2>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          Try reviewing RBC and TD sample payments in a separate demo ledger.
+                        </p>
+                      </div>
+                      <Link href="/bank-demo" className="inline-flex min-h-10 items-center rounded-lg bg-brand px-4 text-sm font-medium text-brand-foreground hover:bg-brand/90">
+                        Try bank demo
+                      </Link>
+                    </div>
+                  )}
+                  <AccountsSection
+                    accounts={accounts}
+                    categories={categories}
+                    canEdit={canEdit}
+                  />
+                </div>
               )}
               {tab === "planning" && (
                 <DeferredPlanning workspace={activeWorkspaceId}
@@ -476,7 +500,7 @@ export function Dashboard({
         </div>
         <nav
           aria-label="Mobile navigation"
-          className="fixed inset-x-0 bottom-0 z-30 flex justify-around border-t border-border/80 bg-background/90 backdrop-blur-lg px-2 pt-1.5 pb-safe lg:hidden shadow-lg"
+          className="fixed inset-x-0 bottom-0 z-30 flex justify-around border-t border-border bg-background px-2 pt-1.5 pb-safe lg:hidden shadow-xs"
         >
           {(
             [
@@ -505,9 +529,9 @@ export function Dashboard({
               >
                 <span
                   className={cn(
-                    "grid place-items-center transition-transform",
+                    "grid place-items-center transition-transform motion-reduce:transition-none motion-reduce:transform-none",
                     isAdd
-                      ? "size-8 rounded-xl bg-gradient-to-tr from-brand to-emerald-500 text-white shadow-md shadow-brand/25 active:scale-95"
+                      ? "size-8 rounded-lg bg-brand text-brand-foreground shadow-xs active:scale-95"
                       : "h-6 w-10 rounded-lg",
                     !isAdd && tab === id && "bg-brand/10 text-brand",
                   )}

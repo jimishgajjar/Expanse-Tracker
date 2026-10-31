@@ -12,6 +12,7 @@ import {
 import { getCurrentUser } from "@/lib/session";
 import { getActiveWorkspace, getUserWorkspaces } from "@/lib/workspace";
 import { Landing } from "@/components/landing";
+import { bankDemoEnabled } from "@/lib/bank-demo/config";
 
 // DB-backed dashboard: always render with fresh data (Cache Components is off).
 export const dynamic = "force-dynamic";
@@ -111,6 +112,7 @@ async function DashboardData({
       emailVerified={!!user.emailVerifiedAt}
       canEdit={activeWorkspace?.role !== "viewer"}
       initialTab={initialTab}
+      bankDemoAvailable={bankDemoEnabled()}
     />
   );
 }

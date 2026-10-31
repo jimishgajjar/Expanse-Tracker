@@ -51,7 +51,7 @@ export function PeriodBar({
               onClick={() => push({ range: rt })}
               aria-pressed={isActive}
               className={cn(
-                "min-h-11 flex-1 rounded-md px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-colors sm:min-h-8 sm:flex-none",
+                "min-h-11 flex-1 rounded-md px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-colors sm:min-h-8 sm:flex-none focus-visible:outline-2 focus-visible:outline-brand active:scale-[0.98] disabled:opacity-50",
                 isActive
                   ? "bg-brand/10 text-brand font-semibold"
                   : "text-muted-foreground hover:bg-background/40 hover:text-foreground",

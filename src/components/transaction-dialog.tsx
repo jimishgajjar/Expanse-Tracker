@@ -7,11 +7,10 @@ import {
   ArrowDownLeft,
   ArrowRightLeft,
   ArrowUpRight,
-  Calendar,
-  ChevronDown,
+  Clock,
   FileText,
-  Tag,
   Star,
+  Tag,
 } from "lucide-react";
 import {
   Dialog,
@@ -35,6 +34,7 @@ import { FormError } from "./form-error";
 import { Label } from "@/components/ui/label";
 import { Icon } from "@/components/icon";
 import { CategoryPicker } from "./category-picker";
+import { CalendarDatePicker } from "./calendar-date-picker";
 import { TagInput } from "@/components/tag-input";
 import { cn } from "@/lib/utils";
 import { todayISO } from "@/lib/dates";
@@ -88,10 +88,11 @@ export function TransactionDialog({
   const [pending, start] = useTransition();
 
   const seed = transaction ?? template;
-  const preferenceKey = `capture:${accounts.map(a => a.id).sort().join(":")}`;
+  const preferenceKey = `capture:${accounts.map((a) => a.id).sort().join(":")}`;
   const [favourites, setFavourites] = useState<string[]>([]);
   const [recentCategories, setRecentCategories] = useState<string[]>([]);
   const [addAnother, setAddAnother] = useState(false);
+
   const init = () => ({
     type: (seed?.type ?? defaultType) as TxType,
     amount: seed ? String(seed.amount) : "",
@@ -108,29 +109,34 @@ export function TransactionDialog({
       accounts[0]?.id ??
       "",
   });
+
   const [f, setF] = useState(init);
   const [tags, setTags] = useState<TagRef[]>(seed?.tags ?? []);
-  const [detailsOpen, setDetailsOpen] = useState(
-    Boolean(transaction?.note || (transaction?.tags && transaction.tags.length > 0)),
-  );
 
   function onOpenChange(o: boolean) {
     setOpen(o);
     if (o && (isEdit || saved)) {
       setF(init());
       setTags(seed?.tags ?? []);
-      setDetailsOpen(
-        Boolean(transaction?.note || (transaction?.tags && transaction.tags.length > 0)),
-      );
       setSaved(false);
     }
     if (o) {
       setError("");
       try {
         const prefs = JSON.parse(localStorage.getItem(preferenceKey) ?? "{}");
-        setFavourites(Array.isArray(prefs.accounts) ? prefs.accounts.filter((id: string) => accounts.some(a => a.id === id)) : []);
-        setRecentCategories(Array.isArray(prefs.categories) ? prefs.categories.filter((id: string) => categories.some(c => c.id === id)) : []);
-      } catch { /* Preferences must not block entry. */ }
+        setFavourites(
+          Array.isArray(prefs.accounts)
+            ? prefs.accounts.filter((id: string) => accounts.some((a) => a.id === id))
+            : [],
+        );
+        setRecentCategories(
+          Array.isArray(prefs.categories)
+            ? prefs.categories.filter((id: string) => categories.some((c) => c.id === id))
+            : [],
+        );
+      } catch {
+        /* Preferences must not block entry. */
+      }
     }
   }
 
@@ -145,8 +151,36 @@ export function TransactionDialog({
   }
 
   const cats = categories.filter((c) => c.kind === f.type);
-  const orderedAccounts = [...accounts].sort((a, b) => Number(favourites.includes(b.id)) - Number(favourites.includes(a.id)));
-  const accountItems = orderedAccounts.map((a) => ({ value: a.id, label: `${favourites.includes(a.id) ? "★ " : ""}${a.name}` }));
+  const orderedAccounts = [...accounts].sort(
+    (a, b) => Number(favourites.includes(b.id)) - Number(favourites.includes(a.id)),
+  );
+  const accountItems = orderedAccounts.map((a) => ({
+    value: a.id,
+    label: `${favourites.includes(a.id) ? "★ " : ""}${a.name}`,
+  }));
+
+  const recentCats = recentCategories
+    .map((id) => cats.find((c) => c.id === id))
+    .filter((c): c is CategoryDTO => c !== undefined);
+
+  const isFav = f.accountId ? favourites.includes(f.accountId) : false;
+
+  function toggleFavourite() {
+    if (!f.accountId) return;
+    const next = isFav
+      ? favourites.filter((id) => id !== f.accountId)
+      : [...favourites, f.accountId];
+    setFavourites(next);
+    try {
+      localStorage.setItem(
+        preferenceKey,
+        JSON.stringify({ accounts: next, categories: recentCategories }),
+      );
+    } catch {
+      /* Browser-only preference. */
+    }
+  }
+
   const types: TxType[] = isEdit
     ? ["expense", "income"]
     : ["expense", "income", "transfer"];
@@ -198,12 +232,26 @@ export function TransactionDialog({
               ? "Transaction updated"
               : "Transaction added",
         );
-        const recent = f.categoryId === NONE ? recentCategories : [f.categoryId, ...recentCategories.filter(id => id !== f.categoryId)].slice(0, 5);
+        const recent =
+          f.categoryId === NONE
+            ? recentCategories
+            : [f.categoryId, ...recentCategories.filter((id) => id !== f.categoryId)].slice(0, 6);
         setRecentCategories(recent);
-        try { localStorage.setItem(preferenceKey, JSON.stringify({ accounts: favourites, categories: recent })); } catch { /* Browser preference only. */ }
+        try {
+          localStorage.setItem(
+            preferenceKey,
+            JSON.stringify({ accounts: favourites, categories: recent }),
+          );
+        } catch {
+          /* Browser preference only. */
+        }
         setSaved(!addAnother || isEdit);
-        if (addAnother && !isEdit) { setF(current => ({ ...current, amount: "", note: "" })); setTags([]); }
-        else setOpen(false);
+        if (addAnother && !isEdit) {
+          setF((current) => ({ ...current, amount: "", note: "" }));
+          setTags([]);
+        } else {
+          setOpen(false);
+        }
         window.dispatchEvent(new Event("ledger-changed"));
         router.refresh();
       } else {
@@ -223,16 +271,16 @@ export function TransactionDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogTrigger render={trigger} />
       <DialogContent
-        className="transaction-sheet sm:max-w-[520px]"
+        className="transaction-sheet sm:max-w-[540px] p-5 sm:p-6"
         // Edit dialogs are launched inside a menu. Keep typing in this portal
         // from reaching the parent menu's keyboard navigation/typeahead.
         onKeyDown={(event) => event.stopPropagation()}
       >
-        <DialogHeader className="border-b border-border pb-4">
+        <DialogHeader className="border-b border-border/70 pb-3.5">
           <div className="flex items-center gap-3">
             <span
               className={cn(
-                "grid size-9 shrink-0 place-items-center rounded-lg transition-colors",
+                "grid size-9 shrink-0 place-items-center rounded-xl border transition-colors",
                 f.type === "expense" && "bg-negative/10 text-negative border-negative/20",
                 f.type === "income" && "bg-positive/10 text-positive border-positive/20",
                 f.type === "transfer" && "bg-brand/10 text-brand border-brand/20",
@@ -243,10 +291,10 @@ export function TransactionDialog({
               {f.type === "transfer" && <ArrowRightLeft className="size-4.5" />}
             </span>
             <div className="min-w-0">
-              <DialogTitle className="text-base font-semibold tracking-tight text-foreground">
+              <DialogTitle className="text-base font-bold tracking-tight text-foreground">
                 {title}
               </DialogTitle>
-              <DialogDescription className="mt-1">
+              <DialogDescription className="mt-0.5 text-xs text-muted-foreground truncate">
                 {f.type === "transfer"
                   ? "Move money between your connected accounts"
                   : isEdit
@@ -259,11 +307,11 @@ export function TransactionDialog({
           </div>
         </DialogHeader>
 
-        <form onSubmit={submit} className="transaction-form grid min-w-0 gap-4">
+        <form onSubmit={submit} className="transaction-form grid min-w-0 gap-4 pt-1">
           {/* Segmented Type Picker */}
           <div
             className={cn(
-              "grid min-w-0 gap-1 rounded-lg bg-muted/60 p-1",
+              "grid min-w-0 gap-1 rounded-xl border border-border/70 bg-muted/40 p-1 shadow-2xs",
               types.length === 3 ? "grid-cols-3" : "grid-cols-2",
             )}
           >
@@ -276,13 +324,13 @@ export function TransactionDialog({
                   aria-pressed={isActive}
                   onClick={() => setType(t)}
                   className={cn(
-                    "flex min-h-11 min-w-0 items-center justify-center gap-1.5 rounded-md py-2 text-xs font-medium sm:min-h-9 capitalize transition-all duration-150 cursor-pointer",
+                    "flex min-h-10 min-w-0 items-center justify-center gap-1.5 rounded-lg py-1.5 text-xs font-semibold capitalize transition-colors duration-150 cursor-pointer focus-visible:outline-2 focus-visible:outline-brand disabled:opacity-50",
                     isActive
                       ? t === "income"
-                        ? "bg-card text-positive shadow-xs"
+                        ? "bg-card text-positive shadow-xs border border-positive/25 font-bold"
                         : t === "expense"
-                          ? "bg-card text-negative shadow-xs"
-                          : "bg-card text-brand shadow-xs"
+                          ? "bg-card text-negative shadow-xs border border-negative/25 font-bold"
+                          : "bg-card text-brand shadow-xs border border-brand/25 font-bold"
                       : "text-muted-foreground hover:text-foreground hover:bg-card/40",
                   )}
                 >
@@ -295,10 +343,10 @@ export function TransactionDialog({
             })}
           </div>
 
-          {/* Hero Amount & Date Card */}
+          {/* Hero Amount & Custom Calendar Date Card */}
           <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-12">
             {/* Amount Input */}
-            <div className="sm:col-span-7 min-w-0 rounded-lg border border-border bg-background p-3 focus-within:border-brand/70 focus-within:ring-2 focus-within:ring-brand/15 transition-all">
+            <div className="sm:col-span-7 min-w-0 rounded-xl border border-border/80 bg-background/70 p-3 focus-within:border-brand/70 focus-within:ring-2 focus-within:ring-brand/15 transition-colors">
               <div className="flex items-center justify-between text-xs font-semibold text-muted-foreground mb-1">
                 <Label
                   htmlFor={fieldId + "-amount"}
@@ -313,7 +361,7 @@ export function TransactionDialog({
               <div className="flex items-center gap-2">
                 <span
                   className={cn(
-                    "text-xl font-medium select-none",
+                    "font-mono text-xl sm:text-2xl font-bold select-none",
                     f.type === "income"
                       ? "text-positive"
                       : f.type === "expense"
@@ -337,15 +385,14 @@ export function TransactionDialog({
                   placeholder="0.00"
                   autoFocus
                   required
-                  className="transaction-amount h-10 min-w-0 border-0 bg-transparent p-0 text-2xl md:text-2xl font-semibold tabular-nums tracking-tight text-foreground shadow-none focus-visible:ring-0 focus-visible:outline-none placeholder:text-muted-foreground/40"
+                  className="transaction-amount h-10 min-w-0 border-0 bg-transparent p-0 font-mono text-2xl font-bold tabular-nums tracking-tight text-foreground shadow-none focus-visible:ring-0 focus-visible:outline-none placeholder:text-muted-foreground/40"
                 />
               </div>
             </div>
 
-            {/* Date Input */}
-            <div className="sm:col-span-5 min-w-0 rounded-lg border border-border bg-background p-3 focus-within:border-brand/70 focus-within:ring-2 focus-within:ring-brand/15 transition-all flex flex-col justify-between">
-              <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground mb-1">
-                <Calendar className="size-3 text-muted-foreground" />
+            {/* Date Input with custom Calendar popover */}
+            <div className="sm:col-span-5 min-w-0 rounded-xl border border-border/80 bg-background/70 p-3 focus-within:border-brand/70 focus-within:ring-2 focus-within:ring-brand/15 transition-colors flex flex-col justify-between">
+              <div className="flex items-center justify-between text-xs font-semibold text-muted-foreground mb-1">
                 <Label
                   htmlFor={fieldId + "-date"}
                   className="cursor-pointer text-xs font-medium text-muted-foreground"
@@ -353,16 +400,10 @@ export function TransactionDialog({
                   Date
                 </Label>
               </div>
-              <Input
+              <CalendarDatePicker
                 id={fieldId + "-date"}
-                type="date"
                 value={f.date}
-                onChange={(e) => {
-                  const date = e.currentTarget.value;
-                  setF((s) => ({ ...s, date }));
-                }}
-                required
-                className="h-10 min-w-0 max-w-full border-0 bg-transparent p-0 text-base sm:text-sm font-medium text-foreground shadow-none focus-visible:ring-0 focus-visible:outline-none"
+                onChange={(date) => setF((s) => ({ ...s, date }))}
               />
             </div>
           </div>
@@ -386,7 +427,7 @@ export function TransactionDialog({
                 >
                   <SelectTrigger
                     id={fieldId + "-fromAccountId"}
-                    className="h-11 w-full min-w-0 rounded-lg border-border/80 bg-background text-sm font-medium"
+                    className="h-11 w-full min-w-0 rounded-xl border-border/80 bg-background text-sm font-medium"
                   >
                     <SelectValue placeholder="From account" />
                   </SelectTrigger>
@@ -421,7 +462,7 @@ export function TransactionDialog({
                 >
                   <SelectTrigger
                     id={fieldId + "-toAccountId"}
-                    className="h-11 w-full min-w-0 rounded-lg border-border/80 bg-background text-sm font-medium"
+                    className="h-11 w-full min-w-0 rounded-xl border-border/80 bg-background text-sm font-medium"
                   >
                     <SelectValue placeholder="To account" />
                   </SelectTrigger>
@@ -441,147 +482,191 @@ export function TransactionDialog({
               </div>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label
-                  htmlFor={fieldId + "-accountId"}
-                  className="text-xs font-semibold text-foreground"
-                >
-                  Account
-                </Label>
-                <Select
-                  value={f.accountId}
-                  onValueChange={(v) =>
-                    setF((s) => ({ ...s, accountId: v as string }))
-                  }
-                  items={accountItems}
-                >
-                  <SelectTrigger
-                    id={fieldId + "-accountId"}
-                    className="h-11 w-full min-w-0 rounded-lg border-border/80 bg-background text-sm font-medium"
+            <div className="space-y-3">
+              {/* Symmetrical Account & Category Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <Label
+                      htmlFor={fieldId + "-accountId"}
+                      className="text-xs font-semibold text-foreground"
+                    >
+                      Account
+                    </Label>
+                    {f.accountId && (
+                      <button
+                        type="button"
+                        onClick={toggleFavourite}
+                        className={cn(
+                          "inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium transition-colors cursor-pointer",
+                          isFav
+                            ? "bg-amber-500/10 text-amber-500 font-semibold"
+                            : "text-muted-foreground hover:text-foreground hover:bg-muted/50",
+                        )}
+                        title={isFav ? "Favorited account" : "Star as favorite account"}
+                      >
+                        <Star
+                          className={cn(
+                            "size-3",
+                            isFav ? "fill-amber-400 text-amber-500" : "text-muted-foreground",
+                          )}
+                        />
+                        <span>{isFav ? "Favorited" : "Favorite"}</span>
+                      </button>
+                    )}
+                  </div>
+                  <Select
+                    value={f.accountId}
+                    onValueChange={(v) =>
+                      setF((s) => ({ ...s, accountId: v as string }))
+                    }
+                    items={accountItems}
                   >
-                    <SelectValue placeholder="Select account" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {orderedAccounts.map((a) => (
-                      <SelectItem key={a.id} value={a.id}>
-                        <span className="flex items-center gap-2">
-                          <span style={{ color: a.color }}>
-                            <Icon name={a.icon} size={15} />
+                    <SelectTrigger
+                      id={fieldId + "-accountId"}
+                      className="h-11 w-full min-w-0 rounded-xl border-border/80 bg-background text-sm font-medium"
+                    >
+                      <SelectValue placeholder="Select account" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {orderedAccounts.map((a) => (
+                        <SelectItem key={a.id} value={a.id}>
+                          <span className="flex items-center gap-2">
+                            <span style={{ color: a.color }}>
+                              <Icon name={a.icon} size={15} />
+                            </span>
+                            <span>{a.name}</span>
                           </span>
-                          <span>{a.name}</span>
-                        </span>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <Label
+                      htmlFor={fieldId + "-categoryId"}
+                      className="text-xs font-semibold text-foreground"
+                    >
+                      Category
+                    </Label>
+                  </div>
+                  <CategoryPicker
+                    key={f.type}
+                    id={fieldId + "-categoryId"}
+                    categories={cats}
+                    kind={f.type}
+                    value={f.categoryId === NONE ? null : f.categoryId}
+                    onChange={(categoryId) =>
+                      setF((s) => ({ ...s, categoryId: categoryId ?? NONE }))
+                    }
+                  />
+                </div>
               </div>
 
-              <div className="space-y-1.5">
-                <Label
-                  htmlFor={fieldId + "-categoryId"}
-                  className="text-xs font-semibold text-foreground"
-                >
-                  Category
-                </Label>
-                {recentCategories.some(id => cats.some(c => c.id === id)) && <div className="mb-2 flex flex-wrap items-center gap-1.5" aria-label="Recent categories"><span className="text-xs text-muted-foreground">Recent</span>{recentCategories.map(id => cats.find(c => c.id === id)).filter(c => c !== undefined).map(c => <Button key={c.id} type="button" variant="outline" size="sm" aria-pressed={f.categoryId === c.id} onClick={() => setF(current => ({ ...current, categoryId: c.id }))}>{c.name}</Button>)}</div>}
-                <CategoryPicker
-                  key={f.type}
-                  id={fieldId + "-categoryId"}
-                  categories={cats}
-                  kind={f.type}
-                  value={f.categoryId === NONE ? null : f.categoryId}
-                  onChange={(categoryId) =>
-                    setF((s) => ({ ...s, categoryId: categoryId ?? NONE }))
-                  }
-                />
-              </div>
+              {/* Dedicated Recent Categories Location - Full-width clean pill row */}
+              {recentCats.length > 0 && (
+                <div className="space-y-1.5 pt-0.5">
+                  <div className="flex items-center justify-between text-[11px] font-medium text-muted-foreground">
+                    <span className="flex items-center gap-1.5">
+                      <Clock className="size-3 text-muted-foreground" />
+                      <span>Recent categories</span>
+                    </span>
+                    <span className="text-[10px] text-muted-foreground/60">Quick select</span>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {recentCats.map((c) => {
+                      const isSelected = f.categoryId === c.id;
+                      return (
+                        <button
+                          key={c.id}
+                          type="button"
+                          onClick={() => setF((s) => ({ ...s, categoryId: c.id }))}
+                          className={cn(
+                            "inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium border transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-brand disabled:opacity-50",
+                            isSelected
+                              ? "bg-brand/15 text-brand border-brand/40 shadow-xs font-semibold"
+                              : "bg-muted/30 hover:bg-muted/70 text-muted-foreground hover:text-foreground border-border/60 hover:border-border",
+                          )}
+                        >
+                          <span style={{ color: c.color }} className="shrink-0">
+                            <Icon name={c.icon} size={12} />
+                          </span>
+                          <span className="truncate max-w-[130px]">{c.name}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
-          {/* Notes & Tags Collapsible Card */}
-          <div className="min-w-0 rounded-lg border border-border bg-card p-3">
-            <button
-              type="button"
-              onClick={() => setDetailsOpen(!detailsOpen)}
-              aria-expanded={detailsOpen}
-              aria-controls={fieldId + "-details"}
-              className="flex w-full items-center justify-between text-xs font-semibold text-foreground cursor-pointer"
-            >
-              <span className="flex items-center gap-2">
-                <FileText className="size-3.5 text-muted-foreground" />
-                <span>Note & tags</span>
-                <span className="text-[10px] font-normal text-muted-foreground">
-                  {f.note || tags.length > 0
-                    ? `(${[f.note ? "note" : "", tags.length ? `${tags.length} tags` : ""].filter(Boolean).join(", ")})`
-                    : "Optional"}
+          {/* Notes & Tags - Visible directly without hiding */}
+          <div className="space-y-3 pt-1">
+            <div className="space-y-1.5">
+              <Label
+                htmlFor={fieldId + "-note"}
+                className="text-xs font-semibold text-foreground flex items-center justify-between"
+              >
+                <span className="flex items-center gap-1.5">
+                  <FileText className="size-3.5 text-muted-foreground" />
+                  <span>Note</span>
                 </span>
-              </span>
-              <ChevronDown
-                className={cn(
-                  "size-3.5 text-muted-foreground transition-transform duration-200",
-                  detailsOpen && "rotate-180",
-                )}
+                <span className="text-[10px] font-normal text-muted-foreground">Optional</span>
+              </Label>
+              <Input
+                id={fieldId + "-note"}
+                maxLength={200}
+                value={f.note}
+                onChange={(e) => {
+                  const note = e.currentTarget.value;
+                  setF((s) => ({ ...s, note }));
+                }}
+                placeholder="What was this for? (e.g. Grocery run, coffee, client invoice...)"
+                className="h-10 rounded-xl border-border/80 bg-background text-sm"
               />
-            </button>
+            </div>
 
-            {detailsOpen && (
-              <div id={fieldId + "-details"} className="mt-3 space-y-3 pt-3 border-t border-border/60 animate-in fade-in-50 duration-150">
-                <div className="space-y-1.5">
-                  <Label
-                    htmlFor={fieldId + "-note"}
-                    className="text-xs font-medium text-foreground"
-                  >
-                    Note
-                  </Label>
-                  <Input
-                    id={fieldId + "-note"}
-                    maxLength={200}
-                    value={f.note}
-                    onChange={(e) => {
-                      const note = e.currentTarget.value;
-                      setF((s) => ({ ...s, note }));
-                    }}
-                    placeholder="e.g. Grocery run, coffee, client invoice..."
-                    className="h-10 rounded-lg border-border/80 bg-background text-sm"
-                  />
-                </div>
-
-                {f.type !== "transfer" && (
-                  <div className="space-y-1.5">
-                    <Label
-                      htmlFor={fieldId + "-tags"}
-                      className="text-xs font-medium text-foreground flex items-center gap-1.5"
-                    >
-                      <Tag className="size-3 text-muted-foreground" />
-                      <span>Tags</span>
-                    </Label>
-                    <TagInput
-                      id={fieldId + "-tags"}
-                      value={tags}
-                      onChange={setTags}
-                    />
-                  </div>
-                )}
+            {f.type !== "transfer" && (
+              <div className="space-y-1.5">
+                <Label
+                  htmlFor={fieldId + "-tags"}
+                  className="text-xs font-semibold text-foreground flex items-center justify-between"
+                >
+                  <span className="flex items-center gap-1.5">
+                    <Tag className="size-3.5 text-muted-foreground" />
+                    <span>Tags</span>
+                  </span>
+                  <span className="text-[10px] font-normal text-muted-foreground">Optional</span>
+                </Label>
+                <TagInput
+                  id={fieldId + "-tags"}
+                  value={tags}
+                  onChange={setTags}
+                />
               </div>
             )}
           </div>
 
-          {!isEdit && <label className="flex min-h-11 items-center gap-2 text-xs"><input type="checkbox" checked={addAnother} onChange={e => setAddAnother(e.target.checked)} />Save and add another</label>}
-          {f.type !== "transfer" && f.accountId && <Button type="button" variant="ghost" size="sm" aria-pressed={favourites.includes(f.accountId)} onClick={() => {
-            const next = favourites.includes(f.accountId) ? favourites.filter(id => id !== f.accountId) : [...favourites, f.accountId];
-            setFavourites(next);
-            try { localStorage.setItem(preferenceKey, JSON.stringify({ accounts: next, categories: recentCategories })); } catch { /* Browser-only preference. */ }
-          }}><Star className="size-3.5" />{favourites.includes(f.accountId) ? "Remove account from favourites" : "Favourite this account"}</Button>}
           <FormError>{error}</FormError>
 
           {/* Modal Footer */}
-          <div className="flex flex-wrap items-center justify-end gap-3 border-t border-border pt-4">
-            <div className="mr-auto text-[11px] text-muted-foreground">
+          <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3 border-t border-border/70 pt-4 mt-1">
+            <div className="flex items-center gap-3">
               {!isEdit ? (
-                <span>Not saved yet</span>
+                <label className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={addAnother}
+                    onChange={(e) => setAddAnother(e.target.checked)}
+                    className="size-4 rounded border-border text-brand focus:ring-brand/30 accent-brand cursor-pointer"
+                  />
+                  <span>Save and add another</span>
+                </label>
               ) : (
-                <span>Editing existing entry</span>
+                <span className="text-[11px] text-muted-foreground">Editing existing entry</span>
               )}
             </div>
 
@@ -591,7 +676,7 @@ export function TransactionDialog({
                   <Button
                     type="button"
                     variant="outline"
-                    className="min-h-11 rounded-lg px-4 text-sm sm:min-h-9"
+                    className="min-h-10 rounded-xl px-4 text-xs font-semibold hover:bg-muted/70"
                   />
                 }
               >
@@ -601,7 +686,12 @@ export function TransactionDialog({
                 type="submit"
                 disabled={pending}
                 className={cn(
-                  "min-h-11 rounded-lg bg-brand px-4 text-sm font-medium text-brand-foreground hover:bg-brand/90 sm:min-h-9",
+                  "min-h-10 rounded-xl px-5 text-xs font-semibold text-white shadow-xs hover:shadow-sm active:scale-[0.98] transition-colors motion-reduce:transition-none motion-reduce:transform-none focus-visible:outline-2 focus-visible:outline-brand disabled:opacity-50",
+                  f.type === "expense"
+                    ? "bg-negative hover:bg-negative/90"
+                    : f.type === "income"
+                      ? "bg-positive hover:bg-positive/90"
+                      : "bg-brand hover:bg-brand/90",
                 )}
               >
                 {pending

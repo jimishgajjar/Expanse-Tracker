@@ -108,7 +108,7 @@ export function AccountsSection({
         ))}
         {accounts.length === 0 && (
           <p className="text-sm text-muted-foreground col-span-full py-4 text-center">
-            No accounts yet — add one to get started.
+            No accounts yet, add one to get started.
           </p>
         )}
       </div>
@@ -165,9 +165,12 @@ function AccountCard({
   return (
     <div
       className={cn(
-        "account-card group relative flex min-w-0 flex-col justify-between rounded-xl border border-border bg-card p-4 transition-colors hover:border-brand/35",
+        "account-card group relative flex min-w-0 flex-col justify-between rounded-xl border border-border/80 bg-card p-4 transition-colors hover:border-brand/40 shadow-2xs",
         a.archived && "opacity-70 hover:opacity-100",
       )}
+      style={{
+        borderTop: `3px solid ${a.color || "var(--brand)"}`,
+      }}
     >
       <div>
         {/* Top Header: Account Icon + Type Badge + More Actions */}
@@ -249,7 +252,7 @@ function AccountCard({
               {balanceMoney(a.balance)}
             </p>
             </div>
-            <ChevronRight className="mb-1 size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" aria-hidden />
+            <ChevronRight className="mb-1 size-4 shrink-0 text-muted-foreground transition-transform motion-reduce:transition-none motion-reduce:transform-none group-hover:translate-x-0.5" aria-hidden />
           </div>
         </Link>
       </div>
@@ -266,7 +269,7 @@ function AccountCard({
               <button
                 type="button"
                 aria-label={`Add income to ${a.name}`}
-                className="flex min-h-11 items-center justify-center gap-1 rounded-md px-1 py-1 text-xs font-medium text-positive transition-colors hover:bg-positive/10 sm:min-h-8"
+                className="flex min-h-11 items-center justify-center gap-1 rounded-md px-1 py-1 text-xs font-semibold text-positive transition-transform active:scale-95 motion-reduce:transition-none motion-reduce:transform-none hover:bg-positive/10 sm:min-h-8 cursor-pointer focus-visible:outline-2 focus-visible:outline-positive"
               >
                 <Plus className="size-3" /> Income
               </button>
@@ -281,7 +284,7 @@ function AccountCard({
               <button
                 type="button"
                 aria-label={`Add expense to ${a.name}`}
-                className="flex min-h-11 items-center justify-center gap-1 rounded-md px-1 py-1 text-xs font-medium text-negative transition-colors hover:bg-negative/10 sm:min-h-8"
+                className="flex min-h-11 items-center justify-center gap-1 rounded-md px-1 py-1 text-xs font-semibold text-negative transition-transform active:scale-95 motion-reduce:transition-none motion-reduce:transform-none hover:bg-negative/10 sm:min-h-8 cursor-pointer focus-visible:outline-2 focus-visible:outline-negative"
               >
                 <Minus className="size-3" /> Expense
               </button>
@@ -296,7 +299,7 @@ function AccountCard({
               <button
                 type="button"
                 aria-label={`Transfer from ${a.name}`}
-                className="flex min-h-11 items-center justify-center gap-1 rounded-md px-1 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground sm:min-h-8"
+                className="flex min-h-11 items-center justify-center gap-1 rounded-md px-1 py-1 text-xs font-semibold text-muted-foreground transition-transform active:scale-95 motion-reduce:transition-none motion-reduce:transform-none hover:bg-muted hover:text-foreground sm:min-h-8 cursor-pointer focus-visible:outline-2 focus-visible:outline-brand"
               >
                 <ArrowRightLeft className="size-3" /> Transfer
               </button>

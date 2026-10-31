@@ -9,6 +9,9 @@ const env = {
   RESEND_API_KEY: "",
   SMTP_PASS: "",
   VAPID_PRIVATE_KEY: "",
+  BANK_SYNC_MODE: "demo",
+  PLAID_CLIENT_ID: "",
+  PLAID_SECRET: "",
   APP_URL: "http://localhost:3107",
 };
 const command =
