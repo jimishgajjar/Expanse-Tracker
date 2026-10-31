@@ -126,7 +126,7 @@ export function AnalyticsTab(props: AnalyticsTabProps) {
                 onClick={() => setView(v.key)}
                 aria-current={isActive ? "page" : undefined}
                 className={cn(
-                  "flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold whitespace-nowrap transition-all duration-200",
+                  "flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold whitespace-nowrap transition-colors duration-150 motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-brand",
                   isActive
                     ? "bg-foreground text-background shadow-xs font-bold"
                     : "text-muted-foreground hover:text-foreground hover:bg-muted/60",
@@ -244,7 +244,7 @@ function SummaryView({
       <div className="space-y-6">
         <NetWorthChart series={netWorth} />
         <div className="rounded-2xl border border-border/70 bg-card p-12 text-center text-sm text-muted-foreground shadow-xs">
-          No transactions in this period — widen the range, or try Trends and Patterns above, which look back across the entire year.
+          No transactions in this period, widen the range, or try Trends and Patterns above, which look back across the entire year.
         </div>
       </div>
     );
@@ -494,7 +494,7 @@ function BreakdownCard({
                     #{idx + 1}
                   </span>
                   <span
-                    className="grid size-7 shrink-0 place-items-center rounded-lg border transition-transform group-hover:scale-105"
+                    className="grid size-7 shrink-0 place-items-center rounded-lg border transition-transform duration-150 motion-reduce:transition-none motion-reduce:transform-none group-hover:scale-105"
                     style={{
                       backgroundColor: combo.background,
                       borderColor: combo.border,
@@ -516,7 +516,7 @@ function BreakdownCard({
                     {money(it.value)}
                   </span>
                   {href && (
-                    <ChevronRight className="size-3 text-muted-foreground opacity-60 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" />
+                    <ChevronRight className="size-3 text-muted-foreground opacity-60 group-hover:opacity-100 group-hover:translate-x-0.5 transition-transform duration-150 motion-reduce:transition-none motion-reduce:transform-none" />
                   )}
                 </div>
               );
@@ -535,7 +535,7 @@ function BreakdownCard({
                   )}
                   <div className="h-1.5 overflow-hidden rounded-full bg-muted/80">
                     <div
-                      className="h-full rounded-full transition-all duration-500"
+                      className="h-full rounded-full"
                       style={{ width: `${pct}%`, backgroundColor: it.color }}
                     />
                   </div>

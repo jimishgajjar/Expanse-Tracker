@@ -95,7 +95,7 @@ export function BudgetsCard({
               return (
                 <div
                   key={b.categoryId}
-                  className="group/item flex flex-col justify-between rounded-2xl border border-border/60 bg-muted/20 hover:bg-muted/40 p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-brand/35"
+                  className="group/item flex flex-col justify-between rounded-2xl border border-border/60 bg-muted/20 hover:bg-muted/40 p-4 transition-colors duration-150 hover:border-brand/35"
                 >
                   <div className="flex items-center justify-between gap-2 mb-3">
                     <Link
@@ -111,7 +111,7 @@ export function BudgetsCard({
                       <span className="font-bold text-sm text-foreground truncate group-hover/item:text-brand transition-colors">
                         {b.name}
                       </span>
-                      <ChevronRight className="size-3 text-muted-foreground opacity-60 group-hover/item:opacity-100 group-hover/item:translate-x-0.5 transition-all" />
+                      <ChevronRight className="size-3 text-muted-foreground opacity-60 group-hover/item:opacity-100 group-hover/item:translate-x-0.5 transition-transform duration-150 motion-reduce:transition-none motion-reduce:transform-none" />
                     </Link>
 
                     <span
@@ -149,7 +149,7 @@ export function BudgetsCard({
                     <div className="h-2 w-full overflow-hidden rounded-full bg-muted/80 shadow-2xs">
                       <div
                         className={cn(
-                          "h-full rounded-full transition-all duration-500",
+                          "h-full rounded-full",
                           over ? "bg-negative" : pct >= 80 ? "bg-amber-500" : "bg-brand",
                         )}
                         style={{ width: `${Math.min(100, pct)}%` }}

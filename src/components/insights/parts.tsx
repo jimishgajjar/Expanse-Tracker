@@ -130,7 +130,7 @@ export function Meter({ pct, color, over = false }: { pct: number; color: string
   return (
     <div className="h-1.5 overflow-hidden rounded-full bg-muted">
       <div
-        className="h-full rounded-full transition-all"
+        className="h-full rounded-full"
         style={{ width: `${Math.min(100, Math.max(0, pct))}%`, backgroundColor: over ? "var(--negative)" : color }}
       />
     </div>
