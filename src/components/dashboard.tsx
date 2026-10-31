@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { DeferredTools, DeferredPlanning, DeferredAnalytics } from "./deferred-sections";
 import { PagedActivity } from "./paged-activity";
+import { CommandPalette, CommandSearchTrigger } from "./command-palette";
 import {
   CalendarDays,
   Download,
@@ -14,6 +15,7 @@ import {
   Plus,
   Receipt,
   Repeat,
+  Search,
   Settings,
   Tags,
   TrendingUp,
@@ -169,6 +171,9 @@ export function Dashboard({
     ? (requestedTab as Tab)
     : activeTab;
   const [moreOpen, setMoreOpen] = useState(false);
+  const [commandOpen, setCommandOpen] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogType, setDialogType] = useState<"expense" | "income" | "transfer">("expense");
   const showAuthors = true;
   const liveAccounts = accounts.filter((a) => !a.archived);
   const page = pages.find((p) => p.id === tab)!;
@@ -252,9 +257,14 @@ export function Dashboard({
               </div>
             </div>
 
+            {/* Quick Command Search in sidebar */}
+            <div className="mt-3">
+              <CommandSearchTrigger onClick={() => setCommandOpen(true)} />
+            </div>
+
             {/* Quick Action Button right in sidebar */}
             {canEdit && (
-              <div className="mt-3.5">
+              <div className="mt-2">
                 <TransactionDialog
                   accounts={liveAccounts}
                   categories={categories}
@@ -368,6 +378,24 @@ export function Dashboard({
                 )}
               </div>
               <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+                <button
+                  type="button"
+                  onClick={() => setCommandOpen(true)}
+                  className="hidden sm:inline-flex items-center gap-2 rounded-lg border border-border/80 bg-card/60 hover:bg-muted/70 px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer active:scale-[0.98] disabled:opacity-50"
+                  aria-label="Open command palette (Ctrl+K or Cmd+K)"
+                >
+                  <Search className="size-3.5" />
+                  <span className="font-medium">Search</span>
+                  <kbd className="rounded border border-border/80 bg-muted/70 px-1 font-mono text-[10px] text-muted-foreground">⌘K</kbd>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCommandOpen(true)}
+                  className="grid size-9 place-items-center rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground sm:hidden cursor-pointer active:scale-[0.98] disabled:opacity-50"
+                  aria-label="Search"
+                >
+                  <Search className="size-4" />
+                </button>
                 <ThemeToggle />
                 <button
                   type="button"
@@ -599,6 +627,38 @@ export function Dashboard({
             </div>
           </SheetContent>
         </Sheet>
+        {canEdit && (
+          <TransactionDialog
+            accounts={liveAccounts}
+            categories={categories}
+            defaultType={dialogType}
+            open={dialogOpen}
+            onOpenChange={setDialogOpen}
+          />
+        )}
+        <CommandPalette
+          accounts={liveAccounts}
+          categories={categories}
+          open={commandOpen}
+          onOpenChange={setCommandOpen}
+          onNavigateTab={(t) => changeTab(t as Tab)}
+          onOpenNewTransaction={
+            canEdit
+              ? () => {
+                  setDialogType("expense");
+                  setDialogOpen(true);
+                }
+              : undefined
+          }
+          onOpenNewTransfer={
+            canEdit
+              ? () => {
+                  setDialogType("transfer");
+                  setDialogOpen(true);
+                }
+              : undefined
+          }
+        />
       </div>
     </SettingsProvider>
   );

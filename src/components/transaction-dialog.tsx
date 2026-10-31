@@ -64,8 +64,10 @@ export function TransactionDialog({
   defaultType = "expense",
   defaultAccountId,
   defaultCategoryId,
+  open: controlledOpen,
+  onOpenChange: controlledOnOpenChange,
 }: {
-  trigger: ReactElement;
+  trigger?: ReactElement;
   transaction?: TransactionDTO;
   template?: TransactionDTO;
   accounts: AccountDTO[];
@@ -73,6 +75,8 @@ export function TransactionDialog({
   defaultType?: "income" | "expense" | "transfer";
   defaultAccountId?: string;
   defaultCategoryId?: string;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
   const fieldId = useId();
   const { currency: currencySymbol, locale } = useSettings();
@@ -84,7 +88,9 @@ export function TransactionDialog({
   const [saved, setSaved] = useState(false);
   const isEdit = !!transaction;
   const router = useRouter();
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = controlledOpen !== undefined ? controlledOpen : internalOpen;
+  const setOpen = controlledOnOpenChange ?? setInternalOpen;
   const [pending, start] = useTransition();
 
   const seed = transaction ?? template;
@@ -269,7 +275,7 @@ export function TransactionDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogTrigger render={trigger} />
+      {trigger ? <DialogTrigger render={trigger} /> : null}
       <DialogContent
         className="transaction-sheet sm:max-w-[540px] p-5 sm:p-6"
         // Edit dialogs are launched inside a menu. Keep typing in this portal

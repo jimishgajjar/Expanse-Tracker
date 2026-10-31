@@ -1,12 +1,22 @@
 "use client";
 
-import { CalendarDays, Handshake, Target, Clock } from "lucide-react";
+import { differenceInCalendarDays, parseISO } from "date-fns";
+import {
+  CalendarDays,
+  Handshake,
+  Target,
+  Clock,
+  CheckCircle2,
+  AlertCircle,
+  Repeat,
+} from "lucide-react";
 import { BudgetsCard } from "./budgets-card";
 import { RecurringManager } from "./recurring-manager";
 import { GoalsManager } from "./goals-manager";
 import { SplitManager } from "./split-manager";
 import { Button } from "./ui/button";
 import { useFormat } from "./settings-provider";
+import { todayISO } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 import type {
   AccountDTO,
@@ -35,15 +45,47 @@ export function PlanningTab({
   canEdit: boolean;
 }) {
   const { money } = useFormat();
+  const today = parseISO(todayISO());
+
+  // Normalized monthly equivalent calculation
+  const monthlyEquivalent = (amount: number, freq: string) => {
+    switch (freq.toLowerCase()) {
+      case "daily":
+        return amount * 30.4;
+      case "weekly":
+        return (amount * 52) / 12;
+      case "bi-weekly":
+      case "biweekly":
+        return (amount * 26) / 12;
+      case "quarterly":
+        return amount / 3;
+      case "yearly":
+      case "annual":
+      case "annually":
+        return amount / 12;
+      default:
+        return amount;
+    }
+  };
+
+  const totalMonthlyCommitments = recurring
+    .filter((r) => r.type === "expense")
+    .reduce((sum, r) => sum + monthlyEquivalent(r.amount, r.frequency), 0);
+
+  // Settlement status for shared expenses
+  const myBalance = split.balances.find((b) => b.userId === split.meId);
+  const isSettled = split.balances.every((b) => Math.abs(b.net) < 0.01);
 
   return (
     <div className="space-y-5">
       {/* 1. Monthly Category Budgets */}
-      <div id="monthly-budgets" className="scroll-mt-4"><BudgetsCard
-        budgets={budgets}
-        categories={categories}
-        canEdit={canEdit}
-      /></div>
+      <div id="monthly-budgets" className="scroll-mt-4">
+        <BudgetsCard
+          budgets={budgets}
+          categories={categories}
+          canEdit={canEdit}
+        />
+      </div>
 
       {/* 2. Subscriptions & Recurring Bills */}
       <section id="upcoming-payments" className="dashboard-panel scroll-mt-4 p-4 sm:p-5">
@@ -51,14 +93,15 @@ export function PlanningTab({
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-sm font-semibold tracking-tight text-foreground">
-                Subscriptions & Bills
+                Subscriptions and bills
               </h2>
               <span className="rounded-md bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
                 {recurring.length} active
               </span>
             </div>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Scheduled bills, subscription charges, and recurring income.
+              Scheduled bills, fixed commitments, and subscriptions (≈{" "}
+              <strong className="text-foreground">{money(totalMonthlyCommitments)}</strong>/month)
             </p>
           </div>
           {canEdit && (
@@ -67,7 +110,11 @@ export function PlanningTab({
               accounts={accounts}
               categories={categories}
               trigger={
-                <Button variant="outline" size="sm" className="h-9 rounded-xl px-3 text-xs font-medium gap-1.5 shadow-2xs hover:bg-muted/60">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-9 rounded-xl px-3 text-xs font-semibold gap-1.5 shadow-2xs hover:bg-muted/60 cursor-pointer"
+                >
                   <CalendarDays className="size-3.5" />
                   Manage recurring
                 </Button>
@@ -85,27 +132,59 @@ export function PlanningTab({
                 (r.maxOccurrences !== null &&
                   r.occurrenceCount >= r.maxOccurrences);
 
+              const date = parseISO(r.nextDate);
+              const daysLeft = differenceInCalendarDays(date, today);
+              const isDueSoon = !ended && daysLeft >= 0 && daysLeft <= 7;
+              const isOverdue = !ended && daysLeft < 0;
+
+              const normalizedMonth = monthlyEquivalent(r.amount, r.frequency);
+              const isNonMonthly = r.frequency.toLowerCase() !== "monthly";
+
               return (
                 <div
                   key={r.id}
-                  className="flex flex-wrap items-center justify-between gap-3 py-3 hover:bg-muted/30 px-2 -mx-2 rounded-xl transition-colors"
+                  className="flex flex-wrap items-center justify-between gap-3 py-3 hover:bg-muted/30 px-2 -mx-2 rounded-xl transition-colors duration-150 motion-reduce:transition-none"
                 >
                   <div className="min-w-0 flex items-center gap-3">
-                    <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-muted text-muted-foreground">
-                      <CalendarDays className="size-4" />
+                    <span
+                      className={cn(
+                        "grid size-9 shrink-0 place-items-center rounded-xl border",
+                        isOverdue
+                          ? "bg-negative/10 text-negative border-negative/20"
+                          : isDueSoon
+                            ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
+                            : "bg-muted text-muted-foreground border-border/60",
+                      )}
+                    >
+                      <Repeat className="size-4" />
                     </span>
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
                         <p className="truncate text-sm font-semibold text-foreground">
                           {r.note || "Recurring " + r.type}
                         </p>
-                        <span className="rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground ">
+                        <span className="rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground capitalize">
                           {r.frequency}
                         </span>
+                        {isDueSoon && (
+                          <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold text-amber-600 dark:text-amber-400">
+                            {daysLeft === 0 ? "Due today" : `Due in ${daysLeft}d`}
+                          </span>
+                        )}
+                        {isOverdue && (
+                          <span className="rounded-full bg-negative/10 px-2 py-0.5 text-[10px] font-bold text-negative">
+                            Overdue
+                          </span>
+                        )}
                       </div>
-                      <p className="mt-0.5 text-xs text-muted-foreground flex items-center gap-1.5">
-                        <Clock className="size-3" />
-                        <span>{ended ? "Ended" : "Next: " + r.nextDate}</span>
+                      <p className="mt-0.5 text-xs text-muted-foreground flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                        <span className="flex items-center gap-1">
+                          <Clock className="size-3" />
+                          <span>{ended ? "Ended" : "Next: " + r.nextDate}</span>
+                        </span>
+                        {isNonMonthly && (
+                          <span>· ≈ {money(normalizedMonth)}/mo</span>
+                        )}
                         {r.maxOccurrences !== null && (
                           <span>
                             · {r.occurrenceCount}/{r.maxOccurrences} completed
@@ -118,11 +197,11 @@ export function PlanningTab({
                   <div className="shrink-0 text-right">
                     <p
                       className={cn(
-                        "font-mono text-sm sm:text-base font-bold tabular-nums",
+                        "amount font-mono text-sm sm:text-base font-bold tabular-nums",
                         r.type === "income" ? "text-positive" : "text-foreground",
                       )}
                     >
-                      {r.type === "income" ? "+" : "-"}
+                      {r.type === "income" ? "+" : "−"}
                       {money(r.amount)}
                     </p>
                     <span className="mt-0.5 block text-[10px] text-muted-foreground">
@@ -147,21 +226,25 @@ export function PlanningTab({
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-sm font-semibold tracking-tight text-foreground">
-                Savings Goals
+                Savings goals
               </h2>
               <span className="rounded-md bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
                 {goals.length} target{goals.length === 1 ? "" : "s"}
               </span>
             </div>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Long-term savings targets and milestones.
+              Long-term savings milestones and targets.
             </p>
           </div>
           {canEdit && (
             <GoalsManager
               goals={goals}
               trigger={
-                <Button variant="outline" size="sm" className="h-9 rounded-xl px-3 text-xs font-medium gap-1.5 shadow-2xs hover:bg-muted/60">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-9 rounded-xl px-3 text-xs font-semibold gap-1.5 shadow-2xs hover:bg-muted/60 cursor-pointer"
+                >
                   <Target className="size-3.5" />
                   Manage goals
                 </Button>
@@ -174,39 +257,55 @@ export function PlanningTab({
           {goals.map((g) => {
             const pct = Math.min(100, Math.round((g.savedAmount / g.targetAmount) * 100));
             const remaining = Math.max(0, g.targetAmount - g.savedAmount);
+            const isCompleted = remaining === 0;
 
             return (
               <div
                 key={g.id}
-                className="rounded-xl border border-border/60 bg-muted/20 p-4 transition-colors hover:bg-muted/40"
+                className="rounded-xl border border-border/70 bg-card p-4 transition-colors duration-150 hover:border-brand/40 shadow-2xs"
               >
                 <div className="mb-2 flex items-center justify-between gap-2">
-                  <span className="font-semibold text-sm text-foreground truncate">{g.name}</span>
-                  <span className="font-mono text-xs font-semibold text-brand rounded-md bg-brand/10 px-2 py-0.5">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="font-semibold text-sm text-foreground truncate">
+                      {g.name}
+                    </span>
+                    {isCompleted && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-positive/10 px-2 py-0.2 text-[10px] font-bold text-positive">
+                        <CheckCircle2 className="size-3" />
+                        Completed
+                      </span>
+                    )}
+                  </div>
+                  <span className="font-mono text-xs font-bold text-brand rounded-md bg-brand/10 px-2 py-0.5">
                     {pct}%
                   </span>
                 </div>
 
                 <div className="h-2 w-full overflow-hidden rounded-full bg-muted my-2.5">
                   <div
-                    className="h-full rounded-full bg-brand transition-all duration-300"
+                    className={cn(
+                      "h-full rounded-full",
+                      isCompleted ? "bg-positive" : "bg-brand",
+                    )}
                     style={{ width: `${pct}%` }}
                   />
                 </div>
 
                 <div className="flex justify-between items-baseline text-xs mt-2">
-                  <span className="font-mono font-semibold text-foreground">
-                    {money(g.savedAmount)}{" "}
+                  <span className="font-semibold text-foreground">
+                    <span className="font-mono">{money(g.savedAmount)}</span>{" "}
                     <span className="font-normal text-muted-foreground text-[11px]">
-                      of {money(g.targetAmount)}
+                      of <span className="font-mono">{money(g.targetAmount)}</span>
                     </span>
                   </span>
                   <span className="text-[11px] text-muted-foreground">
-                    {remaining === 0 ? "Achieved" : `${money(remaining)} remaining`}
+                    {isCompleted ? "Goal achieved" : `${money(remaining)} remaining`}
                   </span>
                 </div>
                 {g.deadline && (
-                  <p className="mt-1 text-[11px] text-muted-foreground">Target: {g.deadline}</p>
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    Target deadline: {g.deadline}
+                  </p>
                 )}
               </div>
             );
@@ -219,26 +318,57 @@ export function PlanningTab({
         </div>
       </section>
 
-      {/* 4. Shared Expenses */}
-      <section className="flex flex-wrap items-center justify-between gap-4 dashboard-panel p-4 sm:p-5">
-        <div>
-          <h2 className="text-base font-semibold tracking-tight text-foreground">
-            Shared Household Expenses
-          </h2>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            Track shared bills, who paid, and automated settlement breakdowns.
-          </p>
+      {/* 4. Shared Expenses Settlement Card */}
+      <section className="dashboard-panel flex flex-col justify-between p-4 sm:p-5">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-sm font-semibold tracking-tight text-foreground">
+                Shared household expenses
+              </h2>
+              {isSettled ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-positive/10 px-2 py-0.5 text-[10px] font-bold text-positive">
+                  <CheckCircle2 className="size-3" />
+                  Settled up
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold text-amber-600 dark:text-amber-400">
+                  <AlertCircle className="size-3" />
+                  Balances active
+                </span>
+              )}
+            </div>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              {myBalance && myBalance.net !== 0 ? (
+                myBalance.net > 0 ? (
+                  <span>
+                    You are owed <strong className="text-positive">{money(myBalance.net)}</strong> across shared household splits.
+                  </span>
+                ) : (
+                  <span>
+                    You owe <strong className="text-negative">{money(Math.abs(myBalance.net))}</strong> in shared household expenses.
+                  </span>
+                )
+              ) : (
+                "Track shared bills, who paid, and automated settlement breakdowns."
+              )}
+            </p>
+          </div>
+          <SplitManager
+            data={split}
+            canEdit={canEdit}
+            trigger={
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-9 rounded-xl px-3 text-xs font-semibold gap-1.5 shadow-2xs hover:bg-muted/60 cursor-pointer"
+              >
+                <Handshake className="size-3.5" />
+                Review shared balances
+              </Button>
+            }
+          />
         </div>
-        <SplitManager
-          data={split}
-          canEdit={canEdit}
-          trigger={
-            <Button variant="outline" size="sm" className="h-9 rounded-xl px-3 text-xs font-medium gap-1.5 shadow-2xs hover:bg-muted/60">
-              <Handshake className="size-3.5" />
-              Review shared balances
-            </Button>
-          }
-        />
       </section>
     </div>
   );
