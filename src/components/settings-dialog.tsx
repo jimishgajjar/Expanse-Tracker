@@ -127,8 +127,7 @@ export function SettingsDialog({
         </Button>
         {canEdit && <ImportForm />}
         <p className="text-xs text-muted-foreground">
-          Import expects the same columns as Export (Date, Type, Amount,
-          Category, Account, Note).
+          Use a transaction file to bring income and expenses into your tracker.
         </p>
       </PanelSection>
       <PanelSection title="Notifications">

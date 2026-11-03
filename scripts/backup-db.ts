@@ -14,6 +14,7 @@ import { PGlite } from "@electric-sql/pglite";
 import { drizzle } from "drizzle-orm/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
 import { neon } from "@neondatabase/serverless";
+import { backupMigrationsForTables } from "./backup-migrations";
 
 const backupArgs = process.argv.slice(2);
 let migrationsFolder = backupArgs.find(a => a.startsWith("--migrations="))?.slice(13) ?? "./drizzle";
@@ -111,6 +112,17 @@ async function capture(): Promise<{ snapshot: Snapshot; source: string }> {
     "SELECT * FROM drizzle.__drizzle_migrations ORDER BY id",
     ...TABLES.map(tableSQL),
   ];
+  function selectSourceSchema(sourceTables: Row[]) {
+    const names = sourceTables.map(row=>String(row.table_name));
+    migrationsFolder = backupMigrationsForTables(migrationsFolder,names);
+    if (names.includes("reconciliation_sessions") && existsSync(join(migrationsFolder,"0012_statement_reviews.sql"))) {
+      TABLES.push("reconciliation_sessions"); FINANCIAL.push("reconciliation_sessions");
+      queries.push(tableSQL("reconciliation_sessions"));
+    }
+    if (names.includes("file_imports") && existsSync(join(migrationsFolder,"0013_file_imports.sql"))) {
+      TABLES.push("file_imports"); FINANCIAL.push("file_imports"); queries.push(tableSQL("file_imports"));
+    }
+  }
   let results: Row[][];
   let source: string;
   if (production) {
@@ -124,6 +136,8 @@ async function capture(): Promise<{ snapshot: Snapshot; source: string }> {
       );
     source = new URL(url).hostname;
     const sql = neon(url);
+    const [sourceTables] = await sql.transaction([sql.query(tablesSQL)],{readOnly:true});
+    selectSourceSchema(sourceTables);
     const [migrationTable] = await sql.transaction(
       [
         sql.query(
@@ -141,6 +155,7 @@ async function capture(): Promise<{ snapshot: Snapshot; source: string }> {
     source = `local:${resolve(localPath!)}`;
     const db = new PGlite(resolve(localPath!));
     try {
+      selectSourceSchema((await db.query<Row>(tablesSQL)).rows);
       results = await db.transaction(async (tx) => {
         await tx.exec(
           "SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY",
@@ -238,6 +253,7 @@ async function main() {
       const baseline = decryptBackup(readFileSync(resolve(value("compare-encrypted")!)),process.env.BACKUP_KEY ?? "") as {snapshot:Snapshot;source:string};
       if (baseline.source !== source) throw new Error("Backup comparison source mismatch.");
       for (const table of FINANCIAL) {
+        if (["reconciliation_sessions","file_imports"].includes(table) && !baseline.snapshot.tables[table]) continue;
         const current = new Set(stored.snapshot.tables[table].map(row => comparisonRow(table,row)));
         if (baseline.snapshot.tables[table].some(row => !current.has(comparisonRow(table,row)))) throw new Error(`Existing records changed in ${table}. Investigate without restoring over newer data.`);
       }
@@ -322,6 +338,7 @@ async function main() {
       { before: number; after: number; missingOrChanged: number }
     > = {};
     for (const table of FINANCIAL) {
+      if (["reconciliation_sessions","file_imports"].includes(table) && !existsSync(join(resolve(previous),`${table}.json`))) continue;
       const old: Row[] = JSON.parse(
         readFileSync(join(resolve(previous), `${table}.json`), "utf8"),
       );

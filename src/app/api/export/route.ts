@@ -1,8 +1,12 @@
 import ExcelJS from "exceljs";
+import { fileImports } from "@/lib/db/schema";
+import { fileImportsEnabled, type Entry, type Outcome } from "@/lib/file-import-model";
 import { and, eq } from "drizzle-orm";
 import { getActiveWorkspaceId } from "@/lib/workspace";
 import { getDb } from "@/lib/db";
-import { transfers, budgets, recurring, goals, splits, tags, transactionTags, transactions as transactionTable, appSettings, transactionHistory } from "@/lib/db/schema";
+import { transfers, budgets, recurring, goals, splits, tags, transactionTags, transactions as transactionTable, appSettings, transactionHistory, reconciliationSessions } from "@/lib/db/schema";
+import { statementReviewsEnabled } from "@/lib/statement-review-feature";
+import type { LedgerSnapshot, ReviewChoice } from "@/lib/statement-review";
 import { getAccountsWithBalances, getAllTransactions, getCategories } from "@/lib/queries";
 
 export const runtime = "nodejs";
@@ -82,8 +86,42 @@ export async function GET() {
     rows.forEach(row => sheet.addRow(Object.fromEntries(Object.entries(row).map(([key,value]) => [key,value instanceof Date ? value.toISOString() : value !== null && typeof value === "object" ? JSON.stringify(value) : value]))));
     if (!rows.length) sheet.addRow(["No records"]);
   });
+  if (statementReviewsEnabled()) {
+    const rows = await db.select().from(reconciliationSessions).where(eq(reconciliationSessions.workspaceId,workspace));
+    const sheet = wb.addWorksheet("Statement reviews");
+    sheet.columns = ["id","accountId","startDate","endDate","closingBalance","currency","initialBalance","statusAtSave","version","actorName","createdAt","completedAt","duplicatesReviewed"].map(key=>({header:key,key,width:24}));
+    const entries = wb.addWorksheet("Reviewed entries");
+    entries.columns = ["reviewId","id","date","kind","amount","delta","note","accountId","fromAccountId","toAccountId","decision"].map(key=>({header:key,key,width:24}));
+    const events = wb.addWorksheet("Review events");
+    events.columns = ["reviewId","event","at","version","actorId","actorName","duplicatesReviewed","entryId","decision","transactionId","reason"].map(key=>({header:key,key,width:24}));
+    for (const row of rows) {
+      const snapshot = row.snapshot as LedgerSnapshot;
+      const decisions = row.decisions as Record<string,ReviewChoice>;
+      sheet.addRow({...row,currency:snapshot.currency,initialBalance:snapshot.initialBalance,statusAtSave:row.status,createdAt:row.createdAt.toISOString(),completedAt:row.completedAt?.toISOString()??""});
+      for (const entry of snapshot.entries) entries.addRow({reviewId:row.id,...entry,decision:decisions[entry.id]??(entry.date<row.startDate?"Opening balance history":"Unreviewed")});
+      for (const event of row.events as {event:string;at:string;version?:number;actorId:string;actorName:string;duplicatesReviewed?:boolean;decisions?:Record<string,ReviewChoice>}[]) {
+        const choices=Object.entries(event.decisions??{});
+        if (!choices.length) events.addRow({reviewId:row.id,...event});
+        for (const [entryId,decision] of choices) events.addRow({reviewId:row.id,...event,entryId,decision});
+      }
+    }
+    if (!rows.length) sheet.addRow(["No records"]);
+  }
+  if(fileImportsEnabled()){
+    const batches=await db.select().from(fileImports).where(eq(fileImports.workspaceId,workspace));
+    const manifest=wb.addWorksheet("Import batches"), evidence=wb.addWorksheet("Import rows");
+    manifest.addRow(["Batch","File","SHA-256","Currency","Headers","Mapping","Staged by","Created","Approved by","Approved","Version"]);
+    evidence.addRow(["Batch","Source row","Date","Type","Amount","Account","Category","Note","Validation","Decision","Ledger transaction ID"]);
+    for(const b of batches){
+      manifest.addRow([b.id,b.filename,b.fileHash,b.currency,JSON.stringify(b.headers),JSON.stringify(b.mapping),b.stagedBy,b.createdAt.toISOString(),b.approvedBy,b.approvedAt?.toISOString(),b.version]);
+      const decisions=new Map(((b.receipt??[]) as Outcome[]).map(o=>[o.line,o]));
+      for(const row of b.rows as Entry[]){const outcome=decisions.get(row.line);
+        evidence.addRow([b.id,row.line,row.date,row.type,row.amount,row.account,row.category,row.note,row.errors.join("; "),outcome?.action??"Pending",outcome?.transactionId]);}
+    }
+  }
   const readme = wb.addWorksheet("About this export");
   readme.addRows([["Workspace export",new Date().toISOString()],["Scope","Current workspace only. Transfers are separate from income and expenses."],["Recovery","This workbook is for review and portability. Use a verified encrypted database backup for complete recovery."],["Currency","Amounts retain their stored values. No currency conversion performed."]]);
+  if (statementReviewsEnabled()) readme.addRow(["Statement reviews","Snapshots and status at save time are retained as evidence. Reopen a review in the app to detect subsequent ledger changes. Reviews never auto-adjust balances. Explicit statement corrections include the transaction ID and reason in Review events."]);
   for (const ws of wb.worksheets) {
     ws.getRow(1).font = { bold: true };
     ws.views = [{ state: "frozen", ySplit: 1 }];

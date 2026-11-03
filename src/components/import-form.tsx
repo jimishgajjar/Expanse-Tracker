@@ -2,11 +2,16 @@
 
 import { useActionState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { importTransactions } from "@/lib/import-action";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 export function ImportForm() {
+  return <Link href="/imports" className="inline-flex items-center rounded-lg border px-3 py-2 text-sm font-medium hover:bg-muted">Open CSV / Excel import →</Link>;
+}
+
+export function LegacyImportForm() {
   const router = useRouter();
   const [result, action, pending] = useActionState(importTransactions, undefined);
 

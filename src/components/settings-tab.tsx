@@ -234,7 +234,7 @@ export function SettingsTab({
                 Import Transactions (CSV or Excel)
               </span>
               <p className="text-[11px] text-muted-foreground">
-                Columns: <code>Date</code>, <code>Type</code>, <code>Amount</code>, <code>Category</code>, <code>Account</code>, <code>Note</code>.
+                Bring income and expenses into your tracker from a transaction file.
               </p>
               <ImportForm />
             </div>

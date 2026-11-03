@@ -5,6 +5,8 @@ Status: proposed implementation backlog; this document does not authorize paid s
 
 Implementation started 31 October 2026: M0 capability inventory/synthetic query baseline and the M1 manual-create integrity slice. See [financial-foundation.md](docs/financial-foundation.md) for scope, verification and remaining gates. Full milestones remain incomplete until their acceptance criteria pass.
 
+M2 started 31 October 2026: saved statement reviews, exact-balance completion and detection of subsequent ledger changes. This is the reconciliation slice; reviewed CSV/Excel staging and durable import provenance were implemented locally on 3 November 2026 (see [reviewed-file-imports.md](docs/reviewed-file-imports.md)). Hosted concurrency has since been verified with synthetic data; production rollout remains pending. See [statement-reviews.md](docs/statement-reviews.md). The new feature is disabled by default outside the isolated preview.
+
 ## 1. Product outcome and scope
 
 Build a trustworthy household finance product for Canadian households first, with web and native mobile access. The promise is: **Understand what you can spend, and trust every number.**
@@ -108,12 +110,14 @@ Release: deploy compatible audit additions first. New backup destinations, auth 
 
 ### M2 — Reconciliation and safe file migration
 
-- [ ] Add reconciliation sessions with statement account, date range, closing balance, matched entry revisions, difference, status, and actor.
-- [ ] Provide cleared/unmatched views, duplicate candidates, missing-entry investigation, and closing-balance explanation. Existing balance comparison remains available.
-- [ ] Permit completion only at an exact currency-precision match. A later amount/date/account edit or deletion invalidates the affected reconciliation and explains why; corrections require explicit review.
-- [ ] Build CSV/Excel preview staging with reusable column mapping, row errors, date/currency validation, duplicate review, and approved import batches. Upgrade the existing immediate importer incrementally.
-- [ ] Use durable import provenance and retry keys. Reimporting the same file or retrying a failed response must not silently duplicate entries; genuine identical purchases remain distinguishable by review.
-- [ ] No automatic adjustment transaction to hide a discrepancy. If users create an adjustment, label it and include a reason and audit event.
+- [x] Local preview: add reconciliation sessions with statement account, date range, closing balance, matched entry revisions, difference, status, and actor.
+- [x] Local preview: provide cleared/unmatched views, duplicate candidates, missing-entry investigation, and closing-balance explanation. Existing balance comparison remains available.
+- [x] Local preview: permit completion only at an exact currency-precision match. A later amount/date/account edit or deletion invalidates the affected reconciliation and explains why; corrections require explicit review.
+- [x] Local preview: build CSV/Excel preview staging with reusable column mapping, row errors, date/currency validation, duplicate review, and approved import batches. Upgrade the existing immediate importer incrementally.
+- [x] Local preview: use durable import provenance and retry keys. Reimporting the same file or retrying a failed response must not silently duplicate entries; genuine identical purchases remain distinguishable by review.
+- [x] Local preview: discrepancies never generate balancing entries. Verified corrections require an explicit amount, posting date, description and reason, and are linked to the original review in transaction history and exports.
+
+Third implementation part (3 November 2026): investigate changes entry by entry and record a verified missing transaction. No additional database migration. Hosted multi-session rehearsal passed on 3 November 2026 with synthetic data (see [hosted rehearsal](docs/m2-hosted-rehearsal.md)). Production backup, preservation checks and rollout remain outstanding; M3 provider work is separate.
 
 Acceptance: a fixture with a missing fee, duplicate purchase, transfer, and refund reconciles only after the specific issues are resolved. Completed periods flag subsequent changes. Partial file failures have explicit row outcomes and exports preserve provenance.
 

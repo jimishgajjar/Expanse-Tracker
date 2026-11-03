@@ -1,0 +1,95 @@
+import { afterAll,afterEach,beforeAll,beforeEach,it,expect,vi } from "vitest";
+import ExcelJS from "exceljs";
+import { PGlite } from "@electric-sql/pglite";
+import { drizzle } from "drizzle-orm/pglite";
+import { migrate } from "drizzle-orm/pglite/migrator";
+import type { AppDb } from "../db";
+import { defaultMapping } from "../file-import-model";
+import { parseSource,normalize } from "../file-import-parser";
+import { approveBatch,importSetup,loadBatch,stageBatch } from "../file-import-store";
+let client:PGlite,db:AppDb;
+vi.mock("../db",()=>({getDb:async()=>db}));
+vi.mock("../workspace",()=>({getActiveWorkspaceId:async()=>"w",getActiveWorkspace:async()=>({id:"w",role:"owner"})}));
+vi.mock("../session",()=>({getCurrentUser:async()=>({id:"owner",name:"Owner",email:"demo@example.test"})}));
+vi.mock("../queries",()=>({getAccountsWithBalances:async()=>[],getCategories:async()=>[],getAllTransactions:async()=>[]}));
+vi.mock("next/cache",()=>({revalidatePath:vi.fn()}));
+import { inspectImport,previewImport,commitImport } from "../file-import-actions";
+import { importTransactions } from "../import-action";
+import { GET } from "../../app/api/export/route";
+afterEach(()=>vi.unstubAllEnvs());
+const s={workspace:"w",actor:"owner",name:"Owner"};
+const csv=(text:string,name="bank.csv")=>new File([text],name);
+const content='Date,Amount,Note,Currency\n2026-10-01,-4.50,"Coffee, morning",CAD\n2026-10-01,-4.50,Coffee,CAD\n2026-10-02,10.25,Refund,CAD\n2026-02-30,-5,Invalid,CAD\n2026-10-03,-5,Wrong currency,USD';
+async function stage(text=content){const source=await parseSource(csv(text));return stageBatch(db,s,source,{...defaultMapping(source.headers),fallback:"bank"},"CAD");}
+const choices={"2":"match:existing","3":"separate","4":"import","5":"ignore","6":"ignore"};
+const count=async(table:string)=>(await client.query<{n:number}>("SELECT count(*)::int n FROM "+table)).rows[0].n;
+beforeAll(async()=>{client=new PGlite();const local=drizzle(client);await migrate(local,{migrationsFolder:"./drizzle"});db=local as unknown as AppDb;},60000);
+beforeEach(async()=>{await client.exec("TRUNCATE workspaces,users CASCADE; INSERT INTO users(id,email,password_hash) VALUES ('owner','o@demo.test','x'),('view','v@demo.test','x'); INSERT INTO workspaces(id,name,owner_id) VALUES('w','Demo','owner'),('other','Other','owner'); INSERT INTO workspace_members(workspace_id,user_id,role) VALUES ('w','owner','owner'),('w','view','viewer'),('other','owner','owner'); INSERT INTO app_settings(workspace_id,currency_code) VALUES ('w','CAD'); INSERT INTO accounts(id,workspace_id,name) VALUES ('bank','w','Bank'),('private','other','Bank'); INSERT INTO transactions(id,workspace_id,account_id,type,date,amount,note) VALUES ('existing','w','bank','expense','2026-10-01',4.5,'Espresso')");});
+afterAll(async()=>{await client?.close();});
+it("guards disabled and legacy entry points and rejects a swapped file",async()=>{
+  const form=new FormData();form.set("file",csv(content));
+  vi.stubEnv("REVIEWED_FILE_IMPORTS","0");
+  expect((await inspectImport(form)).ok).toBe(false);
+  vi.stubEnv("REVIEWED_FILE_IMPORTS","1");
+  expect((await importTransactions(undefined,form)).ok).toBe(false);
+  const inspected=await inspectImport(form);if(!inspected.ok)throw Error(inspected.error);
+  expect((await previewImport(form,inspected.data.mapping,"different","CAD")).ok).toBe(false);
+  expect(await count("file_imports")).toBe(0);expect(await count("transactions")).toBe(1);
+});
+it("exports per-row outcomes and ledger IDs only for the active workspace",async()=>{
+  vi.stubEnv("REVIEWED_FILE_IMPORTS","1");
+  const b=await stage();const done=await commitImport(b.id,b.version,choices);if(!done.ok)throw Error(done.error);
+  const source=await parseSource(csv("Date,Amount\n2026-11-01,5","foreign.csv"));
+  await stageBatch(db,{...s,workspace:"other"},source,{...defaultMapping(source.headers),fallback:"private"},"INR");
+  const response=await GET(),book=new ExcelJS.Workbook();await book.xlsx.load(Buffer.from(await response.arrayBuffer()) as unknown as Parameters<typeof book.xlsx.load>[0]);
+  const manifest=book.getWorksheet("Import batches")!,rows=book.getWorksheet("Import rows")!;
+  expect(manifest.rowCount).toBe(2);expect(manifest.getRow(2).getCell(3).value).toBe(b.fileHash);
+  expect(rows.rowCount).toBe(6);expect(rows.getRow(2).getCell(11).value).toBe("existing");
+  expect(rows.getRow(3).getCell(11).value).toBe(done.data.receipt?.[1].transactionId);
+  expect(rows.getRow(6).getCell(10).value).toBe("ignore");
+});
+it("stages without ledger writes, shows row errors and persists an explicit batch receipt",async()=>{
+  const b=await stage();expect(await count("transactions")).toBe(1);expect(await count("transaction_history")).toBe(0);
+  expect(b.rows[0]).toMatchObject({note:"Coffee, morning",amount:"4.50",repeated:true,candidates:[{id:"existing",note:"Espresso"}]});
+  expect(b.rows.slice(3).every(r=>r.errors.length>0)).toBe(true);
+  const approved=await approveBatch(db,s,b.id,b.version,choices);
+  expect(approved.receipt?.map(o=>o.action)).toEqual(["match","import","import","ignore","ignore"]);
+  expect(await count("transactions")).toBe(3);expect(await count("transaction_history")).toBe(2);
+  await client.exec("DELETE FROM transactions WHERE id<>'existing'");
+  expect((await stage()).receipt).toEqual(approved.receipt);
+  expect((await approveBatch(db,s,b.id,b.version,choices)).receipt).toEqual(approved.receipt);expect(await count("transactions")).toBe(1);
+});
+it.each(["omitted","invalid","duplicate","same match","foreign match","stale","changed match","viewer","currency","archived"])("rejects %s approval atomically",async(mode)=>{
+  const b=await stage(),v:Record<string,string>={...choices};let scope=s;
+  if(mode==="omitted")delete v[2];if(mode==="invalid")v[5]="import";if(mode==="duplicate")v[3]="import";if(mode==="same match")v[3]="match:existing";if(mode==="foreign match")v[2]="match:other";
+  if(mode==="stale")await stage();
+  if(mode==="changed match")await client.exec("UPDATE transactions SET amount=7 WHERE id='existing'");
+  if(mode==="viewer")scope={...s,actor:"view"};
+  if(mode==="currency")await client.exec("UPDATE app_settings SET currency_code='USD'");
+  if(mode==="archived")await client.exec("UPDATE accounts SET archived=true");
+  await expect(approveBatch(db,scope,b.id,b.version,v)).rejects.toThrow();expect(await count("transactions")).toBe(1);expect(await count("transaction_history")).toBe(0);
+  expect((await loadBatch(db,s,b.id)).receipt).toBeNull();
+});
+it("requires new review for overlapping files and does not disclose other workspaces",async()=>{
+  const b=await stage(),overlap=await stage(content.replace("Refund","Rebate"));
+  await expect(loadBatch(db,{...s,workspace:"other"},b.id)).rejects.toThrow();
+  await expect(loadBatch(db,{...s,actor:"view"},b.id)).rejects.toThrow();
+  const src=await parseSource(csv(content));expect((await importSetup(db,s,src.headers)).mapping?.fallback).toBe("bank");expect((await importSetup(db,{...s,workspace:"other"},src.headers)).mapping).toBeNull();
+  await approveBatch(db,s,b.id,b.version,choices);
+  await expect(approveBatch(db,s,overlap.id,overlap.version,choices)).rejects.toThrow();
+  expect(await count("transactions")).toBe(3);
+});
+it("parses quoted multiline CSV and flags unsupported currency, transfers and missing accounts",async()=>{
+  const src=await parseSource(csv('When,Value,Note,Type,Account,Currency\r\n02/11/2026,1.20,"Hello\n""world""",income,Bank,CAD\r\n02/11/2026,4,Move,transfer,Unknown,USD'));
+  const m={...defaultMapping(src.headers),date:0,amount:1,dateOrder:"DMY" as const};
+  const rows=normalize(src,m,"CAD",[{id:"a",name:"Bank"}],[]);expect(rows[0]).toMatchObject({date:"2026-11-02",note:'Hello\n"world"',errors:[]});expect(rows[1].errors).toHaveLength(3);
+  await expect(parseSource(csv('A,B\n1,"broken'))).rejects.toThrow("incomplete");
+});
+it("reads real XLSX dates and blocks formulas even with a cached numeric result",async()=>{
+  const wb=new ExcelJS.Workbook();wb.addWorksheet("About");const sheet=wb.addWorksheet("Transactions");
+  sheet.addRow(["Date","Amount"]);sheet.addRow([new Date("2026-11-03T00:00:00Z"),-2.25]);sheet.addRow(["2026-11-04",{formula:"1+2",result:3}]);
+  const bytes=await wb.xlsx.writeBuffer();
+  const src=await parseSource(new File([bytes],"test.xlsx"));
+  const rows=normalize(src,{...defaultMapping(src.headers),fallback:"a"},"CAD",[{id:"a",name:"Bank"}],[]);
+  expect(rows[0]).toMatchObject({date:"2026-11-03",amount:"2.25",type:"expense",errors:[]});expect(rows[1].errors.length).toBeGreaterThan(0);
+});

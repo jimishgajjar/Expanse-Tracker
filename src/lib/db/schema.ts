@@ -310,3 +310,26 @@ export const backupReports = pgTable("backup_reports", {
   verifiedAt: timestamp("verified_at").notNull(), rowCount: integer("row_count").notNull(),
   destination: text("destination").notNull().default("Encrypted local files"),
 });
+
+// Statement evidence is separate from the ledger. No account FK: retain saved
+// evidence after an account is deleted; reads then mark the review as changed.
+export const reconciliationSessions = pgTable("reconciliation_sessions", {
+  id: text("id").primaryKey(), workspaceId: ws(), accountId: text("account_id").notNull(),
+  startDate: date("start_date", {mode:"string"}).notNull(), endDate: date("end_date", {mode:"string"}).notNull(),
+  closingBalance: numeric("closing_balance", {precision:14,scale:2}).notNull(),
+  snapshot: jsonb("snapshot").notNull(), decisions: jsonb("decisions").notNull().default({}),
+  duplicatesReviewed: boolean("duplicates_reviewed").notNull().default(false),
+  status: text("status").notNull().default("draft"), version: integer("version").notNull().default(1),
+  actorId: text("actor_id").references(()=>users.id,{onDelete:"set null"}), actorName: text("actor_name").notNull(),
+  events: jsonb("events").notNull().default([]),
+  createdAt: timestamp("created_at").notNull().defaultNow(), completedAt: timestamp("completed_at"),
+}, t=>[index("reconciliation_ws_account_idx").on(t.workspaceId,t.accountId,t.createdAt)]);
+
+// No foreign key to resulting ledger entries: retain import receipts even after a correction.
+export const fileImports = pgTable("file_imports", {
+  id: text("id").primaryKey(), workspaceId: ws(), fileHash: text("file_hash").notNull(),
+  filename: text("filename").notNull(), headers: jsonb("headers").notNull(), mapping: jsonb("mapping").notNull(),
+  currency: text("currency").notNull(), rows: jsonb("rows").notNull(), receipt: jsonb("receipt"),
+  version: integer("version").notNull().default(1), stagedBy: text("staged_by").notNull(),
+  approvedBy: text("approved_by"), approvedAt: timestamp("approved_at"), createdAt: timestamp("created_at").notNull().defaultNow(),
+}, t=>[unique("import_ws_file_key").on(t.workspaceId,t.fileHash)]);

@@ -1,0 +1,5 @@
+Date,Type,Amount,Account,Note
+2026-11-03,expense,4.50,Cash,Sample coffee
+2026-11-03,expense,4.50,Cash,Second sample coffee
+2026-11-03,income,12.00,Bank,Sample refund
+2026-02-30,expense,2.00,Bank,Invalid date example

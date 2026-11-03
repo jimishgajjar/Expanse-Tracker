@@ -11,6 +11,7 @@ import {
 } from "@/lib/queries";
 import { SettingsProvider } from "@/components/settings-provider";
 import { AccountDetailView } from "@/components/account-detail-view";
+import { statementReviewsEnabled } from "@/lib/statement-review-feature";
 
 export const dynamic = "force-dynamic";
 
@@ -57,6 +58,7 @@ export default async function AccountPage({
           accounts={accounts}
           categories={categories}
           canEdit={ws?.role !== "viewer"}
+          reviewsEnabled={statementReviewsEnabled()}
         />
       </DetailShell>
     </SettingsProvider>

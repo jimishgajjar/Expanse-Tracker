@@ -24,6 +24,7 @@ export function AccountDetailView({
   accounts,
   categories,
   canEdit,
+  reviewsEnabled = false,
 }: {
   account: AccountDTO;
   transactions: TransactionDTO[];
@@ -31,6 +32,7 @@ export function AccountDetailView({
   accounts: AccountDTO[];
   categories: CategoryDTO[];
   canEdit: boolean;
+  reviewsEnabled?: boolean;
 }) {
   const { money, balanceMoney } = useFormat();
   const transferNet =
@@ -78,6 +80,7 @@ export function AccountDetailView({
 
         <div className="flex flex-wrap items-center gap-2">
           <ReconcileAccount account={account} transactions={transactions} transfers={transfers} />
+          {reviewsEnabled && <Link href={`/accounts/${account.id}/reconcile`} className="inline-flex min-h-9 items-center rounded-lg border px-3 text-xs font-medium hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring">Review statement</Link>}
           {canEdit && (
             <>
               <AccountDialog

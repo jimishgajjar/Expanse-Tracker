@@ -6,6 +6,7 @@ import { eq } from "drizzle-orm";
 import { getDb } from "./db";
 import { accounts, categories, transactions } from "./db/schema";
 import { getActiveRole, getActiveWorkspaceId } from "./workspace";
+import { fileImportsEnabled } from "./file-import-model";
 
 type ImportResult = { ok: boolean; message: string };
 
@@ -41,6 +42,7 @@ function normDate(s: string): string | null {
  * categories are created automatically.
  */
 export async function importTransactions(_prev: ImportResult | undefined, formData: FormData): Promise<ImportResult> {
+  if (fileImportsEnabled()) return { ok:false, message:"Open the reviewed import flow before posting transactions." };
   try {
     const file = formData.get("file") as File | null;
     if (!file || file.size === 0) return { ok: false, message: "Choose a CSV or Excel file first." };
