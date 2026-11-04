@@ -1,4 +1,5 @@
 "use client";
+import {useTrackerReady} from "./tracker-boundary";
 import {useEffect,useState} from "react";
 import {Button} from "./ui/button";
 import {useFormat} from "./settings-provider";
@@ -11,18 +12,20 @@ type Preview=Awaited<ReturnType<typeof previewBulk>>;
 const selectStyle="mt-1 block w-full rounded-lg border bg-background p-2 text-sm";
 export default function BulkActivity({workspace,rows,categories}:{workspace:string;rows:TransactionDTO[];categories:CategoryDTO[]}){
   const {money}=useFormat();
+  const trackerReady=useTrackerReady();
   const [tools,setTools]=useState<Tools|null>(null);
   const [ids,setIds]=useState<string[]>([]),[kind,setKind]=useState<BulkOperation["kind"]>("category"),[target,setTarget]=useState("");
   const [preview,setPreview]=useState<(Preview&{batch:string})|null>(null);
   const [busy,setBusy]=useState(false),[message,setMessage]=useState(""),[error,setError]=useState("");
   const [outcomes,setOutcomes]=useState<Awaited<ReturnType<typeof undoBulk>>>([]);
   useEffect(()=>{
+    if(!trackerReady)return;
     let active=true;
     getBulkTools(workspace).then(result=>{
       if(active){if(result.ok)setTools(result.value);else setError(result.error);}
     }).catch(()=>{if(active)setError("Couldn’t load bulk editing tools. Close and reopen the panel.");});
     return ()=>{active=false;};
-  },[workspace]);
+  },[trackerReady,workspace]);
   function invalidate(){setPreview(null);setMessage("");setError("");setOutcomes([]);}
   function toggle(id:string){
     invalidate();setIds(previous=>previous.includes(id)?previous.filter(i=>i!==id):[...previous,id]);

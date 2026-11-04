@@ -1,4 +1,5 @@
 "use client";
+import {useTrackerReady} from "./tracker-boundary";
 import {useEffect,useRef,useState} from "react";
 import {loadMonth,setMonthlyPlan,allocateToGoal,moveMonthlyBudget} from "@/lib/monthly-planning-actions";
 import type {planningMonth} from "@/lib/monthly-planning";
@@ -33,6 +34,7 @@ export function MonthlyPlanner(props:Props){
   </section>;
 }
 function MonthBody({workspace,month,categories,budgets,goals,canEdit,selectMonth}:Props&{month:string;selectMonth:(m:string)=>void}){
+  const trackerReady=useTrackerReady();
   const {balanceMoney:money}=useFormat(),[book,setBook]=useState<Book|null>(null),[error,setError]=useState(""),[msg,setMsg]=useState("");
   const [reload,setReload]=useState(0),[edit,setEdit]=useState(""),[busy,setBusy]=useState(false);
   const [amount,setAmount]=useState(""),[roll,setRoll]=useState(true);
@@ -48,12 +50,13 @@ function MonthBody({workspace,month,categories,budgets,goals,canEdit,selectMonth
     return ()=>window.removeEventListener("ledger-changed",reloadLedger);
   },[]);
   useEffect(()=>{
+    if(!trackerReady)return;
     let active=true;loadMonth(workspace,month).then(r=>{
       if(!active)return;
       if(r.ok){setBook(r.value);setError("");}else setError(r.error);
     }).catch(()=>{if(active)setError("Couldn’t load the plan.");});
     return ()=>{active=false;};
-  },[workspace,month,reload]);
+  },[trackerReady,workspace,month,reload]);
   const plan=book?.periods.find(p=>p.category===edit);
   const selected=book?.accounts.find(a=>a.id===account);
   const selectedGoal=book?.progress.find(g=>g.id===goal);

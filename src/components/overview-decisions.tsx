@@ -1,4 +1,5 @@
 "use client";
+import {useTrackerReady} from "./tracker-boundary";
 
 import {useEffect,useState} from "react";
 import Link from "next/link";
@@ -22,6 +23,7 @@ function Jump({href,children}:{href:string;children:string}){
 export function OverviewDecisions({workspace,budgets,categories,recurring}:{
   workspace:string;budgets:BudgetProgressDTO[];categories:CategoryDTO[];recurring:RecurringDTO[];
 }){
+  const trackerReady=useTrackerReady();
   const [data,setData]=useState<Outlook|null>(null),[revision,refresh]=useState(0),[error,setError]=useState("");
   const {money,balanceMoney,signedMoney}=useFormat();
   useEffect(()=>{
@@ -30,13 +32,14 @@ export function OverviewDecisions({workspace,budgets,categories,recurring}:{
     return ()=>{window.removeEventListener("ledger-changed",reload);window.removeEventListener("forecast-changed",reload);};
   },[]);
   useEffect(()=>{
+    if(!trackerReady)return;
     let active=true;
     loadDecisionOverview(workspace).then(result=>{
       if(!active)return;
       if(result.ok){setData(result.value);setError("");}else setError(result.error);
     }).catch(()=>{if(active)setError("Couldn’t load your outlook.");});
     return ()=>{active=false;};
-  },[workspace,revision,budgets]);
+  },[trackerReady,workspace,revision,budgets]);
   if(error)return <div className="dashboard-panel p-4 text-sm" role="alert">{error} <button className={linkStyle} onClick={()=>refresh(n=>n+1)}>Try again</button></div>;
   if(!data)return <p role="status" className="dashboard-panel p-4 text-sm">Loading your household outlook…</p>;
 

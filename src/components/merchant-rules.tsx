@@ -1,4 +1,5 @@
 "use client";
+import {useTrackerReady} from "./tracker-boundary";
 
 import {useEffect,useState} from "react";
 import {currentRules,matchingAlias,normalizeMerchant,type RuleRevision} from "@/lib/merchant-rule-model";
@@ -13,15 +14,17 @@ type Props={
   selectedCategory:string|null; selectedTags:TagRef[]; apply:(category:string|null,tags:TagRef[])=>void;
 };
 export default function MerchantRules({accountId,kind,note,categories,selectedCategory,selectedTags,apply}:Props){
+  const trackerReady=useTrackerReady();
   const [book,setBook]=useState<RuleBook|null>(null),[error,setError]=useState(""),[busy,setBusy]=useState(false);
   const [draft,setDraft]=useState<RuleRevision|null>(null),[aliasText,setAliasText]=useState(""),[preview,setPreview]=useState(false);
   const [reload,setReload]=useState(0),[message,setMessage]=useState("");
   useEffect(()=>{
+    if(!trackerReady)return;
     let current=true;
     loadMerchantRules({accountId,kind}).then(result=>{if(current){setBook(result);setError("");}})
       .catch(()=>{if(current)setError("Couldn’t load rules for this account.");});
     return ()=>{current=false;};
-  },[accountId,kind,reload]);
+  },[trackerReady,accountId,kind,reload]);
   function edit(rule:RuleRevision){
     setDraft(rule);setAliasText(rule.aliases.join("\n"));setPreview(false);setError("");setMessage("");
   }

@@ -1,4 +1,5 @@
 "use client";
+import {useTrackerReady} from "./tracker-boundary";
 import Link from "next/link";
 import {useSearchParams} from "next/navigation";
 import {ForecastExplanation} from "./forecast-explanation";
@@ -39,6 +40,7 @@ export function BalanceForecast({workspace,accounts,canEdit}:{workspace:string;a
 }
 
 function ForecastResult({workspace,account,horizon,scenario,includeExpectedPay,canEdit}:{workspace:string;account:string;horizon:string;scenario:ScenarioName;includeExpectedPay:boolean;canEdit:boolean}){
+  const trackerReady=useTrackerReady();
   const requested=useSearchParams().get("explain");
   const [metric,setMetric]=useState<ForecastMetric|null>(isForecastMetric(requested)?requested:null);
   const [data,setData]=useState<Forecast|null>(null),[error,setError]=useState(""),[revision,reload]=useState(0);
@@ -51,6 +53,7 @@ function ForecastResult({workspace,account,horizon,scenario,includeExpectedPay,c
     return ()=>{window.removeEventListener("ledger-changed",refresh);window.removeEventListener("forecast-changed",refresh);};
   },[]);
   useEffect(()=>{
+    if(!trackerReady)return;
     let active=true;
     loadBalanceForecast(workspace,{account:account||null,horizon,scenario,includeExpectedPay}).then(result=>{
       if(!active)return;
@@ -58,7 +61,7 @@ function ForecastResult({workspace,account,horizon,scenario,includeExpectedPay,c
       else setError(result.error);
     }).catch(()=>{if(active)setError("Couldn’t load the forecast.");});
     return ()=>{active=false;};
-  },[workspace,account,horizon,scenario,includeExpectedPay,revision]);
+  },[trackerReady,workspace,account,horizon,scenario,includeExpectedPay,revision]);
   if(error)return <p role="alert" className="text-sm">{error} <button className="underline" onClick={()=>reload(n=>n+1)}>Retry</button></p>;
   if(!data)return <p role="status" className="text-xs">Calculating forecast…</p>;
   const p=data.projection;

@@ -1,9 +1,15 @@
 "use client";
 
-import { useEffect, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { SCOPE_CHECK_PATH } from "@/lib/tracker-view";
 
+const TrackerReady = createContext(false);
+export function useTrackerReady() {
+  return useContext(TrackerReady);
+}
+
 export function TrackerBoundary({ viewKey, children }: { viewKey: string; children: ReactNode }) {
+  const [ready, setReady] = useState(false);
   useEffect(() => {
     let latest = 0;
     let controller: AbortController | undefined;
@@ -18,6 +24,7 @@ export function TrackerBoundary({ viewKey, children }: { viewKey: string; childr
       latest++;
       controller?.abort();
       root.setAttribute("data-tracker-locked", "");
+      setReady(false);
     }
     async function check(conceal: boolean) {
       if (document.hidden) return lock();
@@ -39,6 +46,7 @@ export function TrackerBoundary({ viewKey, children }: { viewKey: string; childr
         }
         root.removeAttribute("data-tracker-locked");
         root.removeAttribute("data-tracker-offline");
+        setReady(true);
       } catch {
         if (request === latest) {
           lock();
@@ -78,6 +86,6 @@ export function TrackerBoundary({ viewKey, children }: { viewKey: string; childr
       <span>Checking tracker access…</span>
       <button className="tracker-retry underline" onClick={() => location.reload()}>Reconnect and retry</button>
     </div>
-    {children}
+    <TrackerReady.Provider value={ready}>{children}</TrackerReady.Provider>
   </>;
 }
