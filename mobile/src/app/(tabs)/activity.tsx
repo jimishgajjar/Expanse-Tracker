@@ -3,37 +3,21 @@ import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, Vie
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { useApp } from "@/lib/store";
-import { Card, Loading } from "@/components/ui";
-import { TxRow } from "@/components/tx-row";
-import { formatDay } from "@/lib/format";
+import { Loading } from "@/components/ui";
 import { colors, radius } from "@/lib/theme";
-import type { Transaction } from "@/lib/types";
+import { activityGroups, type EntryFilter } from "@/lib/activity-list";
+import { EntryFilters, LedgerList } from "@/components/ledger-list";
+import { FinancialPosition } from "@/components/financial-position";
 
-type Filter = "all" | "expense" | "income";
+
 
 export default function Activity() {
   const { data, loading, reload, money } = useApp();
-  const [filter, setFilter] = useState<Filter>("all");
+  const [filter, setFilter] = useState<EntryFilter>("all");
+  const [original,setOriginal]=useState(false);
   const [search, setSearch] = useState("");
 
-  const groups = useMemo<[string, Transaction[]][]>(() => {
-    const q = search.trim().toLowerCase();
-    const txns = (data?.transactions ?? []).filter((t) => {
-      if (filter !== "all" && t.type !== filter) return false;
-      if (q) {
-        const hay = `${t.note} ${t.category?.name ?? ""} ${t.account?.name ?? ""} ${(t.tags ?? []).map((tg) => tg.name).join(" ")}`.toLowerCase();
-        if (!hay.includes(q)) return false;
-      }
-      return true;
-    });
-    const byDay = new Map<string, Transaction[]>();
-    for (const t of txns) {
-      const arr = byDay.get(t.date) ?? [];
-      arr.push(t);
-      byDay.set(t.date, arr);
-    }
-    return [...byDay.entries()].sort((a, b) => (a[0] < b[0] ? 1 : -1));
-  }, [data, filter, search]);
+  const groups = useMemo(()=>activityGroups(data?.transactions??[],data?.transfers??[],data?.accounts??[],filter,search),[data,filter,search]);
 
   if (!data) return <Loading />;
 
@@ -41,13 +25,7 @@ export default function Activity() {
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }} edges={["top"]}>
       <View style={s.head}>
         <Text style={s.title}>Activity</Text>
-        <View style={s.filters}>
-          {(["all", "expense", "income"] as Filter[]).map((f) => (
-            <Pressable key={f} onPress={() => setFilter(f)} style={[s.filter, filter === f && s.filterActive]}>
-              <Text style={[s.filterText, filter === f && s.filterTextActive]}>{f[0].toUpperCase() + f.slice(1)}</Text>
-            </Pressable>
-          ))}
-        </View>
+        <EntryFilters value={filter} onChange={setFilter}/>
         <View style={s.searchWrap}>
           <Feather name="search" size={16} color={colors.inkFaint} />
           <TextInput
@@ -70,28 +48,8 @@ export default function Activity() {
         contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
         refreshControl={<RefreshControl refreshing={loading} onRefresh={reload} tintColor={colors.green} />}
       >
-        {groups.length === 0 ? (
-          <Text style={s.empty}>No transactions.</Text>
-        ) : (
-          groups.map(([day, txns]) => {
-            const net = txns.reduce((sum, t) => sum + (t.type === "income" ? t.amount : -t.amount), 0);
-            return (
-              <View key={day} style={{ marginBottom: 12 }}>
-                <View style={s.dayHead}>
-                  <Text style={s.dayLabel}>{formatDay(day)}</Text>
-                  <Text style={[s.dayNet, { color: net >= 0 ? colors.green : colors.red }]}>{money.signed(net)}</Text>
-                </View>
-                <Card style={{ padding: 0 }}>
-                  {txns.map((t, i) => (
-                    <View key={t.id} style={i > 0 ? s.divider : undefined}>
-                      <TxRow tx={t} fmt={money} />
-                    </View>
-                  ))}
-                </Card>
-              </View>
-            );
-          })
-        )}
+        {data.finance && <FinancialPosition finance={data.finance} original={original} toggle={()=>setOriginal(!original)}/>}
+        {(!data.finance?.report || original) && <LedgerList groups={groups} money={money}/>}
       </ScrollView>
     </SafeAreaView>
   );

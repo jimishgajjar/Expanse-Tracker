@@ -3,6 +3,7 @@ import { DetailShell } from "@/components/detail-shell";
 import { StatementReviewPanel } from "@/components/statement-review-panel";
 import { getCurrentUser } from "@/lib/session";
 import { getActiveWorkspace } from "@/lib/workspace";
+import { canEditSharedLedger } from "@/lib/household-access";
 import { getAccountsWithBalances } from "@/lib/queries";
 import { getDb } from "@/lib/db";
 import { listStatementReviews } from "@/lib/statement-review-store";
@@ -18,6 +19,6 @@ export default async function StatementPage({params}:{params:Promise<{id:string}
   if (!account) notFound();
   const reviews = await listStatementReviews(await getDb(),workspace.id,user.id,id);
   return <DetailShell accounts={accounts} accountId={id} section="Accounts" title={`${account.name} / Statements`}>
-    <StatementReviewPanel accountId={id} accountName={account.name} canEdit={workspace.role!=="viewer"} correctionsEnabled={statementCorrectionsEnabled()} initialReviews={reviews}/>
+    <StatementReviewPanel accountId={id} accountName={account.name} canEdit={canEditSharedLedger(workspace.role)} correctionsEnabled={statementCorrectionsEnabled()} initialReviews={reviews}/>
   </DetailShell>;
 }

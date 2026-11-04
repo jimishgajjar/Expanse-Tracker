@@ -411,9 +411,30 @@ button:focus-visible, a:focus-visible, summary:focus-visible { outline:2px solid
   .detail-activity .activity-row [data-slot="button"] { height:32px; min-height:32px; }
 }
 
+@media (pointer: coarse) {
+  .pilot-content :is(a,button,select,input:not([type=checkbox]),summary) { min-height:44px; }
+  .pilot-content a { display:inline-flex; align-items:center; }
+  .pilot-content :is(input,select,textarea) { font-size:16px; }
+}
 /* Density affects reading rhythm, never reduces phone hit targets. */
 @media (min-width: 768px) {
   html[data-density="comfortable"] .activity-row { padding-top: 1rem; padding-bottom: 1rem; }
   html[data-density="comfortable"] .dashboard-panel { padding: 1.5rem; }
   html[data-density="comfortable"] .nav-item { min-height: 2.75rem; }
+}
+.tracker-shield { display: none; }
+.tracker-retry { display: none; }
+html[data-tracker-offline] .tracker-retry { display: block; }
+html[data-tracker-locked] body { visibility: hidden; }
+html[data-tracker-locked] .tracker-shield {
+  visibility: visible;
+  display: grid;
+  position: fixed;
+  inset: 0;
+  z-index: 2147483647;
+  place-items: center;
+  align-content: center;
+  gap: .5rem;
+  background: var(--background);
+  color: var(--foreground);
 }

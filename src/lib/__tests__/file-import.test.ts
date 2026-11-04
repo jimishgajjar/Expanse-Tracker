@@ -41,7 +41,7 @@ it("exports per-row outcomes and ledger IDs only for the active workspace",async
   const b=await stage();const done=await commitImport(b.id,b.version,choices);if(!done.ok)throw Error(done.error);
   const source=await parseSource(csv("Date,Amount\n2026-11-01,5","foreign.csv"));
   await stageBatch(db,{...s,workspace:"other"},source,{...defaultMapping(source.headers),fallback:"private"},"INR");
-  const response=await GET(),book=new ExcelJS.Workbook();await book.xlsx.load(Buffer.from(await response.arrayBuffer()) as unknown as Parameters<typeof book.xlsx.load>[0]);
+  const response=await GET(new Request("http://localhost/api/export")),book=new ExcelJS.Workbook();await book.xlsx.load(Buffer.from(await response.arrayBuffer()) as unknown as Parameters<typeof book.xlsx.load>[0]);
   const manifest=book.getWorksheet("Import batches")!,rows=book.getWorksheet("Import rows")!;
   expect(manifest.rowCount).toBe(2);expect(manifest.getRow(2).getCell(3).value).toBe(b.fileHash);
   expect(rows.rowCount).toBe(6);expect(rows.getRow(2).getCell(11).value).toBe("existing");

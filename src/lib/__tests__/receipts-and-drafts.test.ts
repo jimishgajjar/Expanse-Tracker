@@ -1,0 +1,67 @@
+import {afterAll,beforeAll,expect,it} from "vitest";
+import {PGlite} from "@electric-sql/pglite";
+import {drizzle} from "drizzle-orm/pglite";
+import {migrate} from "drizzle-orm/pglite/migrator";
+import sharp from "sharp";
+import {randomUUID} from "node:crypto";
+import type {AppDb} from "../db";
+import {normalizeReceipt,attachReceipt,receiptInfo,receiptBytes,removeReceipt,receiptSignature,validReceiptSignature} from "../receipt-images";
+import {storeDraft,listDrafts,discardDraft} from "../capture-drafts";
+import {createWithHistory} from "../transaction-create";
+
+const s={workspace:"home",actor:"u"},other={workspace:"other",actor:"u"},viewer={workspace:"home",actor:"v"};
+const form={type:"expense",amount:"12.30",date:"2026-11-03",note:"Draft",accountId:"cash",categoryId:"__none__",fromAccountId:"cash",toAccountId:""};
+const payload={form,tags:[],portions:[]};
+let client:PGlite,db:AppDb;
+beforeAll(async()=>{
+  client=new PGlite();const local=drizzle(client);await migrate(local,{migrationsFolder:"./drizzle"});db=local as unknown as AppDb;
+  await client.exec(`INSERT INTO users(id,email,password_hash) VALUES('u','u@example.invalid','x'),('v','v@example.invalid','x');
+    INSERT INTO workspaces(id,name,owner_id) VALUES('home','Home','u'),('other','Other','u');
+    INSERT INTO workspace_members(workspace_id,user_id,role) VALUES('home','u','owner'),('home','v','viewer'),('other','u','owner');
+    INSERT INTO accounts(id,workspace_id,name) VALUES('cash','home','Cash');
+    INSERT INTO transactions(id,workspace_id,account_id,date,type,amount) VALUES('test','home','cash','2026-11-03','expense',1)`);
+},60000);
+afterAll(async()=>{await client.close();});
+it("stores normalized pixels and guards read, remove, retry and signed access",async()=>{
+  const file=await sharp({create:{width:20,height:20,channels:3,background:"white"}}).png().toBuffer();
+  const clean=await normalizeReceipt(Buffer.concat([file,Buffer.from("sensitive-trailer")]),"image/png");
+  expect(clean.includes(Buffer.from("sensitive-trailer"))).toBe(false);
+  expect((await sharp(clean).metadata()).format).toBe("jpeg");
+  await expect(normalizeReceipt(file,"image/jpeg")).rejects.toThrow();
+  await expect(normalizeReceipt(Buffer.from("<svg/>"),"image/png")).rejects.toThrow();
+  await expect(attachReceipt(db,viewer,"test",clean)).rejects.toThrow();
+  await attachReceipt(db,s,"test",clean);
+  await expect(attachReceipt(db,s,"test",clean)).rejects.toThrow();
+  const info=await receiptInfo(db,viewer,"test");const id=info!.id;
+  expect(await receiptBytes(db,viewer,"test",id)).toEqual(clean);
+  expect(await receiptBytes(db,other,"test",id)).toBeNull();
+  await expect(receiptInfo(db,other,"test")).rejects.toThrow();
+  const now=Date.now(),end=now+10000,sig=receiptSignature("session",s,"test",id,end);
+  expect(validReceiptSignature("session",s,"test",id,end,sig,now)).toBe(true);
+  for(const valid of [validReceiptSignature("session",s,"test",id,end,sig,end),validReceiptSignature("session",other,"test",id,end,sig,now),
+    validReceiptSignature("other",s,"test",id,end,sig,now)])expect(valid).toBe(false);
+  await expect(removeReceipt(db,viewer,"test",id)).rejects.toThrow();
+  await expect(removeReceipt(db,s,"test","stale")).rejects.toThrow();
+  await expect(client.query("DELETE FROM transactions WHERE id='test'")).rejects.toThrow();
+  await removeReceipt(db,s,"test",id);
+  expect(await receiptBytes(db,s,"test",id)).toBeNull();
+});
+it("isolates private drafts, rejects stale saves and posts a recovered draft exactly once",async()=>{
+  const id=randomUUID(),input={id,version:0,payload};
+  expect(await storeDraft(db,s,input)).toBe(1);
+  expect(await storeDraft(db,viewer,{...input,id:randomUUID()})).toBeNull();
+  expect(await listDrafts(db,other)).toEqual([]);
+  await client.exec("UPDATE workspace_members SET role='member' WHERE user_id='v'");
+  expect(await listDrafts(db,viewer)).toEqual([]);
+  expect(await discardDraft(db,viewer,id,1)).toBe(false);
+  expect((await listDrafts(db,s))[0].payload.form.note).toBe("Draft");
+  expect(await storeDraft(db,s,{...input,version:1})).toBe(2);
+  expect(await storeDraft(db,s,{...input,version:1})).toBeNull();
+  const post=({...form,categoryId:null,requestId:id});
+  const create=(version:number)=>createWithHistory(db,s.workspace,{id:"u",name:"Tester"},post,version);
+  await expect(create(1)).rejects.toThrow();
+  const original=await create(2);expect(original.replayed).toBe(false);
+  expect(await listDrafts(db,s)).toEqual([]);
+  expect(await create(2)).toEqual({...original,replayed:true});
+  expect(await storeDraft(db,s,input)).toBeNull();
+});

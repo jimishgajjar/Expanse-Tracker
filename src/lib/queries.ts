@@ -1,11 +1,21 @@
+import {advanceRecurringDate} from "./recurring-date";
+import { getHouseholdDb } from "./household-db";
+import { listReimbursements, type SettlementRow } from "./reimbursements";
+import {goalProgressSelect} from "./goal-progress";
+import { hostedHouseholdEnabled } from "./household-features";
+import {categoryPostings,allocationsFor} from "./category-postings";
+import {merchantRulesEnabled} from "./merchant-rule-feature";
 import { and, asc, desc, eq, gte, inArray, isNull, lt, sql } from "drizzle-orm";
-import { addMonths, addWeeks, addYears, differenceInCalendarDays, format, parseISO, startOfMonth } from "date-fns";
+import { alias } from "drizzle-orm/pg-core";
+import { addMonths, differenceInCalendarDays, format, parseISO, startOfMonth } from "date-fns";
 import { postRecurringOccurrences } from "./recurring-posting";
 import { getDb } from "./db";
-import { accounts, appSettings, budgets, categories, goals, invitations, recurring, splits, tags, transactionTags, transactions, transfers, users, workspaceMembers } from "./db/schema";
+import { accounts, appSettings, budgets, categories, goals, invitations, recurring, splits, tags, transactionTags, transactions, transfers, users, workspaceMembers, workspaces } from "./db/schema";
 import { CURRENCIES, DEFAULT_CURRENCY_CODE, findCurrencyByCode } from "./currencies";
 import { todayISO } from "./dates";
 import { getActiveWorkspaceId } from "./workspace";
+import { householdRoles, isPersonalLedger } from "./household-access";
+import { cache } from "react";
 import { getCurrentUser } from "./session";
 import { computeBalances } from "./split-math";
 import { notifyWorkspace, type Notice } from "./notify";
@@ -19,6 +29,8 @@ export type RefDTO = { name: string; icon: string; color: string } | null;
 export type TagRef = { id: string; name: string; color: string };
 export type TagDTO = { id: string; name: string; color: string; count: number };
 export type TransactionDTO = {
+  revision?: string;
+  allocations?: import("./purchase-allocation").Allocation[]; receiptAmount?: number;
   id: string; type: "income" | "expense"; amount: number; date: string; note: string;
   accountId: string | null; categoryId: string | null; account: RefDTO; category: RefDTO;
   createdByName: string | null; tags: TagRef[];
@@ -37,7 +49,7 @@ export type SettingsDTO = { currencyCode: string; currency: string; locale: stri
 export type BudgetProgressDTO = { categoryId: string; name: string; icon: string; color: string; budget: number; spent: number };
 export type NetWorthPoint = { key: string; value: number };
 export type MemberDTO = { id: string; email: string; name: string; role: string };
-export type GoalDTO = { id: string; name: string; targetAmount: number; savedAmount: number; deadline: string | null; color: string };
+export type GoalDTO = { id: string; name: string; targetAmount: number; savedAmount: number; openingProgress?:number; reserved?:number; outside?:number; openingReviewed?:boolean; deadline: string | null; color: string };
 
 export async function getCategories(): Promise<CategoryDTO[]> {
   const wid = await getActiveWorkspaceId();
@@ -90,20 +102,19 @@ export async function getTransfersInRange(start: string, end: string): Promise<T
   const wid = await getActiveWorkspaceId();
   if (!wid) return [];
   const db = await getDb();
+  const source = alias(accounts,"transfer_source"), destination = alias(accounts,"transfer_destination");
   const rows = await db
-    .select()
+    .select({id:transfers.id,amount:transfers.amount,date:transfers.date,note:transfers.note,
+      fromAccountId:source.id,toAccountId:destination.id})
     .from(transfers)
+    .leftJoin(source,and(eq(source.id,transfers.fromAccountId),eq(source.workspaceId,wid)))
+    .leftJoin(destination,and(eq(destination.id,transfers.toAccountId),eq(destination.workspaceId,wid)))
     .where(and(eq(transfers.workspaceId, wid), gte(transfers.date, start), lt(transfers.date, end)))
     .orderBy(desc(transfers.date), desc(transfers.createdAt));
-  return rows.map((r) => ({ id: r.id, amount: Number(r.amount), date: r.date, note: r.note, fromAccountId: r.fromAccountId, toAccountId: r.toAccountId }));
+  return rows.map(r => ({...r,amount:Number(r.amount),fromAccountId:r.fromAccountId ?? "",toAccountId:r.toAccountId ?? ""}));
 }
 
 // ── recurring ────────────────────────────────────────────
-function advanceDate(dateStr: string, freq: string): string {
-  const d = parseISO(dateStr);
-  const next = freq === "weekly" ? addWeeks(d, 1) : freq === "yearly" ? addYears(d, 1) : addMonths(d, 1);
-  return format(next, "yyyy-MM-dd");
-}
 
 type RecurringRow = typeof recurring.$inferSelect;
 
@@ -117,12 +128,12 @@ async function workspaceSymbol(db: Awaited<ReturnType<typeof getDb>>, cache: Map
 }
 
 /** Resolve an account/category name by id, cached, for alert email details. */
-async function lookupName(db: Awaited<ReturnType<typeof getDb>>, cache: Map<string, string>, id: string | null, kind: "account" | "category"): Promise<string | null> {
+async function lookupName(db: Awaited<ReturnType<typeof getDb>>, cache: Map<string, string>, workspace: string, id: string | null, kind: "account" | "category"): Promise<string | null> {
   if (!id) return null;
-  const key = `${kind}:${id}`;
+  const key = `${workspace}:${kind}:${id}`;
   if (cache.has(key)) return cache.get(key) || null;
   const t = kind === "account" ? accounts : categories;
-  const [row] = await db.select({ name: t.name }).from(t).where(eq(t.id, id)).limit(1);
+  const [row] = await db.select({ name: t.name }).from(t).where(and(eq(t.id, id),eq(t.workspaceId,workspace))).limit(1);
   cache.set(key, row?.name ?? "");
   return row?.name ?? null;
 }
@@ -167,7 +178,7 @@ async function materialize(rules: RecurringRow[]): Promise<{ created: number; no
       if (r.autoPost) toCreate.push({ workspaceId: r.workspaceId, type: r.type, amount: r.amount, date: next, note: r.note, accountId: r.accountId, categoryId: r.categoryId });
       count++;
       advanced = true;
-      next = advanceDate(next, r.frequency);
+      next = advanceRecurringDate(next, r.frequency);
     }
     if (advanced) {
       const claimed = await postRecurringOccurrences(db, r, next, count, toCreate);
@@ -176,11 +187,12 @@ async function materialize(rules: RecurringRow[]): Promise<{ created: number; no
       if (r.alertsEnabled && toCreate.length) {
         const sym = await workspaceSymbol(db, symCache, r.workspaceId);
         const label = r.note || (r.type === "income" ? "Recurring income" : "Recurring payment");
-        const accName = await lookupName(db, nameCache, r.accountId, "account");
-        const catName = await lookupName(db, nameCache, r.categoryId, "category");
+        const accName = await lookupName(db, nameCache, r.workspaceId, r.accountId, "account");
+        const catName = await lookupName(db, nameCache, r.workspaceId, r.categoryId, "category");
         const amountStr = `${sym}${Number(r.amount).toFixed(2)}`;
         const lastDate = format(parseISO(toCreate[toCreate.length - 1].date as string), "MMM d, yyyy");
         notices.push({ workspaceId: r.workspaceId, notice: {
+          topic: "posted",
           title: `${r.type === "income" ? "Income added" : "Payment added"}: ${amountStr}`,
           body: toCreate.length > 1 ? `${label} — ${toCreate.length} entries were added.` : `${label} was added to your tracker.`,
           heading: r.type === "income" ? "Income added" : "Payment added",
@@ -215,12 +227,13 @@ async function materialize(rules: RecurringRow[]): Promise<{ created: number; no
         const sym = await workspaceSymbol(db, symCache, r.workspaceId);
         const when = daysUntil === 0 ? "today" : daysUntil === 1 ? "tomorrow" : `in ${daysUntil} days`;
         const label = r.note || (r.type === "income" ? "Recurring income" : "Recurring payment");
-        const accName = await lookupName(db, nameCache, r.accountId, "account");
-        const catName = await lookupName(db, nameCache, r.categoryId, "category");
+        const accName = await lookupName(db, nameCache, r.workspaceId, r.accountId, "account");
+        const catName = await lookupName(db, nameCache, r.workspaceId, r.categoryId, "category");
         const amountStr = `${sym}${Number(r.amount).toFixed(2)}`;
         const prettyNext = format(parseISO(next), "MMM d, yyyy");
         const remindOnly = !r.autoPost;
         notices.push({ workspaceId: r.workspaceId, notice: {
+          topic: "upcoming",
           title: remindOnly ? `Bill due: ${label}` : `Upcoming ${r.type}: ${amountStr}`,
           body: remindOnly ? `${label} is due ${prettyNext} (${when}) — log the amount you paid.` : `${label} is scheduled for ${prettyNext} (${when}).`,
           heading: remindOnly ? "Bill due — log it" : r.type === "income" ? "Upcoming income" : "Upcoming payment",
@@ -273,13 +286,16 @@ export async function getRecurring(): Promise<RecurringDTO[]> {
   const wid = await getActiveWorkspaceId();
   if (!wid) return [];
   const db = await getDb();
-  const rows = await db.select().from(recurring).where(eq(recurring.workspaceId, wid)).orderBy(asc(recurring.nextDate));
-  const tagIds = [...new Set(rows.flatMap((r) => r.tagIds))];
+  const rows = await db.select({rule:recurring,accountId:accounts.id,categoryId:categories.id}).from(recurring)
+    .leftJoin(accounts,and(eq(accounts.id,recurring.accountId),eq(accounts.workspaceId,wid)))
+    .leftJoin(categories,and(eq(categories.id,recurring.categoryId),eq(categories.workspaceId,wid)))
+    .where(eq(recurring.workspaceId,wid)).orderBy(asc(recurring.nextDate));
+  const tagIds = [...new Set(rows.flatMap(r => r.rule.tagIds))];
   const selectedTags = tagIds.length ? await db.select({ id: tags.id, name: tags.name, color: tags.color }).from(tags).where(and(eq(tags.workspaceId, wid), inArray(tags.id, tagIds))) : [];
   const tagsById = new Map(selectedTags.map((t) => [t.id, t]));
-  return rows.map((r) => ({
+  return rows.map(({rule:r,accountId,categoryId}) => ({
     id: r.id, type: r.type, amount: Number(r.amount), note: r.note,
-    accountId: r.accountId, categoryId: r.categoryId, frequency: r.frequency, nextDate: r.nextDate,
+    accountId, categoryId, frequency: r.frequency, nextDate: r.nextDate,
     endDate: r.endDate, maxOccurrences: r.maxOccurrences, occurrenceCount: r.occurrenceCount,
     alertsEnabled: r.alertsEnabled, remindDaysBefore: r.remindDaysBefore,
     commitmentType: r.commitmentType, autoPost: r.autoPost, totalAmount: r.totalAmount != null ? Number(r.totalAmount) : null,
@@ -290,18 +306,23 @@ export async function getRecurring(): Promise<RecurringDTO[]> {
 
 export type SplitBalanceDTO = { userId: string; name: string; net: number };
 export type SplitDTO = { id: string; note: string; creditorId: string; debtorId: string; amount: number };
-export type SplitData = { meId: string; otherMembers: { id: string; name: string }[]; balances: SplitBalanceDTO[]; splits: SplitDTO[] };
+export type SplitData = { meId: string; otherMembers: { id: string; name: string }[]; balances: SplitBalanceDTO[]; splits: SplitDTO[];
+  reimbursementWorkspace?:string; settlements?:SettlementRow[] };
 
 export async function getSplitData(): Promise<SplitData> {
   const wid = await getActiveWorkspaceId();
   const me = await getCurrentUser();
   if (!wid || !me) return { meId: "", otherMembers: [], balances: [], splits: [] };
   const db = await getDb();
-  const rows = await db.select().from(splits).where(and(eq(splits.workspaceId, wid), isNull(splits.settledAt))).orderBy(desc(splits.createdAt));
-  const members = await db.select({ id: users.id, name: users.name, email: users.email }).from(workspaceMembers).innerJoin(users, eq(workspaceMembers.userId, users.id)).where(eq(workspaceMembers.workspaceId, wid));
+  const [rows, members] = await Promise.all([
+    db.select().from(splits).where(and(eq(splits.workspaceId, wid), isNull(splits.settledAt))).orderBy(desc(splits.createdAt)),
+    getMembers(),
+  ]);
   const nameOf = (id: string) => { const m = members.find((x) => x.id === id); return m?.name || m?.email || "Member"; };
   const net = computeBalances(me.id, rows.map((r) => ({ creditorId: r.creditorId, debtorId: r.debtorId, amount: Number(r.amount) })));
+  const local = !isPersonalLedger(wid) && await getHouseholdDb();
   return {
+    ...(local ? {reimbursementWorkspace:wid,settlements:await listReimbursements(local,{workspace:wid,actor:me.id})} : {}),
     meId: me.id,
     otherMembers: members.filter((m) => m.id !== me.id).map((m) => ({ id: m.id, name: m.name || m.email })),
     balances: [...net.entries()].filter(([, v]) => Math.abs(v) > 0.005).map(([uid, v]) => ({ userId: uid, name: nameOf(uid), net: v })),
@@ -313,17 +334,23 @@ export async function getGoals(): Promise<GoalDTO[]> {
   const wid = await getActiveWorkspaceId();
   if (!wid) return [];
   const db = await getDb();
-  const rows = await db.select().from(goals).where(eq(goals.workspaceId, wid)).orderBy(asc(goals.createdAt));
-  return rows.map((g) => ({ id: g.id, name: g.name, targetAmount: Number(g.targetAmount), savedAmount: Number(g.savedAmount), deadline: g.deadline, color: g.color }));
+  if(merchantRulesEnabled() || hostedHouseholdEnabled()){
+    const {rows}=await db.execute(sql`${sql.raw(goalProgressSelect)} WHERE g.workspace_id=${wid} ORDER BY g.created_at`);
+    return rows.map(g=>({id:String(g.id),name:String(g.name),targetAmount:Number(g.target_amount),
+      savedAmount:Number(g.confirmed),openingProgress:Number(g.opening),reserved:Number(g.reserved),
+      outside:Number(g.outside),openingReviewed:g.reviewed===true,deadline:g.deadline?String(g.deadline):null,color:String(g.color)}));
+  }
+  const rows=await db.select().from(goals).where(eq(goals.workspaceId,wid)).orderBy(asc(goals.createdAt));
+  return rows.map(g=>({id:g.id,name:g.name,targetAmount:Number(g.targetAmount),savedAmount:Number(g.savedAmount),deadline:g.deadline,color:g.color}));
 }
 
-async function tagsByTransaction(db: Awaited<ReturnType<typeof getDb>>, txIds: string[]): Promise<Map<string, TagRef[]>> {
+async function tagsByTransaction(db: Awaited<ReturnType<typeof getDb>>, workspace: string, txIds: string[]): Promise<Map<string, TagRef[]>> {
   const map = new Map<string, TagRef[]>();
   if (!txIds.length) return map;
   const rows = await db
     .select({ txId: transactionTags.transactionId, id: tags.id, name: tags.name, color: tags.color })
     .from(transactionTags)
-    .innerJoin(tags, eq(transactionTags.tagId, tags.id))
+    .innerJoin(tags, and(eq(transactionTags.tagId, tags.id),eq(tags.workspaceId,workspace)))
     .where(inArray(transactionTags.transactionId, txIds));
   for (const r of rows) {
     const arr = map.get(r.txId) ?? [];
@@ -337,20 +364,29 @@ export async function getTransactionsInRange(start: string, end: string, limit?:
   const wid = await getActiveWorkspaceId();
   if (!wid) return [];
   const db = await getDb();
-  const rows = await db.query.transactions.findMany({
-    where: and(eq(transactions.workspaceId, wid), gte(transactions.date, start), lt(transactions.date, end)),
-    orderBy: [desc(transactions.date), desc(transactions.createdAt)],
-    with: { account: true, category: true, creator: true },
-    limit,
-  });
-  const tagMap = await tagsByTransaction(db, rows.map((t) => t.id));
+  const query = db.select({
+    revision:sql<string>`"transactions".xmin::text`,
+    id:transactions.id, type:transactions.type, amount:transactions.amount, date:transactions.date, note:transactions.note,
+    accountId:accounts.id, categoryId:categories.id,
+    account:{name:accounts.name,icon:accounts.icon,color:accounts.color},
+    category:{name:categories.name,icon:categories.icon,color:categories.color},
+    creator:{name:users.name,email:users.email},
+  }).from(transactions)
+    .leftJoin(accounts,and(eq(accounts.id,transactions.accountId),eq(accounts.workspaceId,wid)))
+    .leftJoin(categories,and(eq(categories.id,transactions.categoryId),eq(categories.workspaceId,wid)))
+    .leftJoin(users,eq(users.id,transactions.createdBy))
+    .where(and(eq(transactions.workspaceId,wid),gte(transactions.date,start),lt(transactions.date,end)))
+    .orderBy(desc(transactions.date),desc(transactions.createdAt));
+  const rows = await (limit === undefined ? query : query.limit(limit));
+  const ids=rows.map(t=>t.id);
+  const [tagMap,allocationMap]=await Promise.all([tagsByTransaction(db,wid,ids),allocationsFor(db,wid,ids)]);
   return rows.map((t) => ({
-    id: t.id, type: t.type, amount: Number(t.amount), date: t.date, note: t.note,
+    id: t.id, revision:t.revision, type: t.type, amount: Number(t.amount), date: t.date, note: t.note,
     accountId: t.accountId, categoryId: t.categoryId,
     account: t.account ? { name: t.account.name, icon: t.account.icon, color: t.account.color } : null,
     category: t.category ? { name: t.category.name, icon: t.category.icon, color: t.category.color } : null,
     createdByName: t.creator ? (t.creator.name || t.creator.email) : null,
-    tags: tagMap.get(t.id) ?? [],
+    tags: tagMap.get(t.id) ?? [], allocations:allocationMap.get(t.id),
   }));
 }
 
@@ -359,9 +395,10 @@ export async function getTags(): Promise<TagDTO[]> {
   if (!wid) return [];
   const db = await getDb();
   const rows = await db
-    .select({ id: tags.id, name: tags.name, color: tags.color, count: sql<number>`count(${transactionTags.transactionId})` })
+    .select({ id: tags.id, name: tags.name, color: tags.color, count: sql<number>`count(${transactions.id})` })
     .from(tags)
     .leftJoin(transactionTags, eq(transactionTags.tagId, tags.id))
+    .leftJoin(transactions, and(eq(transactions.id,transactionTags.transactionId),eq(transactions.workspaceId,wid)))
     .where(eq(tags.workspaceId, wid))
     .groupBy(tags.id)
     .orderBy(asc(tags.name));
@@ -372,23 +409,31 @@ export async function getAllTransactions(): Promise<TransactionDTO[]> {
   return getTransactionsInRange("0001-01-01", "9999-12-31");
 }
 
-export async function getMembers(): Promise<MemberDTO[]> {
-  const wid = await getActiveWorkspaceId();
-  if (!wid) return [];
+export const getMembers = cache(async (): Promise<MemberDTO[]> => {
+  const [wid, actor] = await Promise.all([getActiveWorkspaceId(), getCurrentUser()]);
+  if (!wid || !actor) return [];
   const db = await getDb();
   return db
     .select({ id: users.id, email: users.email, name: users.name, role: workspaceMembers.role })
     .from(workspaceMembers)
     .innerJoin(users, eq(workspaceMembers.userId, users.id))
-    .where(eq(workspaceMembers.workspaceId, wid))
+    .where(and(eq(workspaceMembers.workspaceId, wid), inArray(workspaceMembers.role, householdRoles),
+      sql`EXISTS (SELECT 1 FROM workspace_members AS reader WHERE reader.workspace_id=${wid}
+        AND reader.user_id=${actor.id} AND reader.role IN ('owner','member','viewer'))`))
     .orderBy(asc(workspaceMembers.createdAt));
-}
+});
 
 export async function getInvites(): Promise<string[]> {
-  const wid = await getActiveWorkspaceId();
-  if (!wid) return [];
+  const [wid, actor] = await Promise.all([getActiveWorkspaceId(), getCurrentUser()]);
+  if (!wid || !actor) return [];
   const db = await getDb();
-  const rows = await db.select({ email: invitations.email }).from(invitations).where(eq(invitations.workspaceId, wid)).orderBy(asc(invitations.createdAt));
+  // Check current ownership and membership in the same read as the addresses.
+  const rows = await db.select({ email: invitations.email }).from(invitations)
+    .innerJoin(workspaces, eq(workspaces.id, invitations.workspaceId))
+    .innerJoin(workspaceMembers, eq(workspaceMembers.workspaceId, workspaces.id))
+    .where(and(eq(workspaces.id, wid), eq(workspaces.ownerId, actor.id),
+      eq(workspaceMembers.userId, actor.id), eq(workspaceMembers.role, "owner")))
+    .orderBy(asc(invitations.createdAt));
   return rows.map((r) => r.email);
 }
 
@@ -413,7 +458,7 @@ export async function getBudgetProgress(): Promise<BudgetProgressDTO[]> {
   const rows = await db
     .select({ categoryId: budgets.categoryId, amount: budgets.amount, name: categories.name, icon: categories.icon, color: categories.color })
     .from(budgets)
-    .innerJoin(categories, eq(budgets.categoryId, categories.id))
+    .innerJoin(categories, and(eq(budgets.categoryId, categories.id),eq(categories.workspaceId,wid)))
     .where(eq(budgets.workspaceId, wid));
   if (!rows.length) return [];
 
@@ -423,11 +468,12 @@ export async function getBudgetProgress(): Promise<BudgetProgressDTO[]> {
   const nx = new Date(now.getFullYear(), now.getMonth() + 1, 1);
   const end = `${nx.getFullYear()}-${pad(nx.getMonth() + 1)}-01`;
 
+  const postings=categoryPostings(db,undefined,true);
   const spendRows = await db
-    .select({ categoryId: transactions.categoryId, total: sql<string>`coalesce(sum(${transactions.amount}), 0)` })
-    .from(transactions)
-    .where(and(eq(transactions.workspaceId, wid), eq(transactions.type, "expense"), gte(transactions.date, start), lt(transactions.date, end)))
-    .groupBy(transactions.categoryId);
+    .select({ categoryId: postings.categoryId, total: sql<string>`coalesce(sum(${postings.amount}), 0)` })
+    .from(postings)
+    .where(and(eq(postings.workspaceId, wid), eq(postings.type, "expense"), gte(postings.date, start), lt(postings.date, end)))
+    .groupBy(postings.categoryId);
   const spent: Record<string, number> = {};
   for (const r of spendRows) if (r.categoryId) spent[r.categoryId] = Number(r.total);
 

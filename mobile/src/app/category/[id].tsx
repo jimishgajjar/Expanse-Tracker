@@ -5,7 +5,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
 import { useApp } from "@/lib/store";
-import { api } from "@/lib/api";
+import { bindApi } from "@/lib/api";
 import { Card, IconBubble, Loading } from "@/components/ui";
 import { TxRow } from "@/components/tx-row";
 import { formatDay } from "@/lib/format";
@@ -13,6 +13,7 @@ import { colors } from "@/lib/theme";
 import type { Transaction } from "@/lib/types";
 
 export default function CategoryDetail() {
+  const api = bindApi();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { data, money } = useApp();
   const router = useRouter();

@@ -6,6 +6,7 @@ type PeriodState = {
   anchor: string;
   label: string;
   setRange: (r: RangeType) => void;
+  openMonth: (date:string) => void;
   prev: () => void;
   next: () => void;
 };
@@ -16,6 +17,7 @@ export const usePeriod = create<PeriodState>((set) => ({
   range: "month",
   anchor: today,
   label: getRange("month", today).label,
+  openMonth: anchor => set({range:"month",anchor,label:getRange("month",anchor).label}),
   setRange: (range) => set((s) => ({ range, label: getRange(range, s.anchor).label })),
   prev: () =>
     set((s) => {

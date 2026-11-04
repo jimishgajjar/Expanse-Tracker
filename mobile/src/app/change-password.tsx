@@ -4,12 +4,13 @@ import { Redirect, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { useApp } from "@/lib/store";
-import { api } from "@/lib/api";
+import { bindApi } from "@/lib/api";
 import { Loading } from "@/components/ui";
 import { tapSuccess } from "@/lib/haptics";
 import { colors, radius } from "@/lib/theme";
 
 export default function ChangePassword() {
+  const api = bindApi();
   const { token, ready } = useApp();
   const router = useRouter();
   const [current, setCurrent] = useState("");

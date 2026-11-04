@@ -321,6 +321,7 @@ function RecurringForm({
         setMaxOccurrences("");
         setTotalAmount("");
       }
+      window.dispatchEvent(new Event("forecast-changed"));
       router.refresh();
     });
   }
@@ -595,6 +596,7 @@ function RuleRow({
     if (res.ok) {
       toast.success("Removed");
       onRemoved(rule.id);
+      window.dispatchEvent(new Event("forecast-changed"));
       router.refresh();
     } else toast.error(res.error);
   }

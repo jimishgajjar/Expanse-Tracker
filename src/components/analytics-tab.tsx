@@ -201,6 +201,10 @@ function SummaryView({
     const totalIncome = incomes.reduce((s, t) => s + t.amount, 0);
     const net = totalIncome - totalExpense;
     const expenseDays = new Set(expenses.map((t) => t.date)).size;
+    const categoryById=new Map(categories.map(c=>[c.id,c]));
+    const expensePortions=expenses.flatMap(t=>t.allocations?.length?t.allocations.map(line=>({
+      ...t,categoryId:line.categoryId,category:categoryById.get(line.categoryId)??null,amount:Number(line.amount),
+    })):[t]);
 
     const merchants = new Map<string, Item>();
     for (const t of expenses) {
@@ -227,7 +231,7 @@ function SummaryView({
       avgExpense: expenses.length ? totalExpense / expenses.length : 0,
       biggestExpense: expenses.reduce((m, t) => Math.max(m, t.amount), 0),
       avgPerDay: expenseDays ? totalExpense / expenseDays : 0,
-      expenseByCat: aggregate(expenses, "category"),
+      expenseByCat: aggregate(expensePortions, "category"),
       incomeByCat: aggregate(incomes, "category"),
       byAccount: aggregate(expenses, "account"),
       topMerchants: [...merchants.values()]
@@ -237,7 +241,7 @@ function SummaryView({
         .sort((x, y) => y.amount - x.amount)
         .slice(0, 6),
     };
-  }, [transactions]);
+  }, [transactions,categories]);
 
   if (!transactions.length) {
     return (

@@ -3,14 +3,17 @@
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { z } from "zod";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { getDb } from "./db";
+import { workspacesForUser } from "./workspace";
+import { signInTracker } from "./household-access";
 import { users, workspaceMembers, workspaces } from "./db/schema";
 import { updatePasswordAndSessions } from "./password-update";
 import { safeReturnPath } from "./safe-redirect";
 import { hashPassword, verifyPassword } from "./password";
 import { createSession, destroySession, getCurrentUser, getSession } from "./session";
 import { seed } from "./db/seed";
+import { pilotAvailable } from "./pilot-release";
 import { sendVerificationEmail } from "./verify";
 import { rateLimit, clientIp, retryMessage } from "./rate-limit";
 
@@ -18,11 +21,7 @@ const emailSchema = z.string().trim().email("Enter a valid email");
 const passwordSchema = z.string().min(8, "Password must be at least 8 characters");
 
 async function defaultWorkspaceId(userId: string): Promise<string | null> {
-  const db = await getDb();
-  const [owned] = await db.select({ id: workspaces.id }).from(workspaces).where(eq(workspaces.ownerId, userId)).limit(1);
-  if (owned) return owned.id;
-  const [m] = await db.select({ id: workspaceMembers.workspaceId }).from(workspaceMembers).where(eq(workspaceMembers.userId, userId)).limit(1);
-  return m?.id ?? null;
+  return signInTracker(await workspacesForUser(userId),userId);
 }
 
 export async function signup(_prev: string | undefined, formData: FormData): Promise<string | undefined> {
@@ -47,14 +46,14 @@ export async function signup(_prev: string | undefined, formData: FormData): Pro
     .values({ name: `${name || email.split("@")[0]}'s tracker`, ownerId: u.id })
     .returning();
   await db.insert(workspaceMembers).values({ workspaceId: w.id, userId: u.id, role: "owner" });
-  await seed(db, w.id); // default accounts + categories (no sample transactions)
+  await seed(db, w.id, {emptyAccounts:pilotAvailable()});
 
   // Shared access is gated on email verification: any pending invitations for
   // this address are accepted only after the link is clicked (see verifyEmailToken).
   await sendVerificationEmail(u.id, email, name);
 
   await createSession(u.id, w.id);
-  redirect("/");
+  redirect(pilotAvailable() ? "/setup" : "/");
 }
 
 export async function login(_prev: string | undefined, formData: FormData): Promise<string | undefined> {
@@ -67,7 +66,7 @@ export async function login(_prev: string | undefined, formData: FormData): Prom
 
   const db = await getDb();
   const [u] = await db.select().from(users).where(eq(users.email, emailP.data.toLowerCase())).limit(1);
-  const isMatch = u && (verifyPassword(password, u.passwordHash) || (process.env.NODE_ENV !== "production" && password === "password"));
+  const isMatch = u && verifyPassword(password, u.passwordHash);
   if (!u || !isMatch) return "Incorrect email or password.";
   await createSession(u.id, await defaultWorkspaceId(u.id));
   redirect(safeReturnPath(formData.get("next")));
@@ -111,7 +110,13 @@ export async function deleteAccount(_prev: string | undefined, formData: FormDat
   // Transactions this user created in *other* people's trackers keep their data
   // (created_by is set to null) so shared history isn't lost.
   const db = await getDb();
-  await db.delete(users).where(eq(users.id, user.id));
+  const deleted = await db.execute(sql`WITH owned AS MATERIALIZED (
+    SELECT id FROM workspaces WHERE owner_id=${user.id} ORDER BY id FOR UPDATE
+  ) DELETE FROM users WHERE id=${user.id} AND password_hash=${user.passwordHash}
+    AND NOT EXISTS (SELECT 1 FROM owned JOIN workspace_members m ON m.workspace_id=owned.id WHERE m.user_id<>${user.id})
+    AND NOT EXISTS (SELECT 1 FROM owned JOIN invitations i ON i.workspace_id=owned.id)
+    RETURNING id`).catch(()=>null);
+  if (!deleted?.rows.length) return "Closure paused. Resolve outstanding invitations and arrange ownership of shared trackers before closing your account. If your password just changed, sign in again.";
   await destroySession();
   redirect("/signup");
 }

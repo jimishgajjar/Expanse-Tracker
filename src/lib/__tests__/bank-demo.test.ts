@@ -46,6 +46,7 @@ describe("bank demo safety and reconciliation", () => {
     const valid = {
       NODE_ENV: "development",
       BANK_SYNC_MODE: "demo",
+      BANK_TOOLS_ENABLED: "1",
       PGLITE_PATH: ".pglite-preview",
     } as NodeJS.ProcessEnv;
     expect(bankDemoEnabled(valid)).toBe(true);
@@ -54,6 +55,7 @@ describe("bank demo safety and reconciliation", () => {
       { VERCEL: "1" },
       { DATABASE_URL: "postgresql://example" },
       { BANK_SYNC_MODE: "live" },
+      { BANK_TOOLS_ENABLED: undefined },
       { PGLITE_PATH: "" },
     ])
       expect(bankDemoEnabled({ ...valid, ...patch } as NodeJS.ProcessEnv)).toBe(

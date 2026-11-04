@@ -1,9 +1,11 @@
-import { randomBytes } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { cache } from "react";
 import { cookies, headers } from "next/headers";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
+import { switchSessionTracker } from "./session-tracker";
 import { getDb } from "./db";
-import { sessions, users, type User } from "./db/schema";
+import { sessions, users, workspaceMembers, type User } from "./db/schema";
+import { REQUIRED_HEADER, VIEW_HEADER } from "./tracker-view";
 import { SESSION_COOKIE } from "./auth-constants";
 
 const DAYS = 30;
@@ -34,24 +36,25 @@ export async function createApiSession(userId: string, workspaceId: string | nul
 }
 
 /** Validated session (user + active workspace), memoized per request. */
-export const getSession = cache(async (): Promise<{ user: User; workspaceId: string | null; sessionId: string } | null> => {
+export const getSession = cache(async (): Promise<{ user: User; workspaceId: string | null; sessionId: string; viewKey: string; expiresAt: Date } | null> => {
   const jar = await cookies();
-  let token = jar.get(SESSION_COOKIE)?.value;
-  if (!token) {
-    // Mobile / API clients send the session token as `Authorization: Bearer <token>`.
-    const auth = (await headers()).get("authorization");
-    if (auth?.toLowerCase().startsWith("bearer ")) token = auth.slice(7).trim();
-  }
+  const request = await headers();
+  const bearer = /^Bearer\s+(\S+)$/i.exec(request.get("authorization") ?? "");
+  const token = bearer ? bearer[1] : jar.get(SESSION_COOKIE)?.value;
   if (!token) return null;
   const db = await getDb();
   const [row] = await db
-    .select({ user: users, workspaceId: sessions.workspaceId, expiresAt: sessions.expiresAt })
+    .select({ user: users, workspaceId: sessions.workspaceId, expiresAt: sessions.expiresAt, role: workspaceMembers.role })
     .from(sessions)
     .innerJoin(users, eq(sessions.userId, users.id))
+    .leftJoin(workspaceMembers, and(eq(workspaceMembers.userId, sessions.userId), eq(workspaceMembers.workspaceId, sessions.workspaceId)))
     .where(eq(sessions.id, token))
     .limit(1);
   if (!row || row.expiresAt.getTime() < Date.now()) return null;
-  return { user: row.user, workspaceId: row.workspaceId, sessionId: token };
+  const viewKey = createHash("sha256").update(JSON.stringify(["view-v1", token, row.workspaceId, row.role])).digest("hex");
+  const expected = request.get(VIEW_HEADER);
+  if ((expected !== null || request.has(REQUIRED_HEADER)) && expected !== viewKey) return null;
+  return { user: row.user, workspaceId: row.workspaceId, sessionId: token, viewKey, expiresAt:row.expiresAt };
 });
 
 export async function getCurrentUser(): Promise<User | null> {
@@ -59,17 +62,15 @@ export async function getCurrentUser(): Promise<User | null> {
 }
 
 export async function setActiveWorkspace(workspaceId: string) {
-  const jar = await cookies();
-  const token = jar.get(SESSION_COOKIE)?.value;
-  if (!token) return;
-  const db = await getDb();
-  await db.update(sessions).set({ workspaceId }).where(eq(sessions.id, token));
+  const session = await getSession();
+  if (!session) throw Error("Reopen the tracker before switching.");
+  await switchSessionTracker(session, workspaceId);
 }
 
 export async function destroySession() {
   const jar = await cookies();
   const token = jar.get(SESSION_COOKIE)?.value;
-  if (token) {
+  if (token && (await getSession())?.sessionId === token) {
     const db = await getDb();
     await db.delete(sessions).where(eq(sessions.id, token));
     jar.delete(SESSION_COOKIE);

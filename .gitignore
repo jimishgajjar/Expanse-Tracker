@@ -15,6 +15,9 @@
 
 # next.js
 /.next/
+/.next-bank/
+/.next-finance/
+/.pglite-finance-preview/
 /out/
 
 # production
@@ -82,4 +85,9 @@ _verifycol.mjs
 
 # Isolated demo used for design validation
 /.pglite-preview/
+/.pglite-bank-preview/
+/.pglite-bank-inbox/
 /.pglite-bank-demo/
+/.pglite-pilot-preview/
+/.next-pilot/
+/.next-pilot-build/

@@ -1,7 +1,8 @@
 import { randomBytes } from "node:crypto";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { getDb } from "./db";
-import { emailVerifications, invitations, users, workspaceMembers } from "./db/schema";
+import { emailVerifications, users } from "./db/schema";
+import { notifyInvitation } from "./notify";
 import { sendEmail } from "./email";
 import { renderEmail, escapeHtml } from "./email-template";
 import { requestBaseUrl as baseUrl } from "./base-url";
@@ -33,12 +34,17 @@ export async function sendVerificationEmail(userId: string, email: string, name:
 export async function acceptPendingInvites(userId: string, email: string): Promise<number> {
   const db = await getDb();
   const addr = email.toLowerCase();
-  const invites = await db.select().from(invitations).where(eq(invitations.email, addr));
-  for (const inv of invites) {
-    await db.insert(workspaceMembers).values({ workspaceId: inv.workspaceId, userId, role: inv.role }).onConflictDoNothing();
-  }
-  if (invites.length) await db.delete(invitations).where(eq(invitations.email, addr));
-  return invites.length;
+  const joined = await db.execute<{workspace:string; created:string}>(sql`
+    WITH accepted AS (
+      DELETE FROM invitations WHERE email=${addr} AND workspace_id NOT LIKE 'personal:%'
+        AND EXISTS (SELECT 1 FROM users WHERE id=${userId} AND email=${addr} AND email_verified_at IS NOT NULL)
+      RETURNING workspace_id,role
+    )
+    INSERT INTO workspace_members(workspace_id,user_id,role)
+    SELECT workspace_id,${userId},role FROM accepted ON CONFLICT DO NOTHING
+    RETURNING workspace_id AS workspace,created_at::text AS created`);
+  for (const member of joined.rows) await notifyInvitation(member.workspace,userId,member.created);
+  return joined.rows.length;
 }
 
 /** Validate a verification token: mark the user verified and accept pending invites. */

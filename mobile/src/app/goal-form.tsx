@@ -4,13 +4,14 @@ import { Redirect, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useQueryClient } from "@tanstack/react-query";
 import { useApp } from "@/lib/store";
-import { api } from "@/lib/api";
+import { bindApi } from "@/lib/api";
 import { qk } from "@/lib/query";
 import { Loading } from "@/components/ui";
 import { COLOR_CHOICES } from "@/components/icon-color-picker";
 import { colors, radius } from "@/lib/theme";
 
 export default function GoalForm() {
+  const api = bindApi();
   const { token, ready } = useApp();
   const router = useRouter();
   const qc = useQueryClient();

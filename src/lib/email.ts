@@ -3,6 +3,8 @@
 const RESEND_API_KEY = process.env.RESEND_API_KEY || process.env.SMTP_PASS;
 const FROM = process.env.EMAIL_FROM || process.env.SMTP_FROM || "Expense Tracker <onboarding@resend.dev>";
 
+export const emailConfigured = () => Boolean(RESEND_API_KEY);
+
 /** Send an email via Resend. With no RESEND_API_KEY, logs to the server console
  *  (so password-reset links are still discoverable in local dev). */
 export async function sendEmail(to: string, subject: string, html: string): Promise<void> {

@@ -1,3 +1,4 @@
+import {categoryPostings} from "./category-postings";
 // Aggregate analytics for the Insights tab.
 //
 // Everything here is READ-ONLY and derived from tables that already exist — no
@@ -135,16 +136,17 @@ async function categoryMeta(db: Awaited<ReturnType<typeof getDb>>, wid: string):
 const UNCATEGORISED: CatMeta = { name: "Uncategorised", icon: "circle-help", color: "#9b9a97" };
 
 async function totalsByCategory(db: Awaited<ReturnType<typeof getDb>>, wid: string, start: string, end: string) {
+  const postings=categoryPostings(db);
   return db
     .select({
-      categoryId: transactions.categoryId,
-      type: transactions.type,
-      total: sql<string>`coalesce(sum(${transactions.amount}), 0)`,
+      categoryId: postings.categoryId,
+      type: postings.type,
+      total: sql<string>`coalesce(sum(${postings.amount}), 0)`,
       n: sql<string>`count(*)`,
     })
-    .from(transactions)
-    .where(and(eq(transactions.workspaceId, wid), gte(transactions.date, start), lt(transactions.date, end)))
-    .groupBy(transactions.categoryId, transactions.type);
+    .from(postings)
+    .where(and(eq(postings.workspaceId, wid), gte(postings.date, start), lt(postings.date, end)))
+    .groupBy(postings.categoryId, postings.type);
 }
 
 /** Per-category totals for the selected period alongside the one before it, so
@@ -198,24 +200,25 @@ export async function getCategoryMonthly(months = TRAILING_MONTHS): Promise<Cate
   if (!wid) return { months: keys, series: [] };
 
   const db = await getDb();
+  const postings=categoryPostings(db);
   const [meta, rows] = await Promise.all([
     categoryMeta(db, wid),
     db
       .select({
-        categoryId: transactions.categoryId,
-        ym: sql<string>`to_char(${transactions.date}, 'YYYY-MM')`,
-        total: sql<string>`coalesce(sum(${transactions.amount}), 0)`,
+        categoryId: postings.categoryId,
+        ym: sql<string>`to_char(${postings.date}, 'YYYY-MM')`,
+        total: sql<string>`coalesce(sum(${postings.amount}), 0)`,
       })
-      .from(transactions)
+      .from(postings)
       .where(
         and(
-          eq(transactions.workspaceId, wid),
-          eq(transactions.type, "expense"),
-          gte(transactions.date, monthStart(keys[0])),
-          lt(transactions.date, endAfter(keys)),
+          eq(postings.workspaceId, wid),
+          eq(postings.type, "expense"),
+          gte(postings.date, monthStart(keys[0])),
+          lt(postings.date, endAfter(keys)),
         ),
       )
-      .groupBy(transactions.categoryId, sql`to_char(${transactions.date}, 'YYYY-MM')`),
+      .groupBy(postings.categoryId, sql`to_char(${postings.date}, 'YYYY-MM')`),
   ]);
 
   const index = new Map(keys.map((k, i) => [k, i]));
@@ -270,27 +273,28 @@ export async function getBudgetAnalytics(historyMonths = BUDGET_HISTORY_MONTHS):
       color: categories.color,
     })
     .from(budgets)
-    .innerJoin(categories, eq(budgets.categoryId, categories.id))
+    .innerJoin(categories, and(eq(budgets.categoryId, categories.id),eq(categories.workspaceId,wid)))
     .where(eq(budgets.workspaceId, wid));
   if (!limits.length) return empty;
 
   const keys = trailingMonthKeys(historyMonths, today);
+  const postings=categoryPostings(db,undefined,true);
   const rows = await db
     .select({
-      categoryId: transactions.categoryId,
-      ym: sql<string>`to_char(${transactions.date}, 'YYYY-MM')`,
-      total: sql<string>`coalesce(sum(${transactions.amount}), 0)`,
+      categoryId: postings.categoryId,
+      ym: sql<string>`to_char(${postings.date}, 'YYYY-MM')`,
+      total: sql<string>`coalesce(sum(${postings.amount}), 0)`,
     })
-    .from(transactions)
+    .from(postings)
     .where(
       and(
-        eq(transactions.workspaceId, wid),
-        eq(transactions.type, "expense"),
-        gte(transactions.date, monthStart(keys[0])),
-        lt(transactions.date, endAfter(keys)),
+        eq(postings.workspaceId, wid),
+        eq(postings.type, "expense"),
+        gte(postings.date, monthStart(keys[0])),
+        lt(postings.date, endAfter(keys)),
       ),
     )
-    .groupBy(transactions.categoryId, sql`to_char(${transactions.date}, 'YYYY-MM')`);
+    .groupBy(postings.categoryId, sql`to_char(${postings.date}, 'YYYY-MM')`);
 
   const index = new Map(keys.map((k, i) => [k, i]));
   const thisMonth = format(startOfMonth(today), "yyyy-MM");
@@ -305,8 +309,8 @@ export async function getBudgetAnalytics(historyMonths = BUDGET_HISTORY_MONTHS):
   }
 
   const currentIdx = index.get(thisMonth) ?? keys.length - 1;
-  // Straight-line projection: today's burn rate held for the rest of the month.
-  const project = (spent: number) => (dayOfMonth > 0 ? (spent / dayOfMonth) * daysInMonth : spent);
+  // Do not extrapolate a net refund into recurring credits for the rest of the month.
+  const project = (spent: number) => (dayOfMonth > 0 && spent > 0 ? (spent / dayOfMonth) * daysInMonth : spent);
 
   const items: BudgetPaceItem[] = limits
     .map((l) => {
@@ -329,7 +333,7 @@ export async function getBudgetAnalytics(historyMonths = BUDGET_HISTORY_MONTHS):
     daysInMonth,
     totalBudget: items.reduce((s, i) => s + i.budget, 0),
     totalSpent,
-    totalProjected: project(totalSpent),
+    totalProjected: items.reduce((sum,item)=>sum+item.projected,0),
     items,
     history: {
       months: keys,

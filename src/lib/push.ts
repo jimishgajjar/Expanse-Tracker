@@ -22,7 +22,7 @@ export type PushPayload = { title: string; body: string; url?: string; tag?: str
 
 /** Native (Expo) push tokens are stored with p256dh="expo" — route them to the
     Expo push service instead of web-push. */
-async function sendExpoPush(token: string, payload: PushPayload): Promise<{ ok: boolean; gone: boolean }> {
+async function sendExpoPush(token: string, payload: PushPayload, workspace?:string): Promise<{ ok: boolean; gone: boolean }> {
   try {
     const res = await fetch("https://exp.host/--/api/v2/push/send", {
       method: "POST",
@@ -31,7 +31,7 @@ async function sendExpoPush(token: string, payload: PushPayload): Promise<{ ok: 
         to: token,
         title: payload.title,
         body: payload.body,
-        data: payload.url ? { url: payload.url } : {},
+        data: payload.url ? { url: payload.url, workspace } : {},
         sound: "default",
         channelId: "default",
       }),
@@ -49,9 +49,10 @@ async function sendExpoPush(token: string, payload: PushPayload): Promise<{ ok: 
 export async function sendPushToSub(
   sub: { endpoint: string; p256dh: string; auth: string },
   payload: PushPayload,
+  workspace?:string,
 ): Promise<{ ok: boolean; gone: boolean }> {
   if (sub.p256dh === "expo" || sub.endpoint.startsWith("ExponentPushToken")) {
-    return sendExpoPush(sub.endpoint, payload);
+    return sendExpoPush(sub.endpoint, payload,workspace);
   }
   if (!ensure()) return { ok: false, gone: false };
   try {

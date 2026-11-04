@@ -1,8 +1,9 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
+import { Conversation } from "./transaction-comments";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { use, useEffect, useState } from "react";
 import { DeferredTools, DeferredPlanning, DeferredAnalytics } from "./deferred-sections";
 import { PagedActivity } from "./paged-activity";
 import { CommandPalette, CommandSearchTrigger } from "./command-palette";
@@ -32,14 +33,17 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { SettingsProvider } from "@/components/settings-provider";
+import { CommentsAvailable, SettingsProvider } from "@/components/settings-provider";
+import { trackerExportHref } from "@/lib/household-access";
 import { CategoryManager } from "@/components/category-manager";
 import { RecurringManager } from "@/components/recurring-manager";
-import { WorkspaceSwitcher } from "@/components/workspace-switcher";
+import { PrivateAccountsButton, WorkspaceSwitcher } from "@/components/workspace-switcher";
 import { VerifyBanner } from "@/components/verify-banner";
 import { TransactionDialog } from "@/components/transaction-dialog";
 import { PeriodBar } from "@/components/period-bar";
 import { OverviewTab } from "@/components/overview-tab";
+import { PositionSummary } from "./position-summary";
+import type { FinanceReport } from "@/lib/finance-position";
 import { AccountsSection } from "@/components/accounts-section";
 import { SettingsTab } from "@/components/settings-tab";
 import type { Comparison } from "@/components/analytics-tab";
@@ -133,6 +137,10 @@ export function Dashboard({
   canEdit,
   initialTab,
   bankDemoAvailable = false,
+  bankInboxAvailable = false,
+  privateAccountsAvailable = false,
+  finance = null,
+  pilot = false,
 }: {
   accounts: AccountDTO[];
   categories: CategoryDTO[];
@@ -161,9 +169,17 @@ export function Dashboard({
   canEdit: boolean;
   initialTab: Tab;
   bankDemoAvailable?: boolean;
+  bankInboxAvailable?: boolean;
+  privateAccountsAvailable?: boolean;
+  finance?: FinanceReport|null;
+  pilot?: boolean;
 }) {
   const searchParams = useSearchParams();
+  const [showOriginal,setShowOriginal]=useState(false);
+  const reviewedBook=!!finance?.report;
+  const showOriginalTools=!reviewedBook || showOriginal;
   const requestedTab = searchParams.get("tab") ?? "overview";
+  const thread = use(CommentsAvailable) && searchParams.get("thread");
   const [activeTab, setActiveTab] = useState<Tab>(() =>
     pages.some((p) => p.id === requestedTab) ? (requestedTab as Tab) : initialTab,
   );
@@ -243,7 +259,7 @@ export function Dashboard({
   );
 
   return (
-    <SettingsProvider currency={currency} locale={locale}>
+    <SettingsProvider workspace={activeWorkspaceId} actor={currentUserId} currency={currency} locale={locale}>
       <div key={activeWorkspaceId} className="app-shell min-h-dvh">
         <a
           href="#main-content"
@@ -325,7 +341,7 @@ export function Dashboard({
                 <span className="ml-auto size-1.5 rounded-full bg-brand" />
               )}
             </button>
-            <a href="/api/export" className="nav-item group">
+            <a href={trackerExportHref(activeWorkspaceId)} className="nav-item group">
               <Download className="size-[18px] text-muted-foreground group-hover:text-foreground transition-colors" />
               <span>Export data</span>
             </a>
@@ -433,7 +449,8 @@ export function Dashboard({
                   {page.description}
                 </p>
               </div>
-              {canEdit && tab !== "settings" && (
+              {canEdit && tab !== "settings" && reviewedBook && !showOriginal && <Link href="/financial-position" className="rounded-md bg-brand px-3 py-2 text-sm text-brand-foreground">Book activity</Link>}
+              {canEdit && tab !== "settings" && showOriginalTools && (
                 <TransactionDialog
                   accounts={liveAccounts}
                   categories={categories}
@@ -446,7 +463,7 @@ export function Dashboard({
                 />
               )}
             </div>
-            {(tab === "overview" ||
+            {showOriginalTools && (tab === "overview" ||
               tab === "transactions" ||
               tab === "analytics") && (
               <PeriodBar
@@ -455,9 +472,13 @@ export function Dashboard({
                 rangeLabel={rangeLabel}
               />
             )}
-            <div key={tab} className="surface-enter">
-              {tab === "overview" && (
+            <div key={tab} className="surface-enter space-y-3">
+              {finance && ["overview","analytics","accounts","planning","transactions"].includes(tab) && <PositionSummary data={finance}/>}
+              {reviewedBook && tab!=="settings" && <div className="space-y-2 text-xs text-muted-foreground"><p>Original tracker reports, budgets and forecasts use a single display currency ({currencyCode}). They may combine accounts with different denominations.</p>
+                <button type="button" aria-expanded={showOriginal} className="font-medium text-brand underline" onClick={()=>setShowOriginal(!showOriginal)}>{showOriginal?"Hide":"Show"} original tracker tools</button></div>}
+              {tab === "overview" && showOriginalTools && (
                 <OverviewTab
+                  workspace={activeWorkspaceId}
                   accounts={accounts}
                   transactions={transactions}
                   transfers={[]}
@@ -477,12 +498,24 @@ export function Dashboard({
                   onPlanning={() => changeTab("planning")}
                 />
               )}
-              {tab === "transactions" && (
+              {tab === "transactions" && thread && <section className="dashboard-panel mb-4 space-y-3 p-4">
+                <div className="flex items-center justify-between gap-2">
+                  <h2 className="text-sm font-semibold">Transaction conversation</h2>
+                  <Link className="text-xs text-brand underline" href="/?tab=transactions">Close conversation</Link>
+                </div>
+                {searchParams.get("household") === activeWorkspaceId ? <Conversation key={thread} id={thread}/> :
+                  <p className="text-sm text-muted-foreground">Switch to the household where you were mentioned to read this conversation.</p>}
+              </section>}
+              {tab === "transactions" && showOriginalTools && (
                 <PagedActivity key={`${activeWorkspaceId}:${rangeStart}:${rangeEnd}`} start={rangeStart} end={rangeEnd} workspace={activeWorkspaceId} accounts={accounts} categories={categories} canEdit={canEdit} />
               )}
-              {tab === "accounts" && (
+              {tab === "accounts" && showOriginalTools && (
                 <div className="space-y-4">
-                  {bankDemoAvailable && isOwner && (
+                  {bankInboxAvailable && isOwner && <div className="dashboard-panel flex flex-wrap items-center justify-between gap-3 p-4">
+                    <div><h2 className="text-sm font-semibold">Bank inbox</h2><p className="text-xs text-muted-foreground">Connect one Sandbox account to view bank activity separately.</p></div>
+                    <Link href="/bank-inbox" className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-brand-foreground">Connect bank</Link>
+                  </div>}
+                  {bankDemoAvailable && !bankInboxAvailable && isOwner && (
                     <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-card p-4">
                       <div>
                         <h2 className="text-sm font-semibold">Bank connections · local demo</h2>
@@ -500,10 +533,12 @@ export function Dashboard({
                     categories={categories}
                     canEdit={canEdit}
                   />
+                  {canEdit && privateAccountsAvailable && <PrivateAccountsButton household={activeWorkspaceId} />}
+                  {privateAccountsAvailable && <Link href="/shared-accounts" className="inline-flex min-h-9 items-center text-sm font-medium text-brand underline-offset-4 hover:underline">Accounts shared with me →</Link>}
                 </div>
               )}
-              {tab === "planning" && (
-                <DeferredPlanning workspace={activeWorkspaceId}
+              {tab === "planning" && showOriginalTools && (
+                <DeferredPlanning workspace={activeWorkspaceId} forecastAccounts={accounts}
                   budgets={budgetProgress}
                   categories={categories}
                   accounts={liveAccounts}
@@ -511,7 +546,7 @@ export function Dashboard({
                   canEdit={canEdit}
                 />
               )}
-              {tab === "analytics" && (
+              {tab === "analytics" && showOriginalTools && (
                 <DeferredAnalytics workspace={activeWorkspaceId} anchor={anchor}
                   rangeType={rangeType}
                   rangeStart={rangeStart}
@@ -528,6 +563,7 @@ export function Dashboard({
               )}
               {tab === "settings" && (
                 <SettingsTab
+                  pilot={pilot}
                   currencyCode={currencyCode}
                   userEmail={userEmail}
                   workspaceName={workspaceName}
@@ -621,7 +657,7 @@ export function Dashboard({
                   <Settings className="size-[18px]" />
                   <span>Settings</span>
                 </button>
-                <a href="/api/export" className="nav-item">
+                <a href={trackerExportHref(activeWorkspaceId)} className="nav-item">
                   <Download className="size-[18px]" />
                   Export data
                 </a>

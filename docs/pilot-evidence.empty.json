@@ -1,0 +1,64 @@
+{
+  "month": "2026-11",
+  "currency": "CAD",
+  "activeHouseholds": 0,
+  "pilotHouseholds": 0,
+  "tasks": {
+    "setup": {
+      "attempted": 0,
+      "unassisted": 0,
+      "assisted": 0
+    },
+    "capture": {
+      "attempted": 0,
+      "unassisted": 0,
+      "assisted": 0
+    },
+    "importReview": {
+      "attempted": 0,
+      "unassisted": 0,
+      "assisted": 0
+    },
+    "reconciliation": {
+      "attempted": 0,
+      "unassisted": 0,
+      "assisted": 0
+    },
+    "forecast": {
+      "attempted": 0,
+      "unassisted": 0,
+      "assisted": 0
+    },
+    "weeklyReview": {
+      "attempted": 0,
+      "unassisted": 0,
+      "assisted": 0
+    }
+  },
+  "firstFiveSetups": [],
+  "familiarCaptureSeconds": [],
+  "weekFour": {
+    "eligible": 0,
+    "returned": 0
+  },
+  "costs": {
+    "provider": null,
+    "hosting": null,
+    "storage": null,
+    "notifications": null
+  },
+  "supportMinutes": null,
+  "unresolvedCritical": null,
+  "vitals": {
+    "desktop": {
+      "LCP": [],
+      "INP": [],
+      "CLS": []
+    },
+    "mobile": {
+      "LCP": [],
+      "INP": [],
+      "CLS": []
+    }
+  }
+}

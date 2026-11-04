@@ -1,6 +1,11 @@
 "use client";
 
 import { ArrowRight, Plus } from "lucide-react";
+import {use} from "react";
+import Link from "next/link";
+import {useSearchParams} from "next/navigation";
+import {MerchantRulesContext} from "./settings-provider";
+import {OverviewDecisions} from "./overview-decisions";
 import { AccountsSection } from "./accounts-section";
 import { SummaryCards } from "./summary-cards";
 import { CategoryDonut } from "./category-donut";
@@ -21,6 +26,7 @@ import type {
 } from "@/lib/queries";
 
 export function OverviewTab({
+  workspace,
   accounts,
   transactions,
   recentTransactions = transactions,
@@ -39,6 +45,7 @@ export function OverviewTab({
   onActivity,
   onPlanning,
 }: {
+  workspace:string;
   accounts: AccountDTO[];
   transactions: TransactionDTO[];
   recentTransactions?: TransactionDTO[];
@@ -57,6 +64,10 @@ export function OverviewTab({
   onActivity: () => void;
   onPlanning: () => void;
 }) {
+  const decisions=use(MerchantRulesContext);
+  const activityParams=new URLSearchParams(useSearchParams().toString());
+  activityParams.set("tab","transactions");
+  activityParams.set("type","expense");
   const income = transactions
     .filter((t) => t.type === "income")
     .reduce((s, t) => s + t.amount, 0);
@@ -119,6 +130,7 @@ export function OverviewTab({
         rangeLabel={rangeLabel}
         accountsCount={accounts.length}
         comparison={comparison}
+        decisionView={decisions}
       />
 
       {/* 2. Accounts Section */}
@@ -129,9 +141,9 @@ export function OverviewTab({
         showTotal={false}
       />
 
-      <MoneyBrief recurring={recurring} budgets={budgets} expense={expense} comparison={comparison} rangeLabel={rangeLabel} />
+      {decisions?<OverviewDecisions key={workspace} workspace={workspace} budgets={budgets} categories={categories} recurring={recurring}/>:<MoneyBrief recurring={recurring} budgets={budgets} expense={expense} comparison={comparison} rangeLabel={rangeLabel} />}
       {/* 3. Activity & Budget Grid */}
-      <div className="grid items-start gap-4 min-[1200px]:items-stretch min-[1200px]:grid-cols-[minmax(0,1.6fr)_minmax(280px,1fr)]">
+      <div className={decisions?"min-w-0":"grid items-start gap-4 min-[1200px]:items-stretch min-[1200px]:grid-cols-[minmax(0,1.6fr)_minmax(280px,1fr)]"}>
         <div className="grid min-w-0">
           <section className="dashboard-panel flex flex-col justify-between p-4 sm:p-5">
             <div>
@@ -144,6 +156,8 @@ export function OverviewTab({
                     Income and expenses · {rangeLabel}
                   </p>
                 </div>
+                <div className="flex items-center gap-2">
+                {decisions&&<Link href={`/?${activityParams}`} className="text-xs font-medium text-brand hover:underline">View expenses</Link>}
                 <Button
                   variant="ghost"
                   size="sm"
@@ -153,6 +167,7 @@ export function OverviewTab({
                   <span>View all</span>
                   <ArrowRight className="size-3.5 transition-transform motion-reduce:transition-none motion-reduce:transform-none group-hover/btn:translate-x-0.5" />
                 </Button>
+                </div>
               </div>
               <TransactionRows
                 transactions={recentTransactions.slice(0, 5)}
@@ -177,7 +192,7 @@ export function OverviewTab({
             )}
           </section>
         </div>
-        <RadarPanel watch={watch} upcoming={upcoming} onPlanning={onPlanning} />
+        {!decisions&&<RadarPanel watch={watch} upcoming={upcoming} onPlanning={onPlanning} />}
       </div>
 
       {/* 4. Trend & Category Distribution */}

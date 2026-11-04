@@ -39,7 +39,7 @@ it("gates corrections separately and exports the reason and transaction referenc
   expect((await correctStatement(data)).ok).toBe(false);state.signedIn=true;
   const result=await correctStatement(data);if(!result.ok)throw Error(result.error);
   const tx=result.review.entryChanges[0].after!.id.slice(3);
-  const response=await GET(), wb=new ExcelJS.Workbook();
+  const response=await GET(new Request("http://localhost/api/export")), wb=new ExcelJS.Workbook();
   await wb.xlsx.load(Buffer.from(await response.arrayBuffer()) as unknown as Parameters<typeof wb.xlsx.load>[0]);
   const row=wb.getWorksheet("Review events")!.getRow(3);
   expect([2,5,10,11].map(i=>row.getCell(i).value)).toEqual(["correction","u",tx,data.reason]);
@@ -72,7 +72,7 @@ it("exports scoped evidence and decision history in separate sheets",async()=>{
   const result=await startReview({...input(),closingBalance:"-1"});if(!result.ok)throw new Error(result.error);
   const saved=await saveReview({id:result.review.id,version:1,decisions:{"tx:expense":"cleared"},duplicatesReviewed:false,complete:true});expect(saved.ok).toBe(true);
   await startStatementReview(state.db,"foreign",{id:"other",name:"Private"},{...input(),accountId:"private"});
-  const response=await GET();expect(response.status).toBe(200);expect(response.headers.get("cache-control")).toBe("no-store");
+  const response=await GET(new Request("http://localhost/api/export"));expect(response.status).toBe(200);expect(response.headers.get("cache-control")).toBe("no-store");
   const workbook=new ExcelJS.Workbook();await workbook.xlsx.load(Buffer.from(await response.arrayBuffer()) as unknown as Parameters<typeof workbook.xlsx.load>[0]);
   const reviews=workbook.getWorksheet("Statement reviews")!;
   expect(reviews.rowCount).toBe(2);expect(reviews.getRow(2).getCell(1).value).toBe(result.review.id);

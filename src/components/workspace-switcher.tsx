@@ -1,7 +1,6 @@
 "use client";
 
 import { useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Check, ChevronsUpDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -10,6 +9,26 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { switchWorkspace } from "@/lib/actions";
 import type { WorkspaceSummary } from "@/lib/workspace";
+import { enterPersonalTracker } from "@/lib/personal-actions";
+import { commentLink } from "@/lib/comment-link";
+
+function reopenTracker(path: string) {
+  try { localStorage.setItem("tracker-switch", crypto.randomUUID()); } catch { /* storage can be disabled */ }
+  window.location.replace(path);
+}
+
+export function PrivateAccountsButton({ household }: { household: string }) {
+  const [pending, start] = useTransition();
+  return <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-card p-4">
+    <div><h2 className="text-sm font-semibold">Private accounts</h2>
+      <p className="text-xs text-muted-foreground">Only you can see these accounts. The first time you open this tracker, it starts empty.</p></div>
+    <Button variant="outline" size="sm" disabled={pending} onClick={() => start(async () => {
+      const res = await enterPersonalTracker(household);
+      if (res.ok) reopenTracker("/?tab=accounts");
+      else toast.error(res.error);
+    })}>{pending ? "Opening…" : "Open my private accounts"}</Button>
+  </div>;
+}
 
 export function WorkspaceSwitcher({
   workspaces,
@@ -20,7 +39,6 @@ export function WorkspaceSwitcher({
   activeId: string;
   currentUserId: string;
 }) {
-  const router = useRouter();
   const [pending, start] = useTransition();
   const active = workspaces.find((w) => w.id === activeId);
 
@@ -29,7 +47,13 @@ export function WorkspaceSwitcher({
     const name = workspaces.find((w) => w.id === id)?.name ?? "tracker";
     start(async () => {
       const res = await switchWorkspace(id);
-      if (res.ok) { toast.success(`Switched to ${name}`); router.refresh(); }
+      if (res.ok) {
+        toast.success(`Switched to ${name}`);
+        const query = new URLSearchParams(window.location.search);
+        const thread = query.get("tab") === "transactions" && query.get("household") === id
+          ? commentLink(query.get("thread"),id) : null;
+        reopenTracker(thread ?? "/");
+      }
       else toast.error(res.error);
     });
   }

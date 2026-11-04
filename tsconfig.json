@@ -36,7 +36,15 @@
     "scripts/seed.ts",
     "scripts/backup-db.ts",
     ".next/types/**/*.ts",
-    ".next/dev/types/**/*.ts"
+    ".next/dev/types/**/*.ts",
+    ".next-bank/types/**/*.ts",
+    ".next-bank/dev/types/**/*.ts",
+    ".next-finance/types/**/*.ts",
+    ".next-finance/dev/types/**/*.ts",
+    ".next-pilot/types/**/*.ts",
+    ".next-pilot/dev/types/**/*.ts",
+    ".next-pilot-build/types/**/*.ts",
+    ".next-pilot-build/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",

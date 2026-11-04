@@ -5,6 +5,10 @@ import { migrate } from "drizzle-orm/pglite/migrator";
 import type { AppDb } from "../db";
 import { createWithHistory, transactionCreateSchema } from "../transaction-create";
 import { statementComparison } from "../reconciliation";
+import {editWithHistory} from "../transaction-edit";
+import {categoryPostings} from "../category-postings";
+import {activityFilterSchema,queryActivity} from "../activity-query";
+import {eq,sql} from "drizzle-orm";
 
 let client: PGlite;
 let db: AppDb;
@@ -41,6 +45,40 @@ beforeEach(async () => {
 afterAll(async () => { await client?.close(); });
 
 describe("atomic, retry-safe manual creation", () => {
+  it("rejects edits made from a stale native form without changing the newer version",async()=>{
+    const {id}=await create();
+    const version=(await client.query<{v:string}>("SELECT xmin::text v FROM transactions WHERE id=$1",[id])).rows[0].v;
+    expect(await editWithHistory(db,"home",id,actor,{amount:"7.01"},undefined,undefined,false,version)).toBe(true);
+    expect(await editWithHistory(db,"home",id,actor,{amount:"9.99"},undefined,undefined,false,version)).toBe(false);
+    expect((await client.query("SELECT amount FROM transactions WHERE id=$1",[id])).rows).toEqual([{amount:"7.01"}]);
+  });
+  it("counts a split once in the account, apportions category totals, and edits all portions atomically",async()=>{
+    await client.exec("INSERT INTO categories(id,workspace_id,name,kind) VALUES ('supplies','home','Supplies','expense')");
+    const lines=[{categoryId:"food",amount:"2.01"},{categoryId:"supplies",amount:"4.49"}];
+    const split={categoryId:null,allocations:lines};
+    for(const invalid of ["4.48","4.491"])await expect(create({...split,allocations:[lines[0],{...lines[1],amount:invalid}]})).rejects.toThrow();
+    await expect(create({...split,allocations:[lines[0],{...lines[1],categoryId:"private-category"}]})).rejects.toThrow();
+    const {id}=await create(split);
+    expect((await create({...split,allocations:[...lines].reverse()})).replayed).toBe(true);
+    const filters=activityFilterSchema.parse({start:"2026-10-31",end:"2026-11-01"});
+    const page=await queryActivity(db,"home",filters,true);
+    expect([page.total,page.expense]).toEqual([1,6.5]);
+    const food=await queryActivity(db,"home",{...filters,category:"food"},true);
+    expect(food.expense).toBe(2.01);
+    expect(food.transactions[0]).toMatchObject({id,amount:2.01,receiptAmount:6.5,allocations:lines});
+    const postings=categoryPostings(db,true);
+    const report=()=>db.select({category:postings.categoryId,total:sql<string>`sum(${postings.amount})::text`}).from(postings)
+      .where(eq(postings.date,"2026-10-31")).groupBy(postings.categoryId).orderBy(postings.categoryId);
+    expect(await report()).toEqual([{category:"food",total:"2.01"},{category:"supplies",total:"4.49"}]);
+    expect(await editWithHistory(db,"home",id,actor,{amount:10},undefined,undefined,true)).toBe(false);
+    const next=[{categoryId:"food",amount:"1.01"},{categoryId:"supplies",amount:"5.49"}];
+    const patch={amount:6.50,type:"expense",category_id:null};
+    expect(await editWithHistory(db,"home",id,actor,patch,undefined,{lines:next,previous:lines},true)).toBe(true);
+    expect(await editWithHistory(db,"home",id,actor,patch,undefined,{lines,previous:lines},true)).toBe(false);
+    expect(await report()).toEqual([{category:"food",total:"1.01"},{category:"supplies",total:"5.49"}]);
+    expect(await editWithHistory(db,"home",id,actor,{...patch,category_id:"food"},undefined,{lines:[],previous:next},true)).toBe(true);
+    expect(await report()).toEqual([{category:"food",total:"6.50"}]);
+  });
   it("records the exact creation, tags, actor and unchanged historical balance", async () => {
     const result = await create();
     expect(result.replayed).toBe(false);

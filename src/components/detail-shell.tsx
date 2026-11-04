@@ -15,6 +15,8 @@ import { ThemeToggle } from "./theme-toggle";
 import { Icon } from "./icon";
 import { cn } from "@/lib/utils";
 import type { AccountDTO } from "@/lib/queries";
+import { getActiveWorkspaceId } from "@/lib/workspace";
+import { isPersonalLedger, trackerExportHref } from "@/lib/household-access";
 
 const links = [
   { label: "Overview", href: "/", icon: House },
@@ -24,7 +26,7 @@ const links = [
   { label: "Insights", href: "/?tab=analytics", icon: ChartNoAxesCombined },
 ];
 
-export function DetailShell({
+export async function DetailShell({
   children,
   accounts,
   accountId,
@@ -37,6 +39,7 @@ export function DetailShell({
   section: "Accounts" | "Categories" | "Tags";
   title: string;
 }) {
+  const workspace = await getActiveWorkspaceId();
   return (
     <div className="app-shell min-h-dvh">
       <a
@@ -56,7 +59,7 @@ export function DetailShell({
                 Expense Tracker
               </span>
               <span className="block text-[10px] font-medium text-muted-foreground">
-                Personal ledger
+                {workspace && isPersonalLedger(workspace) ? "Private ledger" : "Tracker"}
               </span>
             </div>
           </Link>
@@ -113,7 +116,7 @@ export function DetailShell({
             <Settings className="size-[18px] text-muted-foreground group-hover:text-foreground transition-colors" />
             <span>Settings</span>
           </Link>
-          <a href="/api/export" className="nav-item group">
+          <a href={trackerExportHref(workspace)} className="nav-item group">
             <Download className="size-[18px] text-muted-foreground group-hover:text-foreground transition-colors" />
             <span>Export data</span>
           </a>

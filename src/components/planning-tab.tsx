@@ -1,6 +1,12 @@
 "use client";
 
 import { differenceInCalendarDays, parseISO } from "date-fns";
+import {use,useEffect} from "react";
+import {MerchantRulesContext} from "./settings-provider";
+import {BalanceForecast} from "./balance-forecast";
+import {MonthlyPlanner} from "./monthly-planner";
+import { HouseholdCheckIn } from "./weekly-household-check-in";
+import { weeklyHouseholdCheckIn } from "@/lib/weekly-household";
 import {
   CalendarDays,
   Handshake,
@@ -28,6 +34,8 @@ import type {
 } from "@/lib/queries";
 
 export function PlanningTab({
+  workspace,
+  forecastAccounts,
   budgets,
   categories,
   accounts,
@@ -36,6 +44,8 @@ export function PlanningTab({
   split,
   canEdit,
 }: {
+  workspace:string;
+  forecastAccounts:AccountDTO[];
   budgets: BudgetProgressDTO[];
   categories: CategoryDTO[];
   accounts: AccountDTO[];
@@ -45,7 +55,17 @@ export function PlanningTab({
   canEdit: boolean;
 }) {
   const { money } = useFormat();
-  const today = parseISO(todayISO());
+  const localPlanning=use(MerchantRulesContext);
+  // Planning mounts after its data arrives, so the browser may have tried the
+  // fragment before its destination existed.
+  useEffect(()=>{
+    const id=window.location.hash.slice(1);
+    if(!["weekly-check-in","balance-forecast","monthly-plan","monthly-budgets","savings-goals","upcoming-payments","shared-expenses"].includes(id))return;
+    document.getElementById(id)?.scrollIntoView({block:"start"});
+  },[]);
+  const day = todayISO();
+  const today = parseISO(day);
+  const checkIn = weeklyHouseholdCheckIn(workspace, day, split, recurring, goals);
 
   // Normalized monthly equivalent calculation
   const monthlyEquivalent = (amount: number, freq: string) => {
@@ -72,12 +92,13 @@ export function PlanningTab({
     .filter((r) => r.type === "expense")
     .reduce((sum, r) => sum + monthlyEquivalent(r.amount, r.frequency), 0);
 
-  // Settlement status for shared expenses
-  const myBalance = split.balances.find((b) => b.userId === split.meId);
-  const isSettled = split.balances.every((b) => Math.abs(b.net) < 0.01);
+  const isSettled = (checkIn?.reimbursements.length ?? split.balances.length) === 0;
 
   return (
     <div className="space-y-5">
+      {checkIn && <HouseholdCheckIn review={checkIn} />}
+      {localPlanning&&<BalanceForecast workspace={workspace} accounts={forecastAccounts} canEdit={canEdit}/>}
+      {localPlanning&&<MonthlyPlanner workspace={workspace} categories={categories} budgets={budgets} goals={goals} canEdit={canEdit}/>}
       {/* 1. Monthly Category Budgets */}
       <div id="monthly-budgets" className="scroll-mt-4">
         <BudgetsCard
@@ -143,6 +164,7 @@ export function PlanningTab({
               return (
                 <div
                   key={r.id}
+                  id={`schedule-${r.id}`}
                   className="flex flex-wrap items-center justify-between gap-3 py-3 hover:bg-muted/30 px-2 -mx-2 rounded-xl transition-colors duration-150 motion-reduce:transition-none"
                 >
                   <div className="min-w-0 flex items-center gap-3">
@@ -221,7 +243,7 @@ export function PlanningTab({
       </section>
 
       {/* 3. Savings Goals */}
-      <section className="dashboard-panel p-4 sm:p-5">
+      <section id="savings-goals" className="dashboard-panel p-4 sm:p-5">
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-4">
           <div>
             <div className="flex items-center gap-2">
@@ -299,9 +321,11 @@ export function PlanningTab({
                     </span>
                   </span>
                   <span className="text-[11px] text-muted-foreground">
+                    {Boolean(g.openingProgress)&&!g.openingReviewed&&<a href="#goal-opening-review" className="mr-2 text-brand underline">Review opening entry</a>}
                     {isCompleted ? "Goal achieved" : `${money(remaining)} remaining`}
                   </span>
                 </div>
+                {g.openingProgress!==undefined&&<p className="mt-1 text-xs text-muted-foreground">{money(g.reserved??0)} reserved in accounts · {money(g.outside??0)} confirmed separate savings</p>}
                 {g.deadline && (
                   <p className="mt-1 text-[11px] text-muted-foreground">
                     Target deadline: {g.deadline}
@@ -319,7 +343,7 @@ export function PlanningTab({
       </section>
 
       {/* 4. Shared Expenses Settlement Card */}
-      <section className="dashboard-panel flex flex-col justify-between p-4 sm:p-5">
+      <section id="shared-expenses" className="dashboard-panel flex scroll-mt-4 flex-col justify-between p-4 sm:p-5">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2">
@@ -329,7 +353,7 @@ export function PlanningTab({
               {isSettled ? (
                 <span className="inline-flex items-center gap-1 rounded-full bg-positive/10 px-2 py-0.5 text-[10px] font-bold text-positive">
                   <CheckCircle2 className="size-3" />
-                  Settled up
+                  {checkIn ? "Settled up" : "Your balances settled"}
                 </span>
               ) : (
                 <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold text-amber-600 dark:text-amber-400">
@@ -339,19 +363,7 @@ export function PlanningTab({
               )}
             </div>
             <p className="mt-0.5 text-xs text-muted-foreground">
-              {myBalance && myBalance.net !== 0 ? (
-                myBalance.net > 0 ? (
-                  <span>
-                    You are owed <strong className="text-positive">{money(myBalance.net)}</strong> across shared household splits.
-                  </span>
-                ) : (
-                  <span>
-                    You owe <strong className="text-negative">{money(Math.abs(myBalance.net))}</strong> in shared household expenses.
-                  </span>
-                )
-              ) : (
-                "Track shared bills, who paid, and automated settlement breakdowns."
-              )}
+              Review who paid, who owes money, and which shared expenses are still open.
             </p>
           </div>
           <SplitManager

@@ -2,6 +2,7 @@
 
 import { useId, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { toast } from "sonner";
 import {
   Bell,
@@ -29,18 +30,21 @@ import { FormError } from "@/components/form-error";
 import { ImportForm } from "@/components/import-form";
 import { ChangePasswordForm } from "@/components/change-password-form";
 import { DeleteAccountForm } from "@/components/delete-account-form";
-import { NotificationsToggle } from "@/components/notifications-toggle";
+import { HouseholdNotifications } from "./household-notifications";
 import { CURRENCIES, findCurrencyByCode } from "@/lib/currencies";
 import { updateSettings } from "@/lib/actions";
 import { BackupStatus } from "./backup-status";
 import { DensityControl } from "./display-density";
+import { PilotTimingControls } from "./pilot-timings";
 import { logout } from "@/lib/auth";
+import { useExportHref } from "./settings-provider";
 
 interface SettingsTabProps {
   currencyCode: string;
   userEmail: string;
   workspaceName: string;
   canEdit?: boolean;
+  pilot?: boolean;
 }
 
 export function SettingsTab({
@@ -48,8 +52,10 @@ export function SettingsTab({
   userEmail,
   workspaceName,
   canEdit = true,
+  pilot = false,
 }: SettingsTabProps) {
   const id = useId();
+  const exportHref = useExportHref();
   const router = useRouter();
   const [code, setCode] = useState(currencyCode);
   const [error, setError] = useState("");
@@ -73,7 +79,13 @@ export function SettingsTab({
 
   return (
     <div className="space-y-6">
-      <section className="dashboard-panel p-4"><DensityControl /></section>
+      <section className="dashboard-panel space-y-3 p-4"><h2 className="font-semibold">Household tools</h2>
+        <nav aria-label="Setup and support" className="flex flex-wrap gap-x-5 text-sm text-brand underline">
+          {pilot && <Link className="py-3" href="/setup">Resume household setup</Link>}
+          {pilot && <Link className="py-3" href="/feedback">Report a problem</Link>}
+          <Link className="py-3" href="/help">Privacy, limitations &amp; account closure</Link>
+          <Link className="py-3" href="/exports">Download activity in parts</Link>
+        </nav><DensityControl />{pilot && <PilotTimingControls/>}</section>
       <BackupStatus />
       {/* Grid of Settings Cards */}
       <div className="grid gap-6 lg:grid-cols-2">
@@ -184,13 +196,10 @@ export function SettingsTab({
                 <Bell className="size-4" />
               </span>
               <h2 className="text-base font-semibold text-foreground">
-                Payment Reminders
+                Reminders and digests
               </h2>
             </div>
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              Get notified before upcoming bills post and when automated recurring rules execute.
-            </p>
-            <NotificationsToggle />
+            <HouseholdNotifications />
           </div>
         </div>
 
@@ -222,7 +231,7 @@ export function SettingsTab({
               variant="outline"
               size="sm"
               className="rounded-xl border-border/80 font-semibold shadow-xs hover:bg-muted/60"
-              onClick={() => window.location.assign("/api/export")}
+              onClick={() => window.location.assign(exportHref)}
             >
               <Download className="mr-1.5 size-4 text-brand" /> Download export (.xlsx)
             </Button>

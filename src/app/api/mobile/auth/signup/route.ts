@@ -6,6 +6,7 @@ import { getDb } from "@/lib/db";
 import { users, workspaces, workspaceMembers } from "@/lib/db/schema";
 import { hashPassword } from "@/lib/password";
 import { createApiSession } from "@/lib/session";
+import { pilotAvailable } from "@/lib/pilot-release";
 import { seed } from "@/lib/db/seed";
 import { sendVerificationEmail } from "@/lib/verify";
 import { rateLimit, clientIp, retryMessage } from "@/lib/rate-limit";
@@ -38,7 +39,7 @@ export async function POST(req: Request) {
     .values({ name: `${name || email.split("@")[0]}'s tracker`, ownerId: u.id })
     .returning();
   await db.insert(workspaceMembers).values({ workspaceId: w.id, userId: u.id, role: "owner" });
-  await seed(db, w.id); // default accounts + categories
+  await seed(db, w.id, {emptyAccounts:pilotAvailable()});
   try {
     await sendVerificationEmail(u.id, email, name);
   } catch {

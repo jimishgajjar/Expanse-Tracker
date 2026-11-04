@@ -4,7 +4,10 @@ This milestone demonstrates the review workflow using invented RBC and TD data. 
 
 ## Run
 
+Bank tools are hidden by default. The walkthrough below requires explicitly opting in for a local development session.
+
 ```powershell
+$env:BANK_TOOLS_ENABLED = "1"
 npm run dev:preview
 ```
 
@@ -69,7 +72,7 @@ Browser testing found a local-origin mismatch: Next normalized its internal requ
 
 ## What comes next
 
-Once a Plaid developer account is available, implement the real server-side provider adapter against Sandbox, then add separate bank-feed/import-link tables, verified webhook handling, durable jobs, encrypted tokens and the complete import audit. These have **not** been implemented or tested by this simulator.
+The [M3 Sandbox provider check](docs/plaid-sandbox.md) now implements backend token and sync requests separately from this simulator. Authenticated provider verification requires Sandbox credentials. Bank-feed/import-link tables, signed webhook handling, durable jobs, encrypted token persistence and the production import audit are still pending.
 
 Before real bank access: confirm Canadian RBC/TD account coverage and pricing; review permission/retention requirements; rehearse backups and additive migrations; test Neon concurrency and interaction with recurring posting/deletion/undo; then run one selected live account in observation-only mode. Real ledger approval remains a separate rollout step.
 

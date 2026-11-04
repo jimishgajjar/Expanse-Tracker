@@ -28,6 +28,7 @@ import {
   CommandShortcut,
 } from "@/components/ui/command";
 import { Icon } from "@/components/icon";
+import { useExportHref } from "./settings-provider";
 import type { AccountDTO, CategoryDTO } from "@/lib/queries";
 
 export function CommandPalette({
@@ -52,6 +53,7 @@ export function CommandPalette({
   const setOpen = onOpenChange ?? setInternalOpen;
 
   const router = useRouter();
+  const exportHref = useExportHref();
   const { setTheme, theme } = useTheme();
 
   useEffect(() => {
@@ -108,7 +110,7 @@ export function CommandPalette({
             value="export financial data csv json download"
             onSelect={() =>
               runCommand(() => {
-                window.location.href = "/api/export";
+                window.location.href = exportHref;
               })
             }
           >

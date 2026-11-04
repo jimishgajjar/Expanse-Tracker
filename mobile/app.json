@@ -41,6 +41,7 @@
         }
       ],
       "expo-secure-store",
+      ["expo-local-authentication", { "faceIDPermission": "Use Face ID to unlock your tracker and device drafts." }],
       "expo-notifications"
     ],
     "experiments": {

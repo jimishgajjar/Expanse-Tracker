@@ -6,6 +6,7 @@ export type Category = { id: string; name: string; kind: "income" | "expense"; i
 export type Ref = { name: string; icon: string; color: string } | null;
 export type Tag = { id: string; name: string; color: string; count?: number };
 export type Transaction = {
+  revision?: string;
   id: string; type: "income" | "expense"; amount: number; date: string; note: string;
   accountId: string | null; categoryId: string | null; account: Ref; category: Ref;
   createdByName: string | null; tags: Tag[];
@@ -41,6 +42,8 @@ export type Recurring = {
 };
 
 export type Bootstrap = {
+  summary?: import("../../../src/lib/mobile-contract").LedgerTotals;
+  finance?: import("../../../src/lib/mobile-contract").MobilePosition | null;
   user: { id: string; email: string; name: string };
   workspaces: Workspace[];
   activeWorkspaceId: string | null;

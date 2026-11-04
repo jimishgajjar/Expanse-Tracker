@@ -1,15 +1,17 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Alert, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { Feather } from "@expo/vector-icons";
 import { format, parseISO } from "date-fns";
 import { useApp } from "@/lib/store";
-import { api } from "@/lib/api";
+import { bindApi } from "@/lib/api";
 import { Loading } from "@/components/ui";
 import { tapSuccess } from "@/lib/haptics";
 import { colors, radius } from "@/lib/theme";
+import { currentDraftScope, newDraftId, openDeviceDrafts } from "@/lib/device-drafts";
+import type { Transaction } from "@/lib/types";
 
 function todayISO() {
   return format(new Date(), "yyyy-MM-dd");
@@ -19,11 +21,22 @@ type TxType = "expense" | "income" | "transfer";
 const ACCENT: Record<TxType, string> = { expense: colors.red, income: colors.green, transfer: colors.ink };
 
 export default function TransactionForm({ asTab = false }: { asTab?: boolean }) {
+  const { id } = useLocalSearchParams<{ id?: string }>();
+  const {data,ready,token}=useApp();
+  if (!ready || (id && token && !data)) return <Loading/>;
+  if (!token) return <Redirect href="/login"/>;
+  if (id && !data?.transactions.some(t=>t.id===id)) return <Redirect href="/activity"/>;
+  return <EntryForm key={id ?? "new"} asTab={asTab}/>;
+}
+function EntryForm({asTab}:{asTab:boolean}) {
+  const api = bindApi();
   const { data, reload, token, ready } = useApp();
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id?: string }>();
   const editing = id ? data?.transactions.find((t) => t.id === id) : undefined;
   const isEdit = !!editing;
+  const originalRevision=useRef(editing?.revision);
+  const scope=currentDraftScope();
 
   const accounts = (data?.accounts ?? []).filter((a) => !a.archived);
   const allTags = data?.tags ?? [];
@@ -42,6 +55,8 @@ export default function TransactionForm({ asTab = false }: { asTab?: boolean }) 
   const [error, setError] = useState<string | null>(null);
   const requestId = useRef<string | null>(null);
   const submitting = useRef(false);
+  const mounted=useRef(false);
+  useEffect(()=>{mounted.current=true;return ()=>{mounted.current=false;};},[]);
 
   // The native Add tab may mount while bootstrap data is still loading.
   useEffect(() => {
@@ -63,8 +78,9 @@ export default function TransactionForm({ asTab = false }: { asTab?: boolean }) 
   if (!ready) return <Loading />;
   if (!token) return <Redirect href="/login" />;
 
-  async function save() {
+  async function save(deviceOnly = false) {
     if (submitting.current) return;
+    if (!isEdit && Platform.OS !== "web" && !scope) return setError("Reopen this tracker with permission to add transactions.");
     const value = Number(amount.replace(",", "."));
     if (!Number.isFinite(value) || value <= 0) return setError("Enter an amount greater than 0.");
     if (type !== "transfer" && !accountId) return setError("Pick an account.");
@@ -81,15 +97,34 @@ export default function TransactionForm({ asTab = false }: { asTab?: boolean }) 
         await api("/transfers", { method: "POST", body: { amount: value, date, note: note.trim(), fromAccountId, toAccountId } });
       } else {
         const body = { type, amount: value, date, accountId, categoryId: categoryId || null, note: note.trim(), tagIds };
-        if (isEdit) await api(`/transactions/${editing!.id}`, { method: "PATCH", body });
-        else {
+        if (isEdit) {
+          if (!originalRevision.current) throw Error("Reopen this entry on an updated server to edit safely.");
+          await api(`/transactions/${editing!.id}`, { method: "PATCH", body:{...body,expectedRevision:originalRevision.current} });
+        } else if (scope) {
+          const device=openDeviceDrafts(scope);
+          const draft=await device.save(newDraftId(),0,{...body,type,amount:amount.trim().replace(",",".")});
+          if (!deviceOnly) {
+            try { await device.post(draft); }
+            catch (e) {
+              if (!mounted.current) return;
+              setAmount("");setNote("");setTagIds([]);
+              Alert.alert("Review your device drafts",e instanceof Error ? e.message : "Could not confirm the save.");
+              router.push("/device-drafts");
+              return;
+            }
+          }
+          if (deviceOnly) {
+            setAmount("");setNote("");setTagIds([]);router.push("/device-drafts");return;
+          }
+        } else {
           // Uniqueness marker only, never a credential. Retain after network errors
           // (including reload failures after a successful write) until acknowledged.
           requestId.current ??= `native-${Date.now()}-${Array.from({ length: 3 }, () => Math.random().toString(36).slice(2)).join("")}`;
           await api("/transactions", { method: "POST", body: { ...body, requestId: requestId.current } });
         }
       }
-      await reload();
+      void reload();
+      if (!mounted.current) return;
       requestId.current = null;
       if (asTab && !isEdit) { setAmount(""); setNote(""); setTagIds([]); }
       tapSuccess();
@@ -106,7 +141,8 @@ export default function TransactionForm({ asTab = false }: { asTab?: boolean }) 
     setBusy(true);
     setError(null);
     try {
-      await api(`/transactions/${editing!.id}`, { method: "DELETE" });
+        if (!originalRevision.current) throw Error("Reopen the latest version before deleting.");
+        await api(`/transactions/${editing!.id}?revision=${encodeURIComponent(originalRevision.current)}`, { method: "DELETE" });
       await reload();
       dismiss();
     } catch (e) {
@@ -118,6 +154,20 @@ export default function TransactionForm({ asTab = false }: { asTab?: boolean }) 
   const toggleTag = (tid: string) =>
     setTagIds((ids) => (ids.includes(tid) ? ids.filter((x) => x !== tid) : [...ids, tid]));
 
+  async function loadLatest() {
+    if (!editing) return;
+    setBusy(true);
+    try {
+      const page=await api<{transactions:Transaction[]}>("/transactions?range=month&date="+encodeURIComponent(editing.date));
+      const entry=page.transactions.find(t=>t.id===editing.id);
+      if (!entry?.revision) throw Error("This entry is unavailable in its original period. Check Activity.");
+      originalRevision.current=entry.revision;
+      setType(entry.type);setAmount(String(entry.amount));setDate(entry.date);setNote(entry.note);
+      setAccountId(entry.accountId??"");setCategoryId(entry.categoryId);setTagIds(entry.tags.map(t=>t.id));setError(null);
+    } catch(e) {setError(e instanceof Error?e.message:"Could not load the current entry.");}
+    finally {setBusy(false);}
+  }
+
   return (
     <SafeAreaView style={s.screen} edges={asTab ? ["top"] : ["top", "bottom"]}>
       <View style={s.header}>
@@ -126,7 +176,8 @@ export default function TransactionForm({ asTab = false }: { asTab?: boolean }) 
         </Pressable>
         <Text style={s.title}>{isEdit ? "Edit transaction" : "New transaction"}</Text>
         {isEdit ? (
-          <Pressable onPress={remove} hitSlop={12} disabled={busy}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Delete transaction" onPress={()=>Alert.alert("Delete this transaction?","This removes the entry from your tracker.",[
+            {text:"Keep",style:"cancel"},{text:"Delete",style:"destructive",onPress:()=>void remove()}])} hitSlop={12} disabled={busy}>
             <Feather name="trash-2" size={20} color={colors.red} />
           </Pressable>
         ) : (
@@ -180,6 +231,7 @@ export default function TransactionForm({ asTab = false }: { asTab?: boolean }) 
       ) : null}
 
       <ScrollView contentContainerStyle={{ padding: 16, gap: 18 }} keyboardShouldPersistTaps="handled">
+        {data?.finance?.report && <Text style={s.hint}>This records an original tracker entry. For a currency conversion, card payment, or loan booking, use More → Debt &amp; currencies on the website.</Text>}
         {type === "transfer" ? (
           <>
             <Picker label="From account" accounts={accounts} value={fromAccountId} onChange={setFromAccountId} />
@@ -226,11 +278,17 @@ export default function TransactionForm({ asTab = false }: { asTab?: boolean }) 
           <TextInput style={s.input} value={note} onChangeText={setNote} placeholder="Optional" placeholderTextColor={colors.inkFaint} />
         </View>
 
-        {error ? <Text style={s.error}>{error}</Text> : null}
+        {error ? <Text accessibilityRole="alert" style={s.error}>{error}</Text> : null}
+        {isEdit && error && <Pressable accessibilityRole="button" disabled={busy} style={{minHeight:44,justifyContent:"center"}}
+          onPress={()=>Alert.alert("Load the current entry?","This replaces your unsaved fields with the latest version from Activity.",[
+            {text:"Keep editing",style:"cancel"},{text:"Load latest",onPress:()=>void loadLatest()}])}>
+          <Text style={{color:colors.green}}>Review latest version</Text></Pressable>}
       </ScrollView>
 
       <View style={s.footer}>
-        <Pressable style={[s.save, { backgroundColor: accent }, busy && { opacity: 0.6 }]} onPress={save} disabled={busy}>
+        {scope && !isEdit && type!=="transfer" && <Pressable accessibilityRole="button" onPress={()=>void save(true)} disabled={busy} style={{minHeight:44,justifyContent:"center",alignItems:"center"}}>
+          <Text style={{color:colors.green}}>Save as device draft</Text></Pressable>}
+        <Pressable style={[s.save, { backgroundColor: accent }, busy && { opacity: 0.6 }]} onPress={()=>void save()} disabled={busy}>
           {busy ? <ActivityIndicator color="#fff" /> : <Text style={s.saveText}>{isEdit ? "Save changes" : `Add ${type}`}</Text>}
         </Pressable>
       </View>

@@ -14,7 +14,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
 import { useApp } from "@/lib/store";
-import { api } from "@/lib/api";
+import { bindApi } from "@/lib/api";
 import { qk } from "@/lib/query";
 import { usePeriod } from "@/lib/period";
 import { shiftAnchor, canNavigate } from "@/lib/dates";
@@ -22,9 +22,12 @@ import { Card, Loading } from "@/components/ui";
 import { LineChart } from "@/components/line-chart";
 import { colors, radius } from "@/lib/theme";
 import type { Budget, NetWorthPoint } from "@/lib/types";
+import { FinancialPosition } from "@/components/financial-position";
 
 export default function Insights() {
+  const api = bindApi();
   const { data, loading, reload, money } = useApp();
+  const [original,setOriginal]=useState(false);
   const nw = useQuery({ queryKey: qk.netWorth(), queryFn: () => api<{ series: NetWorthPoint[] }>("/analytics/net-worth") });
   const bq = useQuery({ queryKey: qk.budgets(), queryFn: () => api<{ budgets: Budget[] }>("/budgets") });
   const range = usePeriod((st) => st.range);
@@ -38,8 +41,8 @@ export default function Insights() {
 
   const stats = useMemo(() => {
     const txns = data?.transactions ?? [];
-    const income = txns.filter((t) => t.type === "income").reduce((s, t) => s + t.amount, 0);
-    const expense = txns.filter((t) => t.type === "expense").reduce((s, t) => s + t.amount, 0);
+    const income = data?.summary?.income ?? txns.filter((t) => t.type === "income").reduce((s, t) => s + t.amount, 0);
+    const expense = data?.summary?.expense ?? txns.filter((t) => t.type === "expense").reduce((s, t) => s + t.amount, 0);
     const cats = new Map<string, { name: string; color: string; amount: number }>();
     for (const t of txns) {
       if (t.type !== "expense") continue;
@@ -105,6 +108,8 @@ export default function Insights() {
         }
       >
         <Text style={s.title}>Insights</Text>
+        {data.finance && <FinancialPosition finance={data.finance} original={original} toggle={()=>setOriginal(!original)}/>}
+        {(!data.finance?.report || original) && <>
 
         {series.length >= 2 ? (
           <Card style={{ marginBottom: 16 }}>
@@ -200,6 +205,7 @@ export default function Insights() {
             })
           )}
         </Card>
+        </>}
       </ScrollView>
     </SafeAreaView>
   );

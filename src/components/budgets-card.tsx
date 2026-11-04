@@ -18,7 +18,7 @@ export function BudgetsCard({
   categories: CategoryDTO[];
   canEdit?: boolean;
 }) {
-  const { money } = useFormat();
+  const { money, balanceMoney } = useFormat();
 
   const totalBudget = budgets.reduce((s, b) => s + b.budget, 0);
   const totalSpent = budgets.reduce((s, b) => s + b.spent, 0);
@@ -34,7 +34,7 @@ export function BudgetsCard({
               Category Budgets
             </h2>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Total spent: <span className="font-mono font-semibold text-foreground">{money(totalSpent)}</span> of{" "}
+              Total spent: <span className="font-mono font-semibold text-foreground">{balanceMoney(totalSpent)}</span> of{" "}
               <span className="font-mono font-semibold text-foreground">{money(totalBudget)}</span> ({totalPct}%)
             </p>
           </div>
@@ -131,7 +131,7 @@ export function BudgetsCard({
                   <div className="space-y-1.5">
                     <div className="flex justify-between items-baseline text-xs">
                       <span className="font-mono text-xs font-bold text-foreground">
-                        {money(b.spent)}{" "}
+                        {balanceMoney(b.spent)}{" "}
                         <span className="font-normal text-[11px] text-muted-foreground">
                           / {money(b.budget)}
                         </span>
@@ -152,7 +152,7 @@ export function BudgetsCard({
                           "h-full rounded-full",
                           over ? "bg-negative" : pct >= 80 ? "bg-amber-500" : "bg-brand",
                         )}
-                        style={{ width: `${Math.min(100, pct)}%` }}
+                        style={{ width: `${Math.max(0,Math.min(100, pct))}%` }}
                       />
                     </div>
                   </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { startTransition, useMemo, useOptimistic } from "react";
+import { startTransition, use, useMemo, useOptimistic } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -12,6 +12,8 @@ import {
   Pencil,
   Copy,
   History,
+  Paperclip,
+  Undo2,
   Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -20,6 +22,7 @@ import { TransactionDialog } from "@/components/transaction-dialog";
 import { MoreActions } from "./more-actions";
 import { DropdownMenuItem } from "./ui/dropdown-menu";
 import { TransactionHistory } from "./transaction-history";
+import { TransactionComments } from "./transaction-comments";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import {
   createTransaction,
@@ -27,7 +30,9 @@ import {
   deleteTransaction,
   deleteTransfer,
 } from "@/lib/actions";
-import { useFormat } from "@/components/settings-provider";
+import { CommentsAvailable, MerchantRulesContext,useFormat } from "@/components/settings-provider";
+import { RefundPanel } from "./refund-panel";
+import { ReceiptPanel } from "./receipt-panel";
 import type { ActivityEntry } from "@/lib/activity";
 import { cn } from "@/lib/utils";
 import type {
@@ -107,11 +112,12 @@ export function TransactionRows({
           onClick: async () => {
             const r = await createTransaction({
               type: t.type,
-              amount: t.amount,
+              amount: t.receiptAmount??t.amount,
               date: t.date,
               note: t.note,
               accountId: t.accountId,
               categoryId: t.categoryId,
+              ...(t.allocations?.length?{allocations:t.allocations}:{}),
               tagIds: t.tags.map((tag) => tag.id),
             });
             if (r.ok) {
@@ -194,6 +200,9 @@ function Row({
   showAuthors: boolean;
 }) {
   const isIncome = t.type === "income";
+  const receipts=use(MerchantRulesContext);
+  const comments = use(CommentsAvailable) && <TransactionComments id={t.id}
+    label={[t.note || t.category?.name || "Transaction", t.date, money(t.receiptAmount ?? t.amount)].join(" · ")}/>;
   const color = t.category?.color ?? "#9b9a97";
   return (
     <div className="activity-row group -mx-2 grid grid-cols-[2.25rem_minmax(0,1fr)_auto] items-start gap-x-3 gap-y-1 rounded-lg px-2 py-2.5 transition-colors hover:bg-hover sm:flex sm:items-center">
@@ -205,11 +214,11 @@ function Row({
       </span>
       <div className="min-w-0 flex-1 leading-relaxed">
         <div className="break-words text-sm font-medium [overflow-wrap:anywhere]">
-          {t.note || t.category?.name || "Transaction"}
+          {t.note || t.category?.name || (t.allocations?.length?"Split purchase":"Transaction")}
         </div>
         <div className="flex flex-wrap items-center gap-x-1 text-xs text-muted-foreground">
           {/* When there's no note the title already shows the category — don't repeat it here. */}
-          {t.note ? (
+          {t.allocations?.length ? (<span>Split · {t.allocations.map(line=>`${categories.find(c=>c.id===line.categoryId)?.name??"Category"} ${money(Number(line.amount))}`).join(" / ")} · </span>) : t.note ? (
             <>
               {t.categoryId && t.category ? (
                 <Link
@@ -288,17 +297,27 @@ function Row({
             }
           />
           <MoreActions label={`More actions for ${t.note || t.category?.name || "transaction"}`}>
-            <TransactionHistory id={t.id} accounts={accounts} categories={categories} trigger={<DropdownMenuItem closeOnClick={false} nativeButton render={<button type="button" />}><History />Edit history</DropdownMenuItem>} />
+            {comments}
+            {receipts&&isIncome&&<RefundPanel credit={t.id} trigger={<DropdownMenuItem closeOnClick={false} nativeButton render={<button type="button"/>}><Undo2/>Refund link</DropdownMenuItem>}/>}
+            {receipts&&<ReceiptPanel transactionId={t.id} canEdit trigger={<DropdownMenuItem closeOnClick={false} nativeButton render={<button type="button"/>}><Paperclip/>Receipt</DropdownMenuItem>}/>}
+            <TransactionHistory id={t.id} accounts={accounts} categories={categories} trigger={<DropdownMenuItem closeOnClick={false} nativeButton render={<button type="button" />}><History />History &amp; access</DropdownMenuItem>} />
             <TransactionDialog template={t} accounts={accounts} categories={categories} trigger={<DropdownMenuItem closeOnClick={false} nativeButton render={<button type="button" />}><Copy />Repeat transaction</DropdownMenuItem>} />
             <ConfirmDialog
               trigger={<DropdownMenuItem variant="destructive" closeOnClick={false} nativeButton render={<button type="button" />}><Trash2 />Delete transaction</DropdownMenuItem>}
               title="Delete transaction?"
-              description={`${t.note || t.category?.name || "This transaction"} · ${money(t.amount)}`}
+              description={`${t.note || t.category?.name || "This transaction"} · ${money(t.receiptAmount??t.amount)}`}
               onConfirm={() => onDelete(t)}
             />
           </MoreActions>
         </div>
       )}
+      {!canEdit && <div className="col-start-3 row-span-2 row-start-1 self-center">
+        <MoreActions label={`View details for ${t.note || t.category?.name || "transaction"}`}>
+          {comments}
+          <TransactionHistory id={t.id} accounts={accounts} categories={categories} trigger={<DropdownMenuItem closeOnClick={false} nativeButton render={<button type="button" />}><History/>History &amp; access</DropdownMenuItem>}/>
+          {receipts && <ReceiptPanel transactionId={t.id} canEdit={false} trigger={<DropdownMenuItem closeOnClick={false} nativeButton render={<button type="button" />}><Paperclip/>Receipt</DropdownMenuItem>}/>}
+        </MoreActions>
+      </div>}
     </div>
   );
 }

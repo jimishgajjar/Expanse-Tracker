@@ -1,6 +1,6 @@
 # RBC and TD bank-sync implementation plan
 
-Status: implementation started; the user selected **build the demo first**. The local simulator is implemented. Plaid Sandbox and production remain pending. No live connection, paid service or production migration has been performed.
+Status: implementation started; the user selected **build the demo first**. The local simulator is implemented. The M3 Sandbox-only provider adapter and command are implemented locally; the authenticated headless Sandbox check passed, and the interactive local Sandbox inbox is implemented; production bank connectivity remains pending. See [Sandbox setup](docs/plaid-sandbox.md). No live connection, paid service or production migration has been performed.
 
 ## Current delivery: isolated demo
 
@@ -33,7 +33,7 @@ Verified against the repository during preparation:
 | `src/lib/db/index.ts`: Neon HTTP in production, PGlite locally | Atomic operations must work with the actual Neon driver; do not assume interactive transactions are supported. |
 | `src/lib/db/schema.ts`: workspace-scoped accounts, transactions, transfers, recurring rules | Add separate bank tables and import links; preserve existing financial rows and IDs. |
 | `src/lib/actions.ts`, `workspace-references.ts` | Reuse permission/reference validation, but add an atomic approval operation rather than calling several independent actions. |
-| `src/lib/import-action.ts` | Current CSV/Excel importer is an immediate import path, not a bank-feed reconciliation engine. Do not reuse it for automatic bank ingestion. |
+| `src/lib/import-action.ts` | M2 provides reviewed file imports and durable receipts; it is not a bank-feed ingestion engine. Do not reuse it for automatic bank ingestion. |
 | `src/lib/queries.ts`, `src/app/api/cron/recurring/route.ts` | Recurring rules can create transactions independently of bank sync. Match against these too. |
 | `src/proxy.ts` | Cookie gating needs narrow exceptions for provider webhooks and queue callbacks, each with its own verification. |
 | `src/components/accounts-section.tsx`, `account-detail-view.tsx`, paged Activity | Add bank badges, connection controls, source indicators and review entry points without replacing existing manual flows. |
@@ -248,6 +248,8 @@ All endpoints validate bounded inputs and return consistent statuses: unauthoriz
 **Exit:** a user can complete connect → map → sync → match/approve → see correct dashboard totals entirely in demo mode.
 
 ### Phase 3 — Plaid Sandbox and durable delivery
+
+Started 3 November 2026: backend token setup/exchange/update, selected-account pagination, interruption recovery and test Item removal are implemented in a local, non-persistent provider check. See [verification boundaries and setup](docs/plaid-sandbox.md). Owner-only interactive Link and a persistent local inbox with review before any test ledger import are implemented in the dedicated Sandbox preview. Production durable delivery and hosted concurrency remain pending.
 
 - [ ] Integrate Link, exchange, update mode, account selection, normalization and cursor sync.
 - [ ] Add webhook signature verification, outbox dispatch, queue worker, leases, retry/backoff and recovery sweep.

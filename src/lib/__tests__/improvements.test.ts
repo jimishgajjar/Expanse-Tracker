@@ -19,6 +19,7 @@ beforeAll(async () => {
   db = local as unknown as AppDb;
   await client.exec(`INSERT INTO users(id,email,password_hash) VALUES ('u','u@example.test','x');
     INSERT INTO workspaces(id,name,owner_id) VALUES ('w','Home','u'),('foreign','Other','u');
+    INSERT INTO workspace_members(workspace_id,user_id,role) VALUES ('w','u','owner');
     INSERT INTO accounts(id,workspace_id,name) VALUES ('a','w','Bank'),('b','w','Cash'),('x','foreign','Private');
     INSERT INTO categories(id,workspace_id,name,kind) VALUES ('food','w','Food','expense');
     INSERT INTO tags(id,workspace_id,name) VALUES ('tag','w','Holiday');
@@ -79,7 +80,12 @@ describe("atomic future edit history", () => {
     expect(await editWithHistory(db,"foreign","t1",{id:"u",name:"Test"},{amount:500})).toBe(false);
   });
   it("rolls back the financial edit if recording history fails", async () => {
-    await expect(editWithHistory(db,"w","t2",{id:"missing-user",name:"Invalid"},{amount:500})).rejects.toThrow();
+    await client.exec("CREATE FUNCTION reject_test_history() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'history unavailable'; END $$; CREATE TRIGGER reject_test_history BEFORE INSERT ON transaction_history FOR EACH ROW EXECUTE FUNCTION reject_test_history()");
+    try {
+      await expect(editWithHistory(db,"w","t2",{id:"u",name:"Test"},{amount:500})).rejects.toThrow();
+    } finally {
+      await client.exec("DROP TRIGGER reject_test_history ON transaction_history; DROP FUNCTION reject_test_history()");
+    }
     const row = await db.execute(sql`SELECT amount FROM transactions WHERE id='t2'`);
     expect(Number(row.rows[0].amount)).toBe(10);
   });

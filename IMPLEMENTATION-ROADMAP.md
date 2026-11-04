@@ -5,7 +5,7 @@ Status: proposed implementation backlog; this document does not authorize paid s
 
 Implementation started 31 October 2026: M0 capability inventory/synthetic query baseline and the M1 manual-create integrity slice. See [financial-foundation.md](docs/financial-foundation.md) for scope, verification and remaining gates. Full milestones remain incomplete until their acceptance criteria pass.
 
-M2 started 31 October 2026: saved statement reviews, exact-balance completion and detection of subsequent ledger changes. This is the reconciliation slice; reviewed CSV/Excel staging and durable import provenance were implemented locally on 3 November 2026 (see [reviewed-file-imports.md](docs/reviewed-file-imports.md)). Hosted concurrency has since been verified with synthetic data; production rollout remains pending. See [statement-reviews.md](docs/statement-reviews.md). The new feature is disabled by default outside the isolated preview.
+M2 started 31 October 2026: saved statement reviews, exact-balance completion and detection of subsequent ledger changes. This is the reconciliation slice; reviewed CSV/Excel staging and durable import provenance were implemented locally on 3 November 2026 (see [reviewed-file-imports.md](docs/reviewed-file-imports.md)). Hosted concurrency was verified with synthetic data, and M2 shipped on 3 November 2026. See [statement-reviews.md](docs/statement-reviews.md). M3 bank connectivity is separate and is not enabled in production.
 
 ## 1. Product outcome and scope
 
@@ -117,13 +117,13 @@ Release: deploy compatible audit additions first. New backup destinations, auth 
 - [x] Local preview: use durable import provenance and retry keys. Reimporting the same file or retrying a failed response must not silently duplicate entries; genuine identical purchases remain distinguishable by review.
 - [x] Local preview: discrepancies never generate balancing entries. Verified corrections require an explicit amount, posting date, description and reason, and are linked to the original review in transaction history and exports.
 
-Third implementation part (3 November 2026): investigate changes entry by entry and record a verified missing transaction. No additional database migration. Hosted multi-session rehearsal passed on 3 November 2026 with synthetic data (see [hosted rehearsal](docs/m2-hosted-rehearsal.md)). Production backup, preservation checks and rollout remain outstanding; M3 provider work is separate.
+Third implementation part (3 November 2026): investigate changes entry by entry and record a verified missing transaction. No additional database migration. Hosted multi-session rehearsal passed on 3 November 2026 with synthetic data (see [hosted rehearsal](docs/m2-hosted-rehearsal.md)). M2 subsequently shipped on 3 November 2026 at commit 603936d; the before/after checks verified the existing financial rows and account balances.
 
 Acceptance: a fixture with a missing fee, duplicate purchase, transfer, and refund reconciles only after the specific issues are resolved. Completed periods flag subsequent changes. Partial file failures have explicit row outcomes and exports preserve provenance.
 
 ### M3 — Production bank connectivity
 
-Implement the detailed bank plan rather than copying the demo snapshot store into production.
+Started 3 November 2026. The [Sandbox provider check](docs/plaid-sandbox.md) runs independently of the ledger. The authenticated headless Sandbox check passed (one synthetic account, 69 transactions, cleanup confirmed). A separate local preview now implements owner-only Plaid Link, one-account selection, encrypted token persistence and a local bank inbox with explicit match, import and ignore decisions. See the Sandbox guide for validation boundaries. Actual RBC/TD coverage is unverified. Follow the detailed bank plan rather than copying the demo snapshot store into production.
 
 - [ ] Verify Canadian RBC/TD institution, account-type, and Transactions coverage in the actual provider account. Check current terms, data permission scope, pricing, limits, and refresh behavior.
 - [ ] Add real Link setup/exchange/update flows, encrypted versioned server-side tokens, owner/workspace authorization, selected-account mapping, and import cutoff.
@@ -139,75 +139,94 @@ External gate: Plaid account/access and interactive user bank authorization. No 
 
 ### M4 — Transaction organization and capture
 
+The local web preview supports split purchases. A single expense can carry 2–20 category portions; a save requires an exact total. Category reports and budgets use the portions, while account balances and statement reviews use the full purchase. The change includes an additive allocation table and export and backup support. Production rollout is pending.
+
+Started with category suggestions in the web transaction form. An explicit lookup groups prior categorized entries by matching note, account and direction in the active workspace. The user sees usage counts and chooses whether to apply a suggestion to the draft. The local preview also supports account- and direction-specific merchant names and aliases, category/tag suggestions, priorities, and version history. Preview uses the same whole-word matcher on the current draft and up to 100 recent notes. Only an explicit choice applies a suggestion to the draft. Activity now previews category and tag changes for up to 25 selected transactions in the local preview. Apply rechecks saved state and history. Recent batches support per-entry undo, with conflicts reported individually.
+
 - [ ] Add merchant aliases and deterministic category/tag rules with priority, conditions, version history, dry-run preview, and conflict explanations.
 - [ ] Default rules to suggestions or changes on unreviewed entries. Applying a rule to existing reviewed history requires an explicit preview and audited batch action.
 - [ ] Support splitting one purchase into category allocations whose sum equals the original amount exactly. Account balance counts the parent once; reports/budgets use allocations. Shared-expense IOUs remain a separate concept.
-- [ ] Add bulk category/tag changes with bounded batches, stale-version checks, visible outcomes, and conflict-aware undo.
-- [ ] Add private receipt attachments with size/type limits, validation/scanning, signed access, retention, export, and backup coverage. OCR is optional and produces editable suggestions, never automatic ledger writes.
-- [ ] Preserve quick entry, repeat, recent categories, and save-and-add. Add safe draft recovery and consistent keyboard/mobile shortcuts.
+- [x] Local preview: bounded bulk category/tag changes, stale-preview checks, visible outcomes, and conflict-aware undo. Hosted rollout remains pending.
+- [x] Local web preview: attach one JPEG/PNG receipt photo (5 MB, 25 MP) to a saved transaction. Decode and re-encode pixels; authenticated, session-bound download links expire after five minutes. Editors can remove a photo explicitly. Workbook exports list receipts, individual downloads export images, and database backups include the normalized bytes. Hosted storage, malware scanning policy and distribution remain release decisions.
+- [x] Local web preview: save a private income/expense draft with Save draft or Ctrl/Cmd+S, resume it from another capture form, and autosave resumed edits. Posting consumes the versioned draft atomically and is safe to retry. Existing repeat, recent categories and save-and-add remain available. Native offline recovery belongs to M9.
 
 Acceptance: rules are deterministic; previews equal committed results for unchanged input; manual overrides survive resync. Split amounts balance exactly, receipts are inaccessible across workspaces, and undo never overwrites a newer edit.
 
 ### M5 — Budgets and savings backed by real money
 
-- [ ] Add effective-dated budget plans/periods, rollover policy, category allocations, and adjustments. Migrate current limits as an explicit starting configuration without inventing historical budget periods.
-- [ ] Support monthly, payday, annual/sinking-fund, and irregular-income planning. Separate expected income from confirmed money available to allocate.
-- [ ] Add goal contribution/reservation records linked to eligible ledger movements or explicitly identified cash allocations. Do not manufacture cash when allocating to a goal.
-- [ ] Preserve existing manual goal progress as a labeled opening progress value until reviewed; prevent allocating the same funds to multiple goals.
-- [ ] Explain overspending, rollover, refunds, and changes to past periods. Budget moves are allocations, not bank transfers or expenses.
+Local preview started: opt-in monthly category allocations with an explicit starting month, rollover of positive or negative remainders, and recomputation from posted category portions. Starting amounts can be copied from existing limits. Planning also supports reserving and releasing confirmed cash for a savings goal, checks the available balance across all goals, and labels earlier manually tracked progress separately. Exports and encrypted backup coverage include the new planning records. Payday budgets support weekly, biweekly and irregular periods with a spending limit and separate expected/posted income. Annual funds use a goal target, an explicit due date, actual reservations and any separate opening savings explicitly confirmed by a member. The monthly estimate includes the current and due months, rounded up to the cent. Renew the due date explicitly after reviewing each bill. Both schedules are included in exports and backup coverage. In local Activity, open an income entry's Refund link to assign a posted credit to an earlier purchase. Partial refunds can cover several original categories. Budgets recognize the credit on its posting date, including across months, and unlinking restores the original budget calculation. Cash balances and ledger history retain both original entries. Hosted release validation remains pending.
+
+- [x] Local preview: effective-dated category allocations and rollover, with existing limits offered as a starting amount. Move available budget between two planned categories for one month. The monthly history and workbook export record both categories, the amount, author, time and optional note.
+- [x] Local preview: support monthly, payday, annual/sinking-fund, and irregular-income planning. Separate expected income from confirmed money available to allocate.
+- [x] Local preview: record goal reservations and releases as explicit allocations against eligible posted account balances. Do not manufacture cash when allocating to a goal.
+- [x] Local preview: preserve the original manual goal entry. Count reserved cash and only the portion explicitly confirmed as separate savings for that goal. Versioned reviews can be revised and exported. Account reservations still enforce available cash across goals.
+- [x] Local preview: explain overspending, rollover, refunds, and changes to past periods. Budget moves are allocations, not bank transfers or expenses.
 
 Acceptance: month/year boundaries, leap years, irregular pay dates, overspending, refunds, and late edits recalculate deterministically. Moving allocations changes no account balances. Goal contributions and withdrawals cannot double-count cash.
 
 ### M6 — Forecasts and a decision-focused dashboard
 
-- [ ] Implement a deterministic dated cash-flow engine for next payday and 30/60/90 days, per account and household.
-- [ ] Model confirmed cash, expected income, recurring bills, planned transfers, debt payments, savings reservations, essential variable spending, and a user-selected buffer without counting overlapping commitments twice.
-- [ ] Store user scenario assumptions separately from transactions. Mark estimates, stale accounts, missing bills, and uncertain income; allow conservative/base scenarios.
-- [ ] Derive an estimated spendable amount from the minimum projected unreserved cash across the selected horizon, accounting for commitments and buffer. Explain inputs and exclusions; display a shortfall when negative, not a misleading positive allowance.
-- [ ] Replace competing dashboard widgets with four sections: current position; attention inbox; upcoming/projected money; budget/goal progress. Keep account access and Add transaction immediately reachable, with charts available below.
-- [ ] Add an explain-this-number breakdown leading to the source transactions, plans, and dates. Do not present an estimate as a guarantee or personalized investment advice.
+- [x] Local preview: Planning shows daily closing balances for a single account or the household through the next recorded payday or 30/60/90 days. Opening balances use dated ledger entries through today. The breakdown distinguishes future ledger entries, transfers, recurring entries and bill estimates, and flags exact possible overlaps.
+- [x] Local preview: model confirmed cash, dated income and bills, transfers, installment payments, reservations, everyday spending and buffers. Base can optionally project the uncovered portion of a saved income target at period end. Named card transfers can cover one matching installment occurrence. Conflicting ledger records remain visible for review.
+- [x] Local preview: save base and conservative daily spending and cash buffers per active cash account, separately from transactions. Conservative inherits base floors and excludes unmatched scheduled income.
+- [x] Local preview: show active accounts without dated activity, transfers or completed statement coverage in the last 30 days. Flag plausible monthly bills with three consecutive comparable payments and no corresponding named schedule or nearby ledger expense. Review hints include dates and links to the account, and do not post entries or alter projections.
+- [x] Local preview: derive an estimated spendable amount from the minimum projected unreserved cash across the selected horizon, accounting for commitments and buffer. Explain inputs and exclusions; display a shortfall when negative, not a misleading positive allowance.
+- [x] Local preview: Overview groups current position and direct account access, an attention inbox, a 30-day household cash outlook, and current budget and goal progress. The activity period controls recent transactions and charts independently of the outlook.
+- [x] Local preview: explain opening, closing, lowest, cash-only and spendable balances from their forecast snapshot. Link dated changes to exact ledger entries, transfers, schedules and scenario settings, and show goal holds and buffers separately.
 
 Acceptance: hand-calculated fixtures match the engine; account transfers cancel in household totals; scheduled and already-posted payments are counted once. Every estimate has a horizon, last-calculated time, and visible assumptions. Incomplete data produces an explicit limitation.
 
 ### M7 — Household coordination and privacy
 
-- [ ] Separate who entered a transaction from who owns it and who can view it. Write an owner/member/viewer and personal/shared permission matrix before implementation.
-- [ ] Preserve current workspace visibility by default; do not retroactively hide or expose historical entries. Personal account sharing requires an explicit audience change.
-- [ ] Apply visibility in queries, totals, search, exports, attachments, notifications, forecasts, and mobile APIs, not just UI filters. Avoid leaking private totals through household aggregates.
-- [ ] Add transaction comments, reimbursement links/status, and a compact weekly check-in of unresolved items, bills, and goals.
-- [ ] Settle an IOU using an existing payment link or an explicitly created payment; never record both by accident. Invites, mentions, and digests require deliberate recipient/channel settings.
+- [x] Define the [owner/member/viewer and personal/shared permission matrix](docs/household-access.md) before implementation. Local preview: Activity → History & access distinguishes the recorded creator, tracker and current access on existing shared entries. Unknown creators remain unknown.
+- [x] Local preview: restrict pending invitation addresses to the current owner on web and mobile. Recheck membership for shared transaction history, edits and deletions; a removed tracker selection cannot redirect an open form to another ledger.
+- [x] Local storage and privacy rehearsal: explicitly link one fresh personal ledger to its household and person; accounts and entries inherit that ledger's audience, independently of who entered them. Never convert an existing ledger on the user's behalf.
+- [x] Exercise current shared/private boundaries with synthetic members: Activity (including search and counts), balances and Overview, forecasts, mobile bootstrap, edit history, receipt downloads, and workbook exports including historical statement/import evidence. Block personal reminders and digests until delivery is explicitly configured.
+- [x] Local preview: bind signed-in forms and requests to the session, tracker and role. Recheck access on resume and while the app is open. Rehearse stale writes and revocation with independent web and mobile sessions. Accounts → Open my private accounts starts a new, empty personal tracker in the embedded preview.
+- [x] Local web preview: a private account owner can review a read-only copy for one named household member, include receipt photos by choice, confirm, update or withdraw the copy. A changed preview requires fresh approval. The recipient opens the approved edition from household Accounts.
+- [x] Existing accounts retain their original visibility. Sharing does not move the source account or add entries to household totals. Removing either member retires the grant.
+- [x] Local web preview: settle the reviewed IOUs between two members against one posted payment, record one new payment, or mark the balance paid outside the tracker. Transfers between tracked accounts preserve household cash-flow totals. Reopening releases the link and retains the payment.
+- [ ] Verify background/resume on a physical phone and coordinate the compatible native and server release. The protected Vercel preview rejects old web and mobile sessions after revocation.
+- [x] Verify privacy in queries, totals, search, exports, attachments, notification audiences, forecasts and mobile APIs. The [hosted M7 rehearsal](docs/m7-hosted-rehearsal.md) covers two household trackers, a private ledger, named receipt sharing and removal. Regression tests also cover malformed historical links.
+- [x] Local web preview: Activity → transaction menu → Comments. Members with editing access can post. Viewers can read. Private account report recipients cannot open the original conversation. Active comments protect the entry against accidental deletion.
+- [x] Local web preview: Planning opens with a weekly household check-in. It nets open reimbursements between each pair of people, shows the next seven days of household bill schedules, and lists remaining savings targets by deadline. Members and viewers can follow the figures back to their source.
+- [x] Local implementation: in web and mobile Settings, each household member or viewer can opt into email or push separately for upcoming recurring items, posted entries, budget alerts, and monthly digests. Delivery checks current membership and the selected channel. Removing membership clears its choices.
+- [x] Local implementation: each person can set invitation delivery across all households and comment-mention delivery separately in each household. Both support independent email and push opt-ins. Comment authors choose recipients explicitly. Delivery rechecks access and preferences.
+- [ ] Verify invitation and mention delivery with a test email account and a physical phone, including notification taps and opting out, before hosted release.
 
 Acceptance: role/ownership tests cover every surface and changes in membership. Removing access revokes future reads and clears client caches. Two household members can review a week without changing each other's private entries.
 
 ### M8 — Credit cards, loans, and multicurrency
 
-Deliver these as separate subreleases; do not mix liability semantics with currency migration.
+Implementation verified in the isolated web preview. Debt and multicurrency have separate release modes and additive migrations. Production activation remains separate. See [M8 implementation and acceptance](docs/m8-debt-and-currencies.md).
 
 **M8a: debt**
 
-- [ ] Define liability balances, statement cycles, due dates, minimum payments, interest/fee entries, and payment allocation. Existing account balances require reviewed mapping, not automatic sign inversion.
-- [ ] Credit-card purchases affect spending once; repayments move money and reduce liabilities; interest/fees affect spending separately.
-- [ ] Add loan terms and reproducible payoff scenarios with displayed rate, compounding assumptions, fees, and variable-rate limitations. A forecast is not the lender's actual amortization statement.
-- [ ] Distinguish liquid cash, debt, and net worth across dashboard and reports; credit availability is never cash income.
+- [x] Define liability balances, statement cycles, due dates, minimum payments, interest/fee entries, and payment allocation. Existing account balances require reviewed mapping, not automatic sign inversion.
+- [x] Credit-card purchases affect spending once; repayments move money and reduce liabilities; interest/fees affect spending separately.
+- [x] Add loan terms and reproducible payoff scenarios with displayed rate, compounding assumptions, fees, and variable-rate limitations. A forecast is not the lender's actual amortization statement.
+- [x] Distinguish liquid cash, debt, and net worth across dashboard and reports; credit availability is never cash income.
 
 **M8b: currencies**
 
-- [ ] Add explicit account currency, transaction original amount/currency, rate/source/time, and reporting currency. Require the owner to confirm currency for existing accounts; display settings do not prove historical denomination.
-- [ ] Record both sides and fees of cross-currency transfers. Use decimal arithmetic and currency-specific precision, with a documented rounding-residual policy.
-- [ ] Preserve original records and booked rates. Separate historical transaction conversion from current balance valuation; refreshes must not rewrite history.
-- [ ] Missing rates produce incomplete totals or separate currency totals, never a guessed conversion. Make budget/forecast currency assumptions explicit.
+- [x] Add explicit account currency, transaction original amount/currency, rate/source/time, and reporting currency. Require the owner to confirm currency for existing accounts; display settings do not prove historical denomination.
+- [x] Record both sides and fees of cross-currency transfers. Use decimal arithmetic and currency-specific precision, with a documented rounding-residual policy.
+- [x] Preserve original records and booked rates. Separate historical transaction conversion from current balance valuation; refreshes must not rewrite history.
+- [x] Missing rates produce incomplete totals or separate currency totals, never a guessed conversion. Make budget/forecast currency assumptions explicit.
 
 Acceptance: CAD/USD and a zero-decimal currency fixture reconcile independently; repayments/refunds are not double-counted; stored historical values remain stable after rate updates. Export and restore retain both original and reporting data.
 
 ### M9 — Native quality and offline drafts
 
-- [ ] Maintain one backend calculation/permission contract; use shared DTOs and pure financial logic where practical without a repository-wide rewrite.
-- [ ] Bring stable web workflows to native with a feature parity matrix. Preserve platform-appropriate navigation, accessible text scaling, safe areas, and reachability.
-- [ ] Add biometric local unlock with device-auth fallback and secure session handling. Local app locking is not a replacement for server authentication.
-- [ ] Implement encrypted, user/workspace-scoped offline drafts first. Label pending saves clearly. Use server idempotency and version checks for retries; conflicting edits require resolution rather than last-write-wins.
-- [ ] Never run bank synchronization offline. On logout/workspace switch, isolate or clear cached data and prevent queued drafts from being sent to the wrong workspace.
-- [ ] Add deep links and privacy-aware notification content; obtain OS notification permission through normal user flows.
+- [x] Maintain one backend calculation/permission contract; use shared DTOs and pure financial logic where practical without a repository-wide rewrite.
+- [x] Bring stable web workflows to native with a feature parity matrix. Preserve platform-appropriate navigation, accessible text scaling, safe areas, and reachability.
+- [x] Add biometric local unlock with device-auth fallback and secure session handling. Local app locking is not a replacement for server authentication.
+- [x] Implement encrypted, user/workspace-scoped offline drafts first. Label pending saves clearly. Use server idempotency and version checks for retries; conflicting edits require resolution rather than last-write-wins.
+- [x] Never run bank synchronization offline. On logout/workspace switch, isolate or clear cached data and prevent queued drafts from being sent to the wrong workspace.
+- [x] Add deep links and privacy-aware notification content; obtain OS notification permission through normal user flows.
 - [ ] Test real Android/iPhone installs, process death, network loss after successful save, expired sessions, background/resume, push delivery, and accessibility.
+
+See the [native parity matrix and physical acceptance procedure](docs/m9-native-acceptance.md). Device installation, OS unlock, push delivery, and assistive-technology results remain open on both platforms.
 
 Acceptance: airplane-mode capture survives restart; reconnect creates one entry even if the first response was lost; another user's login cannot see drafts. Actual-device receipts distinguish simulator success from device acceptance.
 
@@ -215,13 +234,18 @@ External gate: verify current Apple/Expo signing access before promising an inst
 
 ### M10 — Onboarding, performance, and pilot acceptance
 
-- [ ] Provide resumable setup: household currency/timezone, accounts, opening-balance date, existing-history preview, recurring bills, first reconciliation, and optional partner invite. Skip bank setup when unavailable.
-- [ ] Keep example data in a separate demo; never seed examples into a real household. Reconcile opening balances with the import cutoff so historical transactions are not counted twice.
-- [ ] Add contextual empty states, keyboard and screen-reader coverage, plain-language error recovery, and compact/comfortable density without shrinking mobile targets.
-- [ ] Optimize measured bottlenecks: scoped query indexes, server pagination, aggregates, deferred modules, appropriate cache invalidation, and bounded exports. Never cache authenticated financial responses across users/workspaces.
-- [ ] Exercise large workspaces and concurrent usage with synthetic data, including recurrence and bank jobs running during edits.
+Local engineering and the pilot operating guide are in [Pilot operations](docs/pilot-operations.md). Participant outcomes, deployed performance, actual costs, and wider-release review require external evidence.
+
+- [x] Provide resumable setup: household currency/timezone, accounts, opening-balance date, existing-history preview, recurring bills, first reconciliation, and optional partner invite. Skip bank setup when unavailable.
+- [x] Keep example data in a separate demo; never seed examples into a real household. Reconcile opening balances with the import cutoff so historical transactions are not counted twice.
+- [x] Add contextual empty states, labelled controls, keyboard and accessibility-tree checks, plain-language error recovery, and compact/comfortable density without shrinking mobile targets.
+- [ ] Observe assistive-technology use with a participant on their device.
+- [x] Optimize measured bottlenecks: scoped query indexes, server pagination, aggregates, deferred modules, appropriate cache invalidation, and bounded exports. Never cache authenticated financial responses across users/workspaces.
+- [x] Exercise large workspaces and concurrent usage with synthetic data, including recurrence and bank jobs running during edits.
 - [ ] Invite a small consenting pilot only after permission/recovery gates pass. Observe setup, manual capture, import review, reconciliation, forecast explanation, and weekly household review.
-- [ ] Add a feedback route, issue severity/response process, feature limitation page, privacy/retention documentation, and export/account closure workflows. Obtain jurisdiction-appropriate review before a wider public launch; do not claim compliance certification from this plan.
+- [x] Add a feedback route, issue severity/response process, feature limitation page, privacy/retention documentation, and export/account closure workflows.
+- [ ] Obtain jurisdiction-appropriate review before a wider public launch.
+- [x] Provide an anonymous pilot scorecard for task outcomes, browser timings, retention, costs and support effort.
 - [ ] Measure provider/hosting/storage/notification cost per active household and support effort before choosing pricing or scaling. Do not purchase plans based on estimates alone.
 
 Acceptance: pilot users finish core tasks with minimal assistance, no unresolved critical financial/privacy defects, and evidence against the quality targets below. Record failures and fix them before broader release.

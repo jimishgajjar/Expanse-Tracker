@@ -1,15 +1,14 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requestBaseUrl } from "./base-url";
-import { and, eq } from "drizzle-orm";
+import { notifyInvitation } from "./notify";
+import { and, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { getDb } from "./db";
-import { invitations, users, workspaceMembers, workspaces } from "./db/schema";
+import { invitations, workspaceMembers, workspaces } from "./db/schema";
 import { getCurrentUser } from "./session";
 import { getActiveWorkspace } from "./workspace";
-import { sendEmail } from "./email";
-import { renderEmail, escapeHtml } from "./email-template";
+import { canManageSharing, isPersonalLedger } from "./household-access";
 
 type Result = { ok: true } | { ok: false; error: string };
 type InviteResult =
@@ -20,7 +19,7 @@ async function ctx() {
   const ws = await getActiveWorkspace();
   const me = await getCurrentUser();
   if (!ws || !me) return null;
-  return { ws, me, isOwner: ws.ownerId === me.id };
+  return { ws, me, isOwner: canManageSharing(ws, me.id) };
 }
 
 export async function inviteMember(input: unknown): Promise<InviteResult> {
@@ -34,42 +33,33 @@ export async function inviteMember(input: unknown): Promise<InviteResult> {
   if (email === c.me.email.toLowerCase()) return { ok: false, error: "That's your own email." };
 
   const db = await getDb();
-  const [u] = await db.select({ id: users.id, name: users.name, verifiedAt: users.emailVerifiedAt }).from(users).where(eq(users.email, email)).limit(1);
-  // Only a verified account is added immediately; otherwise we store a pending
-  // invite that's accepted when they confirm the address (closes the squatting hole).
-  const addedNow = !!(u && u.verifiedAt);
-  if (addedNow) {
-    const [m] = await db.select().from(workspaceMembers).where(and(eq(workspaceMembers.workspaceId, c.ws.id), eq(workspaceMembers.userId, u!.id))).limit(1);
-    if (m) return { ok: false, error: "They already have access." };
-    await db.insert(workspaceMembers).values({ workspaceId: c.ws.id, userId: u!.id, role }).onConflictDoNothing();
-  } else {
-    await db.insert(invitations).values({ workspaceId: c.ws.id, email, role }).onConflictDoNothing();
-  }
-
-  const base = await requestBaseUrl();
-  const inviter = c.me.name || c.me.email;
-  const access = role === "viewer" ? "View only" : "Can edit";
-  await sendEmail(
-    email,
-    `${inviter} shared "${c.ws.name}" with you`,
-    addedNow
-      ? renderEmail({
-          heading: `${inviter} shared a tracker with you`,
-          intro: `You now have ${role === "viewer" ? "view-only" : "full editing"} access to “${escapeHtml(c.ws.name)}” on Expense Tracker. Sign in and switch to it from the tracker menu.`,
-          detail: { rows: [{ label: "Tracker", value: c.ws.name }, { label: "Your access", value: access }] },
-          cta: { label: "Sign in", url: `${base}/login` },
-          footnote: "If you weren't expecting this, you can ignore this email.",
-        })
-      : renderEmail({
-          heading: `${inviter} invited you to a tracker`,
-          intro: `${escapeHtml(inviter)} invited you to “${escapeHtml(c.ws.name)}” on Expense Tracker. Create your account with this email and confirm it — the shared tracker appears once your address is verified.`,
-          detail: { rows: [{ label: "Tracker", value: c.ws.name }, { label: "Invited email", value: email }, { label: "Your access", value: access }] },
-          cta: { label: "Create your account", url: `${base}/signup` },
-          footnote: "If you weren't expecting this, you can ignore this email.",
-        }),
-  );
+  // Only a newly granted membership can trigger delivery. An unknown or
+  // unverified address stays pending until verification proves who owns it.
+  if (isPersonalLedger(c.ws.id)) return {ok:false,error:"Choose a household tracker."};
+  const result = await db.execute<{owner:boolean; id:string|null; name:string|null; created:string|null}>(sql`
+    WITH owner AS (
+      SELECT w.id FROM workspaces w JOIN workspace_members m ON m.workspace_id=w.id AND m.user_id=w.owner_id
+      WHERE w.id=${c.ws.id} AND w.owner_id=${c.me.id} AND m.role='owner' FOR SHARE OF w,m
+    ), candidate AS (
+      SELECT id,name,email_verified_at FROM users WHERE email=${email} FOR SHARE
+    ), target AS (
+      SELECT id,name FROM candidate WHERE email_verified_at IS NOT NULL
+    ), added AS (
+      INSERT INTO workspace_members(workspace_id,user_id,role)
+      SELECT owner.id,target.id,${role} FROM owner CROSS JOIN target
+      ON CONFLICT DO NOTHING RETURNING created_at::text AS created
+    ), pending AS (
+      INSERT INTO invitations(workspace_id,email,role)
+      SELECT id,${email},${role} FROM owner WHERE NOT EXISTS (SELECT 1 FROM target) ON CONFLICT DO NOTHING
+    )
+    SELECT EXISTS(SELECT 1 FROM owner) AS owner,(SELECT id FROM target) AS id,
+      (SELECT name FROM target) AS name,(SELECT created FROM added) AS created`);
+  const row = result.rows[0];
+  if (!row?.owner) return {ok:false,error:"Only the owner can invite people."};
+  if (row.id && !row.created) return {ok:false,error:"They already have access."};
+  if (row.id && row.created) await notifyInvitation(c.ws.id,row.id,row.created);
   revalidatePath("/");
-  return addedNow ? { ok: true, member: { id: u!.id, email, name: u!.name, role } } : { ok: true, invite: email };
+  return row.id ? {ok:true,member:{id:row.id,email,name:row.name ?? "",role}} : {ok:true,invite:email};
 }
 
 export async function transferOwnership(userId: string): Promise<Result> {
@@ -110,6 +100,7 @@ export async function removeMember(userId: string): Promise<Result> {
 export async function leaveWorkspace(): Promise<Result> {
   const c = await ctx();
   if (!c) return { ok: false, error: "Not signed in." };
+  if (isPersonalLedger(c.ws.id)) return { ok:false, error:"Switch trackers to leave this view. Personal access follows your household membership." };
   if (c.isOwner) return { ok: false, error: "Owners can't leave their own tracker." };
   const db = await getDb();
   await db.delete(workspaceMembers).where(and(eq(workspaceMembers.workspaceId, c.ws.id), eq(workspaceMembers.userId, c.me.id)));

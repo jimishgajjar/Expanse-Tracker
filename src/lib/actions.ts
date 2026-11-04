@@ -1,20 +1,32 @@
 "use server";
 
 import { editWithHistory } from "./transaction-edit";
+import { canEditSharedLedger, householdRoles } from "./household-access";
 import { createWithHistory, TransactionCreateError } from "./transaction-create";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
-import { and, eq, isNull, or, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import { getDb } from "./db";
 import { accounts, appSettings, budgets, categories, goals, recurring, splits, tags, transactions, transfers, workspaceMembers } from "./db/schema";
 import { assertWorkspaceReferences } from "./workspace-references";
 import { findCurrencyByCode } from "./currencies";
 import { getActiveRole, getActiveWorkspaceId, getUserWorkspaces } from "./workspace";
 import { getCurrentUser, setActiveWorkspace } from "./session";
+import { categoriesForNote } from "./category-history";
+import {allocationSchema} from "./purchase-allocation";
+import {merchantRulesEnabled} from "./merchant-rule-feature";
 
 type Result<T = undefined> = { ok: true; data?: T } | { ok: false; error: string };
 
 function fail(e: unknown): { ok: false; error: string } {
+  if (e instanceof Error && e.cause instanceof Error && e.cause.message.includes("transaction_comments_transaction_id_transactions_id_fk"))
+    return {ok:false,error:"This entry has comments. The authors or tracker owner can remove them from Activity before deleting the entry or account."};
+  if (e instanceof Error && e.cause instanceof Error &&
+      (/Unlink the refund/.test(e.cause.message) || /refund_links_(credit|purchase)_id_transactions_id_fk/.test(e.cause.message))) {
+    return {ok:false,error:"Open the incoming credit in Activity and unlink its refund before changing or deleting the linked purchase or credit."};
+  }
+  if (e instanceof Error && e.cause instanceof Error && /Reopen the reimbursement|reimbursements_(transaction|transfer)_id_/.test(e.cause.message))
+    return {ok:false,error:"Reopen the reimbursement in Shared expenses before changing or deleting its payment."};
   if (e instanceof z.ZodError) return { ok: false, error: e.issues[0]?.message ?? "Invalid input" };
   return { ok: false, error: e instanceof Error ? e.message : "Something went wrong" };
 }
@@ -24,11 +36,27 @@ function fail(e: unknown): { ok: false; error: string } {
 async function wid(): Promise<string> {
   const id = await getActiveWorkspaceId();
   if (!id) throw new Error("You're not signed in.");
-  if ((await getActiveRole()) === "viewer") throw new Error("You have view-only access to this tracker.");
+  if (!canEditSharedLedger(await getActiveRole())) throw new Error("You do not have editing access to this tracker.");
   return id;
 }
 
 // ── accounts ─────────────────────────────────────────────
+export async function lookupCategoryHistory(input: unknown) {
+  const parsed = z.object({
+    note: z.string().trim().min(2).max(200),
+    type: z.enum(["income", "expense"]),
+    accountId: z.string().min(1).max(128),
+  }).safeParse(input);
+  if (!parsed.success) return { ok: false as const };
+  try {
+    const workspace = await wid();
+    const { accountId, type, note } = parsed.data;
+    return { ok: true as const, rows: await categoriesForNote(await getDb(), workspace, accountId, type, note) };
+  } catch {
+    return { ok: false as const };
+  }
+}
+
 const accountSchema = z.object({
   name: z.string().trim().min(1, "Name is required").max(60),
   type: z.string().trim().min(1).default("bank"),
@@ -106,6 +134,8 @@ export async function updateCategory(id: string, input: unknown): Promise<Result
     const d = categorySchema.partial().parse(input);
     const w = await wid();
     const db = await getDb();
+    if(d.kind==="income"&&merchantRulesEnabled()&&await categoryUsedInPurchase(db,w,id))
+      return {ok:false,error:"Reassign this category on split purchases before changing it to income."};
     await db.update(categories).set(d).where(and(eq(categories.id, id), eq(categories.workspaceId, w)));
     revalidatePath("/");
     return { ok: true };
@@ -116,10 +146,17 @@ export async function deleteCategory(id: string): Promise<Result> {
   try {
     const w = await wid();
     const db = await getDb();
+    if(merchantRulesEnabled()&&await categoryUsedInPurchase(db,w,id))
+      return {ok:false,error:"Reassign this category on split purchases before deleting it."};
     await db.delete(categories).where(and(eq(categories.id, id), eq(categories.workspaceId, w)));
     revalidatePath("/");
     return { ok: true };
   } catch (e) { return fail(e); }
+}
+async function categoryUsedInPurchase(db:Awaited<ReturnType<typeof getDb>>,workspace:string,id:string){
+  const result=await db.execute(sql`SELECT 1 FROM purchase_allocations p JOIN transactions t ON t.id=p.transaction_id
+    WHERE p.category_id=${id} AND t.workspace_id=${workspace} LIMIT 1`);
+  return result.rows.length>0;
 }
 
 // ── transactions ─────────────────────────────────────────
@@ -135,11 +172,15 @@ const txSchema = z.object({
 
 export async function createTransaction(input: unknown): Promise<Result<{ id: string; replayed: boolean }>> {
   try {
+    if(input && typeof input==="object" && "allocations" in input && input.allocations!==undefined && !merchantRulesEnabled())
+      return {ok:false,error:"Split purchases are unavailable in this workspace."};
     const w = await wid();
     const me = await getCurrentUser();
     if (!me) return { ok: false, error: "Sign in again." };
     const db = await getDb();
-    const data = await createWithHistory(db, w, { id: me.id, name: me.name || me.email || "Workspace member" }, input);
+    const ctx=z.object({draft:z.object({workspace:z.string(),actor:z.string(),version:z.number().int().positive()}).optional()}).parse(input).draft;
+    if(ctx && (!merchantRulesEnabled()||ctx.workspace!==w||ctx.actor!==me.id))return {ok:false,error:"Reopen this draft in its original workspace."};
+    const data = await createWithHistory(db, w, { id: me.id, name: me.name || me.email || "Workspace member" }, input,ctx?.version);
     revalidatePath("/");
     return { ok: true, data };
   } catch (e) {
@@ -151,7 +192,9 @@ export async function createTransaction(input: unknown): Promise<Result<{ id: st
 
 export async function updateTransaction(id: string, input: unknown): Promise<Result> {
   try {
-    const d = txSchema.partial().parse(input);
+    const parts=z.union([z.tuple([]),allocationSchema]);
+    const d = txSchema.partial().extend({allocations:parts.optional(),previousAllocations:parts.optional(),expectedRevision:z.string().regex(/^\d{1,10}$/).optional()}).parse(input);
+    if(d.allocations && (!merchantRulesEnabled() || !d.previousAllocations))return {ok:false,error:"Reopen this purchase before editing its split."};
     const w = await wid();
     const db = await getDb();
     const me = await getCurrentUser();
@@ -160,18 +203,27 @@ export async function updateTransaction(id: string, input: unknown): Promise<Res
     const patch: Record<string,unknown> = {};
     const fields = {type:"type",amount:"amount",date:"date",note:"note",accountId:"account_id",categoryId:"category_id"} as const;
     for (const key of Object.keys(fields) as (keyof typeof fields)[]) if (d[key] !== undefined) patch[fields[key]] = d[key];
-    const updated = await editWithHistory(db,w,id,{id:me.id,name:me.name || me.email},patch,d.tagIds);
-    if (!updated) return {ok:false,error:"Transaction not found."};
+    const updated = await editWithHistory(db,w,id,{id:me.id,name:me.name || me.email},patch,d.tagIds,
+      d.allocations?{lines:d.allocations,previous:d.previousAllocations!}:undefined,merchantRulesEnabled(),d.expectedRevision);
+    if (!updated) return {ok:false,error:"Couldn’t update this purchase. Refresh and check its current categories and amounts."};
     revalidatePath("/");
     return { ok: true };
   } catch (e) { return fail(e); }
 }
 
-export async function deleteTransaction(id: string): Promise<Result> {
+export async function deleteTransaction(id: string, expectedRevision?: string): Promise<Result> {
   try {
     const w = await wid();
+    const me = await getCurrentUser();
+    if (!me) return { ok: false, error: "Not signed in." };
     const db = await getDb();
-    await db.delete(transactions).where(and(eq(transactions.id, id), eq(transactions.workspaceId, w)));
+    if(merchantRulesEnabled()&&(await db.execute(sql`SELECT 1 FROM receipt_images r JOIN transactions t ON t.id=r.transaction_id
+      WHERE t.id=${id} AND t.workspace_id=${w}`)).rows.length)return {ok:false,error:"Remove the attached receipt before deleting this transaction. Download a copy first if you want to keep it."};
+    const removed = await db.delete(transactions).where(and(eq(transactions.id, id), eq(transactions.workspaceId, w),
+      expectedRevision===undefined?undefined:sql`transactions.xmin::text=${expectedRevision}`,
+      sql`EXISTS (SELECT 1 FROM workspace_members WHERE workspace_id=${w} AND user_id=${me.id} AND role IN ('owner','member') FOR SHARE)`))
+      .returning({ id: transactions.id });
+    if (!removed.length) return { ok:false, error:"Transaction unavailable or editing access was removed." };
     revalidatePath("/");
     return { ok: true };
   } catch (e) { return fail(e); }
@@ -387,6 +439,7 @@ export async function createGoal(input: unknown): Promise<Result<{ id: string }>
 
 export async function contributeGoal(id: string, amount: number): Promise<Result> {
   try {
+    if(merchantRulesEnabled())return {ok:false,error:"Use Planning to reserve or release cash from an account."};
     if (!Number.isFinite(amount) || amount === 0) return { ok: false, error: "Enter an amount." };
     const w = await wid();
     const db = await getDb();
@@ -401,6 +454,10 @@ export async function deleteGoal(id: string): Promise<Result> {
   try {
     const w = await wid();
     const db = await getDb();
+    if(merchantRulesEnabled()&&(await db.execute(sql`SELECT 1 FROM goal_reservations WHERE goal_id=${id} AND workspace_id=${w} LIMIT 1`)).rows.length)
+      return {ok:false,error:"This goal has reservation history. Release any remaining funds in Planning."};
+    if(merchantRulesEnabled()&&(await db.execute(sql`SELECT 1 FROM goal_opening_reviews WHERE goal_id=${id} AND workspace_id=${w} LIMIT 1`)).rows.length)
+      return {ok:false,error:"This goal has recorded opening reviews and must be retained for its history."};
     await db.delete(goals).where(and(eq(goals.id, id), eq(goals.workspaceId, w)));
     revalidatePath("/");
     return { ok: true };
@@ -421,7 +478,8 @@ export async function createSplit(input: unknown): Promise<Result> {
     if (d.debtorId === d.creditorId) return { ok: false, error: "Pick two different people." };
     const w = await wid();
     const db = await getDb();
-    const mem = await db.select({ userId: workspaceMembers.userId }).from(workspaceMembers).where(eq(workspaceMembers.workspaceId, w));
+    const mem = await db.select({ userId: workspaceMembers.userId }).from(workspaceMembers)
+      .where(and(eq(workspaceMembers.workspaceId, w), inArray(workspaceMembers.role, householdRoles)));
     const ids = new Set(mem.map((m) => m.userId));
     if (!ids.has(d.debtorId) || !ids.has(d.creditorId)) return { ok: false, error: "Both people must be members of this tracker." };
     await db.insert(splits).values({ workspaceId: w, note: d.note ?? "", creditorId: d.creditorId, debtorId: d.debtorId, amount: String(d.amount) });
@@ -452,7 +510,8 @@ export async function deleteSplit(id: string): Promise<Result> {
   try {
     const w = await wid();
     const db = await getDb();
-    await db.delete(splits).where(and(eq(splits.id, id), eq(splits.workspaceId, w)));
+    const removed = await db.delete(splits).where(and(eq(splits.id, id), eq(splits.workspaceId, w), isNull(splits.settledAt))).returning({id:splits.id});
+    if (!removed.length) return {ok:false,error:"This item was already settled or removed. Refresh shared expenses."};
     revalidatePath("/");
     return { ok: true };
   } catch (e) { return fail(e); }

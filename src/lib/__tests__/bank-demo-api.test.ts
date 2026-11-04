@@ -16,6 +16,7 @@ beforeEach(() => {
   vi.stubEnv("DATABASE_URL", "");
   vi.stubEnv("VERCEL", "");
   vi.stubEnv("BANK_SYNC_MODE", "demo");
+  vi.stubEnv("BANK_TOOLS_ENABLED", "1");
   vi.stubEnv("PGLITE_PATH", ".pglite-preview");
   mocks.workspace.mockResolvedValue({ id: "owner-workspace", role: "owner" });
   mocks.store.mockReturnValue({ read: mocks.read, change: mocks.change });

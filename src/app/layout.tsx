@@ -2,6 +2,9 @@ import type { Metadata, Viewport } from "next";
 import { Inter, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
+import { PreviewFeatures } from "@/components/settings-provider";
+import { householdFeaturesEnabled } from "@/lib/household-features";
+import { merchantRulesEnabled } from "@/lib/merchant-rule-feature";
 import { ServiceWorkerRegister } from "@/components/service-worker-register";
 import { DensityPreference } from "@/components/display-density";
 import { Toaster } from "@/components/ui/sonner";
@@ -42,7 +45,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     >
       <body className="min-h-full bg-background text-foreground">
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
-          {children}
+          <PreviewFeatures rules={merchantRulesEnabled()} comments={householdFeaturesEnabled()}>{children}</PreviewFeatures>
           <DensityPreference />
           <Toaster richColors position="top-center" />
           <ServiceWorkerRegister />

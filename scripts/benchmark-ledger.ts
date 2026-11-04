@@ -55,6 +55,7 @@ async function main() {
   } finally {
     await client.close();
   }
+  if (process.argv.includes("--stdout")) return;
   const directory = join(process.cwd(), ".codex", "benchmarks");
   mkdirSync(directory, { recursive: true });
   const file = join(directory, `ledger-${new Date().toISOString().replace(/[:.]/g, "-")}.json`);

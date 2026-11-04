@@ -24,7 +24,7 @@ export function BudgetsSection({
   categories: CategoryDTO[];
   canEdit?: boolean;
 }) {
-  const { money } = useFormat();
+  const { money, balanceMoney } = useFormat();
   const b = data.budgets;
   const monthProgress = Math.round((b.dayOfMonth / b.daysInMonth) * 100);
 
@@ -59,7 +59,7 @@ export function BudgetsSection({
         <Hero
           accent={!overBudget}
           label="Projected month-end spend"
-          value={money(b.totalProjected)}
+          value={balanceMoney(b.totalProjected)}
           tone={overBudget ? "text-negative" : undefined}
           note={
             <>
@@ -73,7 +73,7 @@ export function BudgetsSection({
           <div className="mt-3 space-y-1.5">
             <Meter pct={(b.totalProjected / (b.totalBudget || 1)) * 100} color="var(--brand)" over={overBudget} />
             <div className="flex justify-between text-[11px] text-muted-foreground">
-              <span>{money(b.totalSpent)} spent so far</span>
+              <span>{balanceMoney(b.totalSpent)} spent so far</span>
               <span>day {b.dayOfMonth} of {b.daysInMonth} · {monthProgress}%</span>
             </div>
           </div>
@@ -104,7 +104,7 @@ export function BudgetsSection({
           <ul className="space-y-3.5">
             {b.items.map((i) => {
               const spentPct = (i.spent / (i.budget || 1)) * 100;
-              const projPct = Math.min(100, (i.projected / (i.budget || 1)) * 100);
+              const projPct = Math.max(0, Math.min(100, (i.projected / (i.budget || 1)) * 100));
               const over = i.projected > i.budget;
               const alreadyOver = i.spent > i.budget;
               return (
@@ -113,7 +113,7 @@ export function BudgetsSection({
                     <Tile color={i.color} icon={i.icon} />
                     <span className="flex-1 truncate">{i.name}</span>
                     <span className={cn("amount text-xs tabular-nums", alreadyOver ? "font-medium text-negative" : "text-muted-foreground")}>
-                      {money(i.spent)} / {money(i.budget)}
+                      {balanceMoney(i.spent)} / {money(i.budget)}
                     </span>
                   </div>
                   {/* Two readings on one track: solid = spent, marker = where
@@ -133,7 +133,7 @@ export function BudgetsSection({
                       {Math.round(spentPct)}% used
                     </span>
                     <span className={over ? "font-medium text-negative" : "text-muted-foreground"}>
-                      heading for {money(i.projected)}
+                      heading for {balanceMoney(i.projected)}
                       {over ? ` · ${money(i.projected - i.budget)} over` : ""}
                     </span>
                   </div>
@@ -142,7 +142,7 @@ export function BudgetsSection({
             })}
           </ul>
           <Caveat>
-            Projection assumes the rest of the month continues at this month&apos;s pace so far ({money(b.totalSpent)} over {b.dayOfMonth} day
+            Categories with a net refund keep their current credit. Other categories assume the rest of the month continues at this month&apos;s pace so far ({balanceMoney(b.totalSpent)} over {b.dayOfMonth} day
             {b.dayOfMonth === 1 ? "" : "s"}). One-off purchases early in the month will overstate it.
           </Caveat>
         </CardContent>
@@ -159,7 +159,7 @@ export function BudgetsSection({
         </div>
       )}
 
-      <BudgetHistory history={b.history} money={money} />
+      <BudgetHistory history={b.history} money={balanceMoney} />
     </div>
   );
 }

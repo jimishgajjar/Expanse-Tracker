@@ -1,6 +1,5 @@
 import { createHash } from "node:crypto";
 import { inflateRawSync } from "node:zlib";
-import ExcelJS from "exceljs";
 import { fields, type Entry, type Mapping, type Source } from "./file-import-model";
 import { decimalMoney,moneyCents,statementDate } from "./statement-review";
 
@@ -50,7 +49,7 @@ export async function parseSource(file:File):Promise<Source>{
   const buf=Buffer.from(await file.arrayBuffer());
   let records:{line:number;cells:string[]}[]=[];
   if(/\.xlsx$/i.test(file.name)){
-    try {boundedZip(buf);const wb=new ExcelJS.Workbook();
+    try {boundedZip(buf);const {default:ExcelJS}=await import("exceljs");const wb=new ExcelJS.Workbook();
       await wb.xlsx.load(buf as unknown as Parameters<typeof wb.xlsx.load>[0]);
       const sheet=wb.getWorksheet("Transactions")??(wb.worksheets.length===1?wb.worksheets[0]:null);
       if(!sheet)fail("Name the transaction sheet Transactions, or use a single-sheet workbook.");

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import {purchasesInCategory} from "@/lib/purchase-allocation";
 import { getSession } from "@/lib/session";
 import { getAllTransactions } from "@/lib/queries";
 
@@ -10,6 +11,6 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   if (!s) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const { id } = await params;
   const all = await getAllTransactions();
-  const transactions = all.filter((t) => t.categoryId === id);
+  const transactions = purchasesInCategory(all,id);
   return NextResponse.json({ transactions });
 }

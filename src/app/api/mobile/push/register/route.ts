@@ -1,13 +1,12 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { eq } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { pushSubscriptions } from "@/lib/db/schema";
 import { getSession } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 
-const schema = z.object({ token: z.string().min(1), platform: z.string().optional() });
+const schema = z.object({ token: z.string().max(512).regex(/^(ExpoPushToken|ExponentPushToken)\[[A-Za-z0-9_-]+\]$/), platform: z.enum(["ios","android"]).optional() });
 
 /** Store an Expo push token. Reuses the web-push table: the token goes in
     `endpoint`, and the platform marker in `auth` lets the sender route native
@@ -20,21 +19,8 @@ export async function POST(req: Request) {
   if (!p.success) return NextResponse.json({ error: "Invalid push token." }, { status: 400 });
 
   const db = await getDb();
-  const [existing] = await db
-    .select({ id: pushSubscriptions.id })
-    .from(pushSubscriptions)
-    .where(eq(pushSubscriptions.endpoint, p.data.token))
-    .limit(1);
-
-  if (existing) {
-    await db.update(pushSubscriptions).set({ userId: s.user.id }).where(eq(pushSubscriptions.id, existing.id));
-  } else {
-    await db.insert(pushSubscriptions).values({
-      userId: s.user.id,
-      endpoint: p.data.token,
-      p256dh: "expo",
-      auth: p.data.platform ?? "expo",
-    });
-  }
+  const device = {userId:s.user.id,p256dh:"expo",auth:p.data.platform ?? "expo"};
+  await db.insert(pushSubscriptions).values({...device,endpoint:p.data.token})
+    .onConflictDoUpdate({target:pushSubscriptions.endpoint,set:device});
   return NextResponse.json({ ok: true });
 }

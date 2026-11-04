@@ -5,13 +5,14 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth";
-import { api } from "@/lib/api";
+import { bindApi } from "@/lib/api";
 import { qk } from "@/lib/query";
 import { Card, IconBubble, Loading } from "@/components/ui";
 import { colors, radius } from "@/lib/theme";
 import type { Member } from "@/lib/types";
 
 export default function Members() {
+  const api = bindApi();
   const router = useRouter();
   const me = useAuth((s) => s.user);
   const q = useQuery({ queryKey: qk.members(), queryFn: () => api<{ members: Member[]; invites: string[] }>("/members") });
@@ -58,6 +59,7 @@ export default function Members() {
       >
         <Text style={s.section}>Invite someone</Text>
         <Card style={{ marginBottom: 18, gap: 12 }}>
+          <Text style={{color:colors.inkSoft}}>Invitees choose whether to receive alerts. Someone new can sign up and verify the invited email to join.</Text>
           <TextInput
             style={s.input}
             value={email}
@@ -77,7 +79,7 @@ export default function Members() {
           </View>
           {error ? <Text style={s.error}>{error}</Text> : null}
           <Pressable style={[s.invite, busy && { opacity: 0.6 }]} onPress={invite} disabled={busy}>
-            {busy ? <ActivityIndicator color="#fff" /> : <Text style={s.inviteText}>Send invite</Text>}
+            {busy ? <ActivityIndicator color="#fff" /> : <Text style={s.inviteText}>Invite</Text>}
           </Pressable>
         </Card>
 

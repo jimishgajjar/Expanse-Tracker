@@ -12,6 +12,7 @@ export function SummaryCards({
   rangeLabel,
   accountsCount,
   comparison,
+  decisionView=false,
 }: {
   totalBalance: number;
   income: number;
@@ -19,6 +20,7 @@ export function SummaryCards({
   net: number;
   rangeLabel: string;
   accountsCount: number;
+  decisionView?:boolean;
   comparison?: { prevIncome: number; prevExpense: number } | null;
 }) {
   const { money, signedMoney, balanceMoney } = useFormat();
@@ -73,7 +75,7 @@ export function SummaryCards({
 
   return (
     <section
-      aria-label="Financial summary"
+      aria-label={decisionView?"Current position":"Financial summary"}
       className="balance-summary rounded-2xl border border-border/80 bg-card shadow-2xs"
     >
       <div className="balance-summary-main">
@@ -82,11 +84,11 @@ export function SummaryCards({
           <div>
             <div className="flex items-center justify-between gap-2">
               <span className="text-xs font-medium text-muted-foreground">
-                Total balance
+                {decisionView?"Current position":"Total balance"}
               </span>
               <span className="inline-flex items-center gap-1.5 rounded-full border border-brand/20 bg-brand/10 px-2 py-0.5 text-[10px] font-semibold text-brand">
                 <span className="size-1.5 rounded-full bg-brand animate-pulse" />
-                Live
+                {decisionView?"Ledger balance":"Live"}
               </span>
             </div>
             <h2
@@ -102,10 +104,10 @@ export function SummaryCards({
             <span className="flex items-center gap-1.5">
               <ShieldCheck className="size-3.5 text-brand" />
               <span>
-                {accountsCount} active {accountsCount === 1 ? "account" : "accounts"}
+                {accountsCount} {decisionView?"tracked":"active"} {accountsCount === 1 ? "account" : "accounts"}
               </span>
             </span>
-            <span className="text-[11px] font-medium text-foreground">Verified</span>
+            <span className="text-[11px] font-medium text-muted-foreground">{decisionView?"All ledger dates":"Verified"}</span>
           </div>
         </div>
 

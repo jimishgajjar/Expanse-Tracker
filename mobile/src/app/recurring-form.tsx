@@ -7,7 +7,7 @@ import { Feather } from "@expo/vector-icons";
 import { format, parseISO } from "date-fns";
 import { useQueryClient } from "@tanstack/react-query";
 import { useApp } from "@/lib/store";
-import { api } from "@/lib/api";
+import { bindApi } from "@/lib/api";
 import { qk } from "@/lib/query";
 import { Loading } from "@/components/ui";
 import { colors, radius } from "@/lib/theme";
@@ -15,6 +15,7 @@ import { colors, radius } from "@/lib/theme";
 const FREQ = ["weekly", "monthly", "yearly"] as const;
 
 export default function RecurringForm() {
+  const api = bindApi();
   const { data, token, ready } = useApp();
   const router = useRouter();
   const qc = useQueryClient();

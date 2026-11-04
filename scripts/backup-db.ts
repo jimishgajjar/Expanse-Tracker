@@ -15,6 +15,7 @@ import { drizzle } from "drizzle-orm/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
 import { neon } from "@neondatabase/serverless";
 import { backupMigrationsForTables } from "./backup-migrations";
+import { debtTables, currencyTables } from "../src/lib/finance-tables";
 
 const backupArgs = process.argv.slice(2);
 let migrationsFolder = backupArgs.find(a => a.startsWith("--migrations="))?.slice(13) ?? "./drizzle";
@@ -96,8 +97,11 @@ function comparisonRow(table: string, row: Row): string {
   );
 }
 const tableHash = (rows: Row[]) => hash(rows.map(canonical).sort().join("\n"));
-const tableSQL = (t: string) =>
-  `SELECT to_jsonb(t) AS row FROM public."${t}" t`;
+const financeTables=new Set<string>([...debtTables,...currencyTables,"opening_cutoffs"]);
+const tableSQL = (t: string) => financeTables.has(t)
+  ? `SELECT (SELECT jsonb_object_agg(key, CASE WHEN jsonb_typeof(value)='number' THEN to_jsonb(value::text) ELSE value END)
+      FROM jsonb_each(to_jsonb(t))) AS row FROM public."${t}" t`
+  : `SELECT to_jsonb(t) AS row FROM public."${t}" t`;
 const columnsSQL = `SELECT table_name, column_name, data_type, udt_name, is_nullable, column_default FROM information_schema.columns WHERE table_schema='public' ORDER BY table_name, ordinal_position`;
 const tablesSQL = `SELECT table_name FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE' ORDER BY table_name`;
 
@@ -121,6 +125,15 @@ async function capture(): Promise<{ snapshot: Snapshot; source: string }> {
     }
     if (names.includes("file_imports") && existsSync(join(migrationsFolder,"0013_file_imports.sql"))) {
       TABLES.push("file_imports"); FINANCIAL.push("file_imports"); queries.push(tableSQL("file_imports"));
+    }
+    if (names.includes("merchant_rule_versions") && existsSync(join(migrationsFolder,"0014_merchant_rules.sql"))) {
+      TABLES.push("merchant_rule_versions"); FINANCIAL.push("merchant_rule_versions"); queries.push(tableSQL("merchant_rule_versions"));
+    }
+    if(names.includes("purchase_allocations")){
+      TABLES.push("purchase_allocations"); FINANCIAL.push("purchase_allocations"); queries.push(tableSQL("purchase_allocations"));
+    }
+    for(const table of ["receipt_images","capture_drafts","monthly_plans","goal_reservations","pay_period_plans","annual_goal_plans","refund_links","budget_moves","goal_opening_reviews","forecast_scenarios","personal_ledgers","account_shares","reimbursements","transaction_comments","notification_preferences","invitation_preferences","comment_mentions",...debtTables,...currencyTables,"household_setup","opening_cutoffs","pilot_feedback"])if(names.includes(table)){
+      TABLES.push(table); FINANCIAL.push(table); queries.push(tableSQL(table));
     }
   }
   let results: Row[][];
@@ -253,7 +266,7 @@ async function main() {
       const baseline = decryptBackup(readFileSync(resolve(value("compare-encrypted")!)),process.env.BACKUP_KEY ?? "") as {snapshot:Snapshot;source:string};
       if (baseline.source !== source) throw new Error("Backup comparison source mismatch.");
       for (const table of FINANCIAL) {
-        if (["reconciliation_sessions","file_imports"].includes(table) && !baseline.snapshot.tables[table]) continue;
+        if (["reconciliation_sessions","file_imports","merchant_rule_versions","purchase_allocations","receipt_images","capture_drafts","monthly_plans","goal_reservations","pay_period_plans","annual_goal_plans","refund_links","budget_moves","goal_opening_reviews","forecast_scenarios","personal_ledgers","account_shares","reimbursements","transaction_comments","notification_preferences","invitation_preferences","comment_mentions",...debtTables,...currencyTables,"household_setup","opening_cutoffs","pilot_feedback"].includes(table) && !baseline.snapshot.tables[table]) continue;
         const current = new Set(stored.snapshot.tables[table].map(row => comparisonRow(table,row)));
         if (baseline.snapshot.tables[table].some(row => !current.has(comparisonRow(table,row)))) throw new Error(`Existing records changed in ${table}. Investigate without restoring over newer data.`);
       }
@@ -338,7 +351,7 @@ async function main() {
       { before: number; after: number; missingOrChanged: number }
     > = {};
     for (const table of FINANCIAL) {
-      if (["reconciliation_sessions","file_imports"].includes(table) && !existsSync(join(resolve(previous),`${table}.json`))) continue;
+      if (["reconciliation_sessions","file_imports","merchant_rule_versions","purchase_allocations","receipt_images","capture_drafts","monthly_plans","goal_reservations","pay_period_plans","annual_goal_plans","refund_links","budget_moves","goal_opening_reviews","forecast_scenarios","personal_ledgers","account_shares","reimbursements","transaction_comments","notification_preferences","invitation_preferences","comment_mentions",...debtTables,...currencyTables,"household_setup","opening_cutoffs","pilot_feedback"].includes(table) && !existsSync(join(resolve(previous),`${table}.json`))) continue;
       const old: Row[] = JSON.parse(
         readFileSync(join(resolve(previous), `${table}.json`), "utf8"),
       );

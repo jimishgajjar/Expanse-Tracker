@@ -17,7 +17,7 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
   const s = await getSession();
   if (!s) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const { id } = await params;
-  const res = await deleteTransaction(id);
+  const res = await deleteTransaction(id, new URL(_req.url).searchParams.get("revision") ?? undefined);
   if (!res.ok) return NextResponse.json({ error: res.error ?? "Couldn't delete." }, { status: 400 });
   return NextResponse.json({ ok: true });
 }

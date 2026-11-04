@@ -4,12 +4,13 @@ import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { useApp } from "@/lib/store";
-import { api } from "@/lib/api";
+import { bindApi } from "@/lib/api";
 import { Loading } from "@/components/ui";
 import { IconColorPicker } from "@/components/icon-color-picker";
 import { colors, radius } from "@/lib/theme";
 
 export default function CategoryForm() {
+  const api = bindApi();
   const { data, reload, token, ready } = useApp();
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id?: string }>();

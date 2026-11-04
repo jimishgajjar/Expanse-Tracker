@@ -5,19 +5,22 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { useApp } from "@/lib/store";
 import { useAuth } from "@/lib/auth";
-import { api } from "@/lib/api";
+import { bindApi } from "@/lib/api";
 import { Card, ErrorView, IconBubble, Loading } from "@/components/ui";
 import { TxRow } from "@/components/tx-row";
 import { PeriodBar } from "@/components/period-bar";
 import { DonutChart } from "@/components/donut-chart";
 import { colors, radius } from "@/lib/theme";
+import { FinancialPosition } from "@/components/financial-position";
 
 export default function Home() {
   const { data, loading, error, reload, money, signOut } = useApp();
   const user = useAuth((st) => st.user);
   const router = useRouter();
+  const [original,setOriginal]=useState(false);
 
   const summary = useMemo(() => {
+    if(data?.summary) return data.summary;
     const txns = data?.transactions ?? [];
     const income = txns.filter((t) => t.type === "income").reduce((s, t) => s + t.amount, 0);
     const expense = txns.filter((t) => t.type === "expense").reduce((s, t) => s + t.amount, 0);
@@ -66,7 +69,8 @@ export default function Home() {
           </View>
         </View>
 
-        <View style={{ marginBottom: 12 }}>
+        {data.finance && <FinancialPosition finance={data.finance} original={original} toggle={()=>setOriginal(!original)}/>}
+        {(!data.finance?.report || original) && <><View style={{ marginBottom: 12 }}>
           <PeriodBar />
         </View>
 
@@ -86,7 +90,7 @@ export default function Home() {
             {money.balance(summary.balance)}
           </Text>
           <Text style={s.summaryHint}>
-            across {accounts.length} account{accounts.length === 1 ? "" : "s"}
+            across {data.summary?data.accounts.length:accounts.length} accounts
           </Text>
         </Card>
 
@@ -179,12 +183,14 @@ export default function Home() {
             </Card>
           </>
         ) : null}
+        </>}
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 function VerifyBanner() {
+  const api = bindApi();
   const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState(false);
   async function resend() {

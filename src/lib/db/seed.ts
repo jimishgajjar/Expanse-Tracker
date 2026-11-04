@@ -30,8 +30,9 @@ const INCOME_CATS = [
 ];
 
 /** Seed a workspace with default accounts + categories, and optional sample transactions. */
-export async function seed(db: DB, workspaceId: string, opts: { samples?: boolean } = {}) {
-  const accs = await db.insert(accounts).values(ACCOUNTS.map((a) => ({ ...a, workspaceId }))).returning();
+export async function seed(db: DB, workspaceId: string, opts: { samples?: boolean; emptyAccounts?:boolean } = {}) {
+  if (opts.samples && process.env.DATABASE_URL) throw Error("Demo entries require an isolated embedded database.");
+  const accs = opts.emptyAccounts && !opts.samples ? [] : await db.insert(accounts).values(ACCOUNTS.map((a) => ({ ...a, workspaceId }))).returning();
   const cats = await db
     .insert(categories)
     .values([
@@ -70,6 +71,7 @@ export async function seed(db: DB, workspaceId: string, opts: { samples?: boolea
 
 /** On a fresh local DB: create a demo user + their personal workspace + sample data. */
 export async function maybeSeed(db: DB) {
+  if (process.env.DATABASE_URL) throw Error("Demo seeding requires an isolated embedded database.");
   const hasUser = await db.select({ id: users.id }).from(users).limit(1);
   if (hasUser.length) return;
 

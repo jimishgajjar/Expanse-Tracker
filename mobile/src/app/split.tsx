@@ -5,13 +5,14 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
 import { useApp } from "@/lib/store";
-import { api } from "@/lib/api";
+import { bindApi } from "@/lib/api";
 import { qk } from "@/lib/query";
 import { Card, Loading } from "@/components/ui";
 import { colors, radius } from "@/lib/theme";
 import type { SplitData } from "@/lib/types";
 
 export default function Split() {
+  const api = bindApi();
   const { money } = useApp();
   const router = useRouter();
   const q = useQuery({ queryKey: qk.split(), queryFn: () => api<{ split: SplitData }>("/split") });

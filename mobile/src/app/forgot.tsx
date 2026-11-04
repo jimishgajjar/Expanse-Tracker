@@ -3,10 +3,11 @@ import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, StyleShee
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
-import { api } from "@/lib/api";
+import { bindApi } from "@/lib/api";
 import { colors, radius } from "@/lib/theme";
 
 export default function Forgot() {
+  const api = bindApi();
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [busy, setBusy] = useState(false);

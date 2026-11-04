@@ -20,9 +20,9 @@ export function DeleteAccountForm() {
   return (
     <form action={action} className="space-y-2 rounded-lg border border-destructive/30 bg-destructive/5 p-2.5">
       <p className="text-xs text-muted-foreground">
-        Permanently deletes your account and your personal tracker. Data you added to trackers other people own stays. Enter your password to confirm.
+        Export your records first. Closing permanently deletes your login and the trackers you own. Shared trackers with other members or pending invitations must be resolved before closure. Enter your password to confirm.
       </p>
-      <Input name="password" type="password" placeholder="Your password" autoComplete="current-password" required />
+      <Input aria-label="Confirm your current password" name="password" type="password" placeholder="Your password" autoComplete="current-password" required />
       {error && <p className="text-xs text-negative">{error}</p>}
       <div className="flex gap-2">
         <Button type="button" variant="outline" size="sm" className="flex-1" onClick={() => setConfirming(false)}>Cancel</Button>

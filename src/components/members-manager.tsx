@@ -96,6 +96,7 @@ export function MembersManager({
       }
     >
       <div className="space-y-4">
+        <p className="rounded-lg border bg-muted/30 p-3 text-sm">Everyone listed here can see this tracker’s accounts and transactions. Owners and editing members can change entries, including ones entered by someone else. Viewers can read them.</p>
         {isOwner && (
           <PanelCreate title="Invite someone">
             <InviteForm onInvited={onInvited} />
@@ -150,7 +151,7 @@ function InviteForm({
     start(async () => {
       const res = await inviteMember({ email, role });
       if (res.ok) {
-        toast.success(res.member ? "Member added" : "Invitation sent");
+        toast.success(res.member ? "Member added" : "Invitation saved for this email address");
         setEmail("");
         onInvited(res.member ?? null, res.invite ?? null);
       } else toast.error(res.error);
@@ -158,6 +159,7 @@ function InviteForm({
   }
   return (
     <form onSubmit={add} className="space-y-4">
+      <p className="text-xs text-muted-foreground">Invitees choose whether to receive alerts. For someone new, share the <a href="/signup" target="_blank" rel="noreferrer" className="text-brand underline">sign-up link</a> and ask them to verify the invited email.</p>
       <div className="flex gap-2">
         <Input
           aria-label="Email address"

@@ -17,6 +17,7 @@ async function create(): Promise<AppDb> {
     return drizzle(neon(url), { schema });
   }
 
+  if (process.env.VERCEL && !url) throw Error("Hosted tracker database is unavailable.");
   // Local dev with zero setup: an embedded Postgres (PGlite) persisted to
   // ./.pglite, auto-migrated and seeded on first use.
   const { PGlite } = await import("@electric-sql/pglite");

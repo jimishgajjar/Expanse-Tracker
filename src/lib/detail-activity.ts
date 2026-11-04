@@ -51,6 +51,11 @@ export function filterDetailActivity(
   const names = new Map(accounts.map((a) => [a.id, a.name]));
   const query = f.search.trim().toLowerCase();
   return entries
+    .map(e=>{
+      if(e.kind!=="transaction"||f.category==="all")return e;
+      const portion=e.item.allocations?.find(p=>p.categoryId===f.category);
+      return portion?{...e,item:{...e.item,receiptAmount:e.item.receiptAmount??e.item.amount,amount:Number(portion.amount)}}:e;
+    })
     .filter((e) => {
       const t = e.item;
       const touches = (id: string) =>
@@ -67,7 +72,7 @@ export function filterDetailActivity(
       if (
         f.category !== "all" &&
         (e.kind === "transfer" ||
-          (e.item.categoryId ?? "uncategorized") !== f.category)
+          (e.item.allocations?.length ? !e.item.allocations.some(p=>p.categoryId===f.category) : (e.item.categoryId ?? "uncategorized") !== f.category))
       )
         return false;
       if (

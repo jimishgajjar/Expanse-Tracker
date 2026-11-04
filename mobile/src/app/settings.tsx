@@ -1,11 +1,13 @@
 import { useState } from "react";
-import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Button, Platform, Pressable, RefreshControl, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { DeliveryChannel, NotificationOptions, NotificationTopic } from "../../../src/lib/notification-options";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { useApp } from "@/lib/store";
 import { useAuth } from "@/lib/auth";
-import { api } from "@/lib/api";
+import { bindApi } from "@/lib/api";
 import { registerForPush } from "@/lib/push";
 import { Card, Loading } from "@/components/ui";
 import { colors } from "@/lib/theme";
@@ -21,9 +23,13 @@ const CURRENCIES = [
 ];
 
 export default function Settings() {
+  const api = bindApi();
   const { data, loading, reload, signOut } = useApp();
   const user = useAuth((st) => st.user);
-  const setActiveWorkspace = useAuth((st) => st.setActiveWorkspace);
+  const switchTracker = useAuth((st) => st.switchTracker);
+  const phoneLock=useAuth(st=>st.phoneLock);
+  const configureLock=useAuth(st=>st.configureLock);
+  const [lockMessage,setLockMessage]=useState("");
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [notif, setNotif] = useState<string | null>(null);
@@ -47,9 +53,7 @@ export default function Settings() {
     if (busy || workspaceId === data?.activeWorkspaceId) return;
     setBusy(true);
     try {
-      await api("/workspace/switch", { method: "POST", body: { workspaceId } });
-      setActiveWorkspace(workspaceId);
-      await reload();
+      await switchTracker(workspaceId);
     } catch {
       /* ignore */
     } finally {
@@ -59,7 +63,7 @@ export default function Settings() {
   async function enableNotifications() {
     setNotif("Requesting…");
     const t = await registerForPush();
-    setNotif(t ? "Enabled on this device." : "Needs a development build (not Expo Go).");
+    setNotif(t ? "Enabled on this device." : "Push is unavailable. Check notification permission in phone settings, then retry from an installed build.");
   }
 
   return (
@@ -75,6 +79,14 @@ export default function Settings() {
         contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
         refreshControl={<RefreshControl refreshing={loading} onRefresh={reload} tintColor={colors.green} />}
       >
+        {Platform.OS!=="web" && <Card style={{gap:8,marginBottom:18}}>
+          <Text style={s.cardLabel}>Privacy on this phone</Text>
+          <Text>Lock on return with your face, fingerprint, or device passcode. Enable this to open device drafts while offline.</Text>
+          <Button title={phoneLock?"Turn off phone lock":"Enable phone lock"} disabled={busy} onPress={()=>{
+            setBusy(true);setLockMessage("");void configureLock(!phoneLock).catch(e=>setLockMessage(e.message)).finally(()=>setBusy(false));
+          }}/>
+          {lockMessage ? <Text accessibilityRole="alert">{lockMessage}</Text>:null}
+        </Card>}
         <Text style={s.section}>Account</Text>
         <Card style={{ marginBottom: 18 }}>
           <Text style={s.cardLabel}>Email</Text>
@@ -117,11 +129,14 @@ export default function Settings() {
           </Pressable>
         </Card>
 
-        <Text style={s.section}>Notifications</Text>
+        <Text style={s.section}>Reminders and digests</Text>
         <Card style={{ marginBottom: 18 }}>
+          {data.activeWorkspaceId ?
+            <NotificationChoices key={data.activeWorkspaceId} workspace={data.activeWorkspaceId} /> :
+            <Text style={s.cardLabel}>Open a household tracker to choose your reminders and digests.</Text>}
           <Pressable onPress={enableNotifications} style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
             <Feather name="bell" size={16} color={colors.ink} />
-            <Text style={s.rowText}>Enable notifications</Text>
+            <Text style={s.rowText}>Enable push on this device</Text>
           </Pressable>
           {notif ? <Text style={{ color: colors.inkSoft, fontSize: 13, marginTop: 8 }}>{notif}</Text> : null}
         </Card>
@@ -133,6 +148,39 @@ export default function Settings() {
       </ScrollView>
     </SafeAreaView>
   );
+}
+
+function NotificationChoices({workspace}: {workspace:string}) {
+  const api = bindApi();
+  const view = useAuth(state => state.viewKey);
+  const cache = useQueryClient();
+  const key = ["notification-choices",view,workspace] as const;
+  const path = "/notification-preferences?workspace=" + encodeURIComponent(workspace);
+  const options = useQuery({queryKey:key, queryFn:() => api<NotificationOptions>(path), enabled:!!view});
+  const save = useMutation({
+    mutationFn:(change:{topic:NotificationTopic; channel:DeliveryChannel; enabled:boolean}) => api<NotificationOptions>(path,{method:"PATCH",body:change}),
+    onSuccess:result => { if (view === useAuth.getState().viewKey) cache.setQueryData(key,result); },
+    onError:() => { if (view === useAuth.getState().viewKey) void cache.invalidateQueries({queryKey:key}); },
+  });
+  if (options.isError) return <Pressable accessibilityRole="button" onPress={() => void options.refetch()}>
+    <Text style={s.rowText}>Couldn’t load your choices. Tap to retry.</Text></Pressable>;
+  if (!options.data) return <Text style={s.cardLabel}>Loading your choices…</Text>;
+  return <View style={{gap:8, marginBottom:14}}>
+    <Text style={s.cardLabel}>Invitation choices apply across your account. Other choices apply only to this household, including comments that mention you.</Text>
+    {options.data.choices.map(row => <View key={row.topic} style={[s.divider,{paddingTop:8}]}>
+      <Text style={s.rowText}>{row.label}</Text>
+      <View style={{flexDirection:"row",gap:16,flexWrap:"wrap"}}>{(["email","push"] as const).map(channel =>
+        <View key={channel} style={{flexDirection:"row",gap:5,alignItems:"center"}}>
+          <Text style={s.cardLabel}>{channel === "email" ? "Email" : "Push"}</Text>
+          <Switch accessibilityLabel={row.label+" by "+channel} value={row[channel]}
+            disabled={save.isPending || (channel === "email" && !options.data.emailVerified && !row.email)}
+            onValueChange={enabled => save.mutate({topic:row.topic,channel,enabled})} />
+        </View>)}</View>
+    </View>)}
+    {!options.data.emailVerified && <Text style={s.cardLabel}>Verify your email address to receive email updates.</Text>}
+    {options.data.preview && <Text style={s.cardLabel}>This preview saves choices without sending messages.</Text>}
+    {save.isError && <Text accessibilityRole="alert" style={s.cardLabel}>Couldn’t confirm the change. Check your choices and try again.</Text>}
+  </View>;
 }
 
 const s = StyleSheet.create({

@@ -5,13 +5,14 @@ import { Feather } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
 import { differenceInCalendarDays, format, parseISO } from "date-fns";
 import { useApp } from "@/lib/store";
-import { api } from "@/lib/api";
+import { bindApi } from "@/lib/api";
 import { qk } from "@/lib/query";
 import { Card, IconBubble, Loading, Pill } from "@/components/ui";
 import { colors } from "@/lib/theme";
 import type { Recurring } from "@/lib/types";
 
 export default function Subscriptions() {
+  const api = bindApi();
   const { data, money } = useApp();
   const router = useRouter();
   const q = useQuery({ queryKey: qk.recurring(), queryFn: () => api<{ recurring: Recurring[] }>("/recurring") });

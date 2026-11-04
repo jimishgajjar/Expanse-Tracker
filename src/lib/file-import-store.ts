@@ -30,6 +30,16 @@ export async function stageBatch(db:AppDb,s:Scope,file:Source,mapping:Mapping,co
   const setup=await importSetup(db,s,file.headers);
   if(setup.currency!==confirmedCurrency)throw new ImportProblem("Confirm the workspace currency before previewing rows.");
   const rows=normalize(file,mapping,setup.currency,setup.accounts,setup.categories);
+  // Old deployments may not have the optional setup tables yet.
+  const installed = await db.execute(sql`SELECT to_regclass('public.opening_cutoffs') IS NOT NULL AS present`);
+  if (installed.rows[0]?.present) {
+    const result = await db.execute(sql`SELECT account_id,through_date::text FROM opening_cutoffs WHERE workspace_id=${s.workspace} AND ${authorized(s)}`);
+    const dates = new Map(result.rows.map(c => [String(c.account_id),String(c.through_date)]));
+    for (const row of rows) {
+      const through = dates.get(row.accountId ?? "");
+      if (through && row.date <= through) row.cutoff = through;
+    }
+  }
   const valid=rows.filter(r=>!r.errors.length);
   if(valid.length){
     const matches=await db.execute(sql`SELECT r->>'line' AS line,file_import_candidates(${s.workspace},r->>'accountId',(r->>'date')::date,(r->>'type')::tx_kind,(r->>'amount')::numeric) AS candidates FROM jsonb_array_elements(${JSON.stringify(valid)}::jsonb) r WHERE ${authorized(s)}`);

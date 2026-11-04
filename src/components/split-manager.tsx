@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Check, Plus, Trash2, Handshake } from "lucide-react";
 import { ManagerPanel, PanelCreate } from "./manager-panel";
+import { ReimbursementDialog, SettlementHistory } from "./reimbursement-dialog";
 import {
   Select,
   SelectContent,
@@ -45,7 +46,7 @@ export function SplitManager({
       description="See who owes whom, record shared costs, and settle up."
     >
       <div className="space-y-4">
-        {otherMembers.length === 0 ? (
+        {otherMembers.length === 0 && data.splits.length === 0 ? (
           <p className="py-6 text-center text-sm text-muted-foreground">
             Invite someone to your tracker (via Sharing) to split expenses with
             them.
@@ -55,7 +56,7 @@ export function SplitManager({
             <div className="space-y-2">
               {data.balances.length === 0 && (
                 <div className="rounded-xl border bg-card p-4 text-center text-sm text-muted-foreground">
-                  All settled up 🎉
+                  You have no outstanding reimbursements.
                 </div>
               )}
               {data.balances.map((b) => (
@@ -84,12 +85,14 @@ export function SplitManager({
                       {money(Math.abs(b.net))}
                     </div>
                   </div>
-                  {canEdit && <SettleButton userId={b.userId} name={b.name} />}
+                  {canEdit && (!data.reimbursementWorkspace || otherMembers.some(member => member.id === b.userId)) && (data.reimbursementWorkspace
+                    ? <ReimbursementDialog workspace={data.reimbursementWorkspace} peer={b.userId} name={b.name}/>
+                    : <SettleButton userId={b.userId} name={b.name} />)}
                 </div>
               ))}
             </div>
 
-            {canEdit && (
+            {canEdit && otherMembers.length > 0 && (
               <PanelCreate
                 title="Add a shared expense"
                 defaultOpen={data.splits.length === 0}
@@ -116,6 +119,7 @@ export function SplitManager({
             )}
           </>
         )}
+        {data.reimbursementWorkspace && data.settlements && <SettlementHistory workspace={data.reimbursementWorkspace} rows={data.settlements} canEdit={canEdit}/>}
       </div>
     </ManagerPanel>
   );

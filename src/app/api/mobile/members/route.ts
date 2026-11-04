@@ -9,7 +9,7 @@ export async function GET() {
   const s = await getSession();
   if (!s) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const [members, invites] = await Promise.all([getMembers(), getInvites()]);
-  return NextResponse.json({ members, invites });
+  return NextResponse.json({ members, invites }, { headers: { "Cache-Control": "private, no-store" } });
 }
 
 export async function POST(req: Request) {

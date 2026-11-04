@@ -1,14 +1,16 @@
 "use client";
 
-import { useState, useTransition, type ReactElement } from "react";
+import { use, useState, useTransition, type ReactElement } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
+import {SheetClose} from "./ui/sheet";
 import { toast } from "sonner";
 import { Plus, Trash2, Target } from "lucide-react";
 import { ManagerPanel, PanelCreate } from "./manager-panel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { useFormat } from "@/components/settings-provider";
+import { useFormat,MerchantRulesContext } from "@/components/settings-provider";
 import { contributeGoal, createGoal, deleteGoal } from "@/lib/actions";
 import type { GoalDTO } from "@/lib/queries";
 
@@ -22,7 +24,8 @@ export function GoalsManager({
   goals: GoalDTO[];
 }) {
   const { money } = useFormat();
-  const [items, setItems] = useState(goals);
+  const [localItems, setItems] = useState(goals);
+  const items=use(MerchantRulesContext)?goals:localItems;
   const totalSaved = items.reduce((s, g) => s + g.savedAmount, 0);
   const totalTarget = items.reduce((s, g) => s + g.targetAmount, 0);
 
@@ -100,6 +103,7 @@ function AddForm({ onAdded }: { onAdded: (g: GoalDTO) => void }) {
       });
       if (res.ok && res.data) {
         toast.success("Goal added");
+        window.dispatchEvent(new Event("ledger-changed"));
         onAdded({
           id: res.data.id,
           name: name.trim(),
@@ -175,6 +179,7 @@ function GoalCard({
       ? Math.min(100, Math.round((goal.savedAmount / goal.targetAmount) * 100))
       : 0;
   const done = goal.targetAmount > 0 && goal.savedAmount >= goal.targetAmount;
+  const backed=use(MerchantRulesContext);
 
   function contribute(e: React.FormEvent) {
     e.preventDefault();
@@ -194,6 +199,7 @@ function GoalCard({
     const res = await deleteGoal(goal.id);
     if (res.ok) {
       toast.success("Goal removed");
+      window.dispatchEvent(new Event("ledger-changed"));
       onRemoved(goal.id);
       router.refresh();
     } else toast.error(res.error);
@@ -212,14 +218,14 @@ function GoalCard({
           </div>
         </div>
         <div className="flex items-center gap-1">
-          <Button
+          {backed?<SheetClose nativeButton={false} render={<Link className="text-xs font-medium text-brand" href="/?tab=planning#monthly-plan"/>}>Allocate cash</SheetClose>:<Button
             size="icon-sm"
             variant="ghost"
             aria-label="Add money"
             onClick={() => setAdding((v) => !v)}
           >
             <Plus className="size-3.5" />
-          </Button>
+          </Button>}
           <ConfirmDialog
             trigger={
               <Button size="icon-sm" variant="ghost" aria-label="Delete goal">
@@ -243,6 +249,7 @@ function GoalCard({
           style={{ width: `${pct}%`, backgroundColor: goal.color }}
         />
       </div>
+      {backed&&<p className="mt-1 text-xs text-muted-foreground">{money(goal.reserved??0)} reserved · {money(goal.outside??0)} confirmed separate savings{(goal.openingProgress??0)>0&&<> · Original entry {money(goal.openingProgress??0)} ({goal.openingReviewed?"reviewed":"awaiting review"}) <SheetClose nativeButton={false} render={<Link className="underline" href="/?tab=planning#goal-opening-review"/>}>View review</SheetClose></>}</p>}
       {adding && (
         <form onSubmit={contribute} className="mt-2 flex gap-2">
           <Input

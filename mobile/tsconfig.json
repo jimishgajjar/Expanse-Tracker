@@ -11,6 +11,7 @@
       ]
     }
   },
+  "exclude": ["node_modules", "src/lib/device-recovery.test.ts"],
   "include": [
     "**/*.ts",
     "**/*.tsx"

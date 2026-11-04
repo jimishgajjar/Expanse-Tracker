@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useDeferredValue } from "react";
+import { use, useState, useDeferredValue } from "react";
+import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
 import {
   Search,
@@ -17,11 +18,12 @@ import { ActivityRows } from "./transactions-list";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { useRemoteData } from "./use-remote-data";
-import { useFormat } from "./settings-provider";
+import { useFormat, MerchantRulesContext } from "./settings-provider";
 import { mergeActivity } from "@/lib/activity";
 import { cn } from "@/lib/utils";
 import type { ActivityPage } from "@/lib/activity-query";
 import type { AccountDTO, CategoryDTO } from "@/lib/queries";
+const BulkActivity=dynamic(()=>import("./bulk-activity"));
 
 export function PagedActivity({
   start,
@@ -39,10 +41,13 @@ export function PagedActivity({
   canEdit: boolean;
 }) {
   const sp = useSearchParams();
+  const bulkAvailable=use(MerchantRulesContext)&&canEdit;
+  const [bulk,setBulk]=useState(false);
   const [type, setType] = useState(sp.get("type") ?? "all");
   const [account, setAccount] = useState(sp.get("account") ?? "");
   const [category, setCategory] = useState(sp.get("category") ?? "");
   const [search, setSearch] = useState("");
+  const [entry,setEntry]=useState(sp.get("entry")??"");
   const query = useDeferredValue(search);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
@@ -58,6 +63,7 @@ export function PagedActivity({
     page: String(page),
     pageSize: String(pageSize),
     workspace,
+    ...(entry?{entry}:{}),
   });
 
   const { data, error, retry } = useRemoteData<ActivityPage>(
@@ -71,7 +77,7 @@ export function PagedActivity({
   };
 
   const hasActiveFilters =
-    type !== "all" || account !== "" || category !== "" || search !== "";
+    type !== "all" || account !== "" || category !== "" || search !== "" || entry !== "";
 
   const clearAllFilters = () => {
     reset(() => {
@@ -79,6 +85,7 @@ export function PagedActivity({
       setAccount("");
       setCategory("");
       setSearch("");
+      setEntry("");
     });
   };
 
@@ -91,6 +98,7 @@ export function PagedActivity({
 
   return (
     <section className="space-y-4" aria-label="Transaction ledger">
+      {entry&&<p className="text-xs text-muted-foreground">Showing the source entry for this forecast. Reset filters to see the rest of this period.</p>}
       {/* 1. Command Filter Bar */}
       <div className="space-y-3">
         {/* Segmented Type Picker */}
@@ -266,7 +274,9 @@ export function PagedActivity({
           </div>
 
           {/* Activity Rows or Empty State */}
-          {data.total ? (
+          {bulkAvailable&&<Button type="button" size="sm" variant="outline" aria-expanded={bulk}
+            onClick={()=>setBulk(open=>!open)}>{bulk?"Close bulk edit":"Bulk edit"}</Button>}
+          {bulkAvailable&&bulk?<BulkActivity key={params.toString()} workspace={workspace} rows={data.transactions} categories={categories}/>:data.total ? (
             <ActivityRows
               entries={mergeActivity(data.transactions, data.transfers)}
               accounts={accounts}

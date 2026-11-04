@@ -1,7 +1,9 @@
 import { notFound, redirect } from "next/navigation";
+import {purchasesInCategory} from "@/lib/purchase-allocation";
 import { DetailShell } from "@/components/detail-shell";
 import { getCurrentUser } from "@/lib/session";
 import { getActiveWorkspace } from "@/lib/workspace";
+import { canEditSharedLedger } from "@/lib/household-access";
 import {
   getAccountsWithBalances,
   getAllTransactions,
@@ -38,11 +40,11 @@ export default async function CategoryPage({
   const category = categories.find((c) => c.id === id);
   if (!category) notFound();
 
-  const txns = allTx.filter((t) => t.categoryId === id);
+  const txns = purchasesInCategory(allTx,id);
   const categoryBudget = budgets.find((b) => b.categoryId === id) ?? null;
 
   return (
-    <SettingsProvider currency={settings.currency} locale={settings.locale}>
+    <SettingsProvider workspace={ws?.id} actor={user.id} currency={settings.currency} locale={settings.locale}>
       <DetailShell
         accounts={accounts}
         section="Categories"
@@ -57,7 +59,7 @@ export default async function CategoryPage({
           categories={categories}
           categoryBudget={categoryBudget}
           tags={tags}
-          canEdit={ws?.role !== "viewer"}
+          canEdit={canEditSharedLedger(ws?.role)}
         />
       </DetailShell>
     </SettingsProvider>

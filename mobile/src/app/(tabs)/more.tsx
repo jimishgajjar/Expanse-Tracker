@@ -1,4 +1,4 @@
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Alert, Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
@@ -7,6 +7,8 @@ import { useAuth } from "@/lib/auth";
 import { Card } from "@/components/ui";
 import { tapLight } from "@/lib/haptics";
 import { colors, radius } from "@/lib/theme";
+import { currentDraftScope } from "@/lib/device-drafts";
+import { apiBase } from "@/lib/api";
 
 type Item = { label: string; icon: keyof typeof Feather.glyphMap; href: string; color: string };
 
@@ -15,6 +17,7 @@ const GROUPS: { title: string; items: Item[] }[] = [
     title: "Manage",
     items: [
       { label: "Categories", icon: "tag", href: "/categories", color: "#0b6e99" },
+      { label: "Device drafts", icon: "edit-3", href: "/device-drafts", color: "#0f7b6c" },
       { label: "Subscriptions & bills", icon: "repeat", href: "/subscriptions", color: "#6940a5" },
       { label: "Savings goals", icon: "target", href: "/goals", color: "#0f7b6c" },
     ],
@@ -36,7 +39,7 @@ const GROUPS: { title: string; items: Item[] }[] = [
 ];
 
 export default function More() {
-  const { signOut } = useApp();
+  const { data,signOut } = useApp();
   const user = useAuth((st) => st.user);
   const router = useRouter();
   const initial = (user?.name || user?.email || "?").slice(0, 1).toUpperCase();
@@ -64,7 +67,7 @@ export default function More() {
           <View key={g.title}>
             <Text style={s.section}>{g.title}</Text>
             <Card style={{ padding: 0, marginBottom: 18 }}>
-              {g.items.map((it, i) => (
+              {g.items.filter(it=>it.href!=="/device-drafts" || currentDraftScope()).map((it, i) => (
                 <Pressable
                   key={it.href + it.label}
                   onPress={() => {
@@ -84,6 +87,16 @@ export default function More() {
           </View>
         ))}
 
+        <Text style={s.section}>Open on the website</Text>
+        <Text style={{color:colors.inkSoft,marginBottom:8}}>Confirm your tracker in the browser before making changes.</Text>
+        <Card style={{padding:0,marginBottom:18}}>
+          {[{name:"Planning & forecasts",path:"/?tab=planning"},...(data?.finance?[{name:"Debt & currencies",path:"/financial-position"}]:[])].map(item=>
+            <Pressable key={item.path} accessibilityRole="link" style={s.row} onPress={()=>{
+              const url=new URL(item.path,apiBase());
+              if(url.protocol!=="https:" && !["localhost","127.0.0.1","10.0.2.2"].includes(url.hostname)) return Alert.alert("Open the secure tracker website to continue.");
+              void Linking.openURL(url.href).catch(()=>Alert.alert("Could not open your browser."));
+            }}><Text style={s.rowText}>{item.name}</Text><Feather name="external-link" size={16} color={colors.inkSoft}/></Pressable>)}
+        </Card>
         <Pressable onPress={signOut} style={s.signOut}>
           <Feather name="log-out" size={16} color={colors.red} />
           <Text style={s.signOutText}>Sign out</Text>

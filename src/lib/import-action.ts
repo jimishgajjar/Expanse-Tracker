@@ -1,12 +1,13 @@
 "use server";
 
-import ExcelJS from "exceljs";
 import { revalidatePath } from "next/cache";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { getDb } from "./db";
+import { getSession } from "./session";
 import { accounts, categories, transactions } from "./db/schema";
 import { getActiveRole, getActiveWorkspaceId } from "./workspace";
 import { fileImportsEnabled } from "./file-import-model";
+import { canEditSharedLedger } from "./household-access";
 
 type ImportResult = { ok: boolean; message: string };
 
@@ -44,6 +45,13 @@ function normDate(s: string): string | null {
 export async function importTransactions(_prev: ImportResult | undefined, formData: FormData): Promise<ImportResult> {
   if (fileImportsEnabled()) return { ok:false, message:"Open the reviewed import flow before posting transactions." };
   try {
+    const w = await getActiveWorkspaceId();
+    if (!w) return { ok: false, message: "You're not signed in." };
+    if (!canEditSharedLedger(await getActiveRole())) return { ok: false, message: "You do not have editing access to this tracker." };
+    const db = await getDb();
+    const schema = await db.execute(sql`SELECT to_regclass('public.opening_cutoffs') IS NOT NULL AS ready`);
+    if (schema.rows[0]?.ready && (await db.execute(sql`SELECT 1 FROM opening_cutoffs WHERE workspace_id=${w} LIMIT 1`)).rows.length)
+      return {ok:false,message:"This tracker uses opening statements. Use the reviewed importer to match or ignore older activity."};
     const file = formData.get("file") as File | null;
     if (!file || file.size === 0) return { ok: false, message: "Choose a CSV or Excel file first." };
 
@@ -52,6 +60,7 @@ export async function importTransactions(_prev: ImportResult | undefined, formDa
 
     if (buf[0] === 0x50 && buf[1] === 0x4b) {
       // .xlsx (ZIP magic)
+      const {default:ExcelJS}=await import("exceljs");
       const wb = new ExcelJS.Workbook();
       await wb.xlsx.load(buf as unknown as Parameters<typeof wb.xlsx.load>[0]);
       const ws = wb.worksheets[0];
@@ -74,10 +83,6 @@ export async function importTransactions(_prev: ImportResult | undefined, formDa
     };
     if (idx.date < 0 || idx.amount < 0) return { ok: false, message: "File needs at least 'Date' and 'Amount' columns." };
 
-    const w = await getActiveWorkspaceId();
-    if (!w) return { ok: false, message: "You're not signed in." };
-    if ((await getActiveRole()) === "viewer") return { ok: false, message: "You have view-only access to this tracker." };
-    const db = await getDb();
     const existingAccs = await db.select().from(accounts).where(eq(accounts.workspaceId, w));
     const existingCats = await db.select().from(categories).where(eq(categories.workspaceId, w));
     const accByName = new Map(existingAccs.map((a) => [a.name.toLowerCase(), a.id]));
@@ -125,7 +130,12 @@ export async function importTransactions(_prev: ImportResult | undefined, formDa
       imported++;
     }
 
-    if (toInsert.length) await db.insert(transactions).values(toInsert);
+    if (toInsert.length && schema.rows[0]?.ready) {
+      const session=await getSession();
+      if (!session) return {ok:false,message:"Sign in and reopen the import."};
+      const result=await db.execute(sql`SELECT import_legacy_entries(${w},${session.user.id},${JSON.stringify(toInsert)}::jsonb) AS inserted`);
+      if (Number(result.rows[0]?.inserted)!==toInsert.length) return {ok:false,message:"Tracker access or opening statements changed. Reopen the reviewed importer before adding these entries."};
+    } else if (toInsert.length) await db.insert(transactions).values(toInsert);
     revalidatePath("/");
     return { ok: true, message: `Imported ${imported} transaction${imported === 1 ? "" : "s"}${skipped ? `, skipped ${skipped}` : ""}.` };
   } catch (e) {

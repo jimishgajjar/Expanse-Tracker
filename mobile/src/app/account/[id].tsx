@@ -4,29 +4,22 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { useApp } from "@/lib/store";
-import { api } from "@/lib/api";
+import { bindApi } from "@/lib/api";
 import { Card, IconBubble, Loading } from "@/components/ui";
-import { TxRow } from "@/components/tx-row";
+import { EntryFilters, LedgerList } from "@/components/ledger-list";
+import { activityGroups, type EntryFilter } from "@/lib/activity-list";
 import { colors, radius } from "@/lib/theme";
 
 export default function AccountDetail() {
+  const api = bindApi();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { data, money, reload } = useApp();
   const router = useRouter();
   const [search, setSearch] = useState("");
 
   const account = data?.accounts.find((a) => a.id === id);
-  const txns = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return (data?.transactions ?? []).filter((t) => {
-      if (t.accountId !== id) return false;
-      if (q) {
-        const hay = `${t.note} ${t.category?.name ?? ""} ${(t.tags ?? []).map((tg) => tg.name).join(" ")}`.toLowerCase();
-        if (!hay.includes(q)) return false;
-      }
-      return true;
-    });
-  }, [data, id, search]);
+  const [filter,setFilter]=useState<EntryFilter>("all");
+  const groups=useMemo(()=>activityGroups(data?.transactions??[],data?.transfers??[],data?.accounts??[],filter,search,id),[data,id,filter,search]);
 
   if (!data) return <Loading />;
   if (!account) {
@@ -81,7 +74,7 @@ export default function AccountDetail() {
         </View>
 
         <Card style={{ marginBottom: 12 }}>
-          <Text style={s.cardLabel}>Balance</Text>
+          <Text style={s.cardLabel}>{data.finance?.report ? "Original tracker balance · "+data.settings.currencyCode : "Balance"}</Text>
           <Text style={[s.balance, account.balance < 0 && { color: colors.red }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.65}>{money.balance(account.balance)}</Text>
           <View style={{ flexDirection: "row", gap: 24, marginTop: 14 }}>
             <View>
@@ -113,18 +106,9 @@ export default function AccountDetail() {
           ) : null}
         </View>
 
-        <Text style={s.section}>This month · {txns.length}</Text>
-        <Card style={{ padding: 0 }}>
-          {txns.length === 0 ? (
-            <Text style={s.empty}>{search ? "No transactions match your search." : "No transactions this month."}</Text>
-          ) : (
-            txns.map((t, i) => (
-              <View key={t.id} style={i > 0 ? s.divider : undefined}>
-                <TxRow tx={t} fmt={money} />
-              </View>
-            ))
-          )}
-        </Card>
+        <Text style={s.section}>Activity · selected period</Text>
+        <EntryFilters value={filter} onChange={setFilter}/>
+        <LedgerList groups={groups} money={money} account={id}/>
       </ScrollView>
     </SafeAreaView>
   );

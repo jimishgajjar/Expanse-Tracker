@@ -1,11 +1,20 @@
-import { pgTable, pgEnum, primaryKey, text, numeric, date, timestamp, integer, boolean, index, unique, jsonb } from "drizzle-orm/pg-core";
-import { relations } from "drizzle-orm";
+import { pgTable, pgEnum, primaryKey, text, numeric, date, timestamp, integer, boolean, index, unique, jsonb, check, foreignKey } from "drizzle-orm/pg-core";
+import { relations, sql } from "drizzle-orm";
+import type { MerchantRule } from "../merchant-rule-model";
+import type { DeliveryChannel, HouseholdTopic } from "../notification-options";
 
 // Shared enum for the two flavours of money movement.
 export const txKind = pgEnum("tx_kind", ["income", "expense"]);
 
 const ws = () =>
   text("workspace_id").notNull().references(() => workspaces.id, { onDelete: "cascade" });
+
+export const merchantRuleVersions = pgTable("merchant_rule_versions", {
+  workspaceId: ws(), accountId: text("account_id").notNull(), kind: txKind("kind").notNull(),
+  id: text("id").notNull(), version: integer("version").notNull(),
+  definition: jsonb("definition").$type<MerchantRule>().notNull(),
+  actorId: text("actor_id").notNull(), createdAt: timestamp("created_at").notNull().defaultNow(),
+}, t=>[primaryKey({columns:[t.workspaceId,t.accountId,t.kind,t.id,t.version]})]);
 
 // A place money lives: cash, a bank account, a card, a wallet, savings, etc.
 export const accounts = pgTable(
@@ -54,10 +63,38 @@ export const transactions = pgTable(
     createdBy: text("created_by").references(() => users.id, { onDelete: "set null" }), // who entered it
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
-  (t) => [index("tx_ws_date_idx").on(t.workspaceId, t.date), index("tx_type_idx").on(t.type)],
+  (t) => [index("tx_ws_date_idx").on(t.workspaceId, t.date), index("transactions_activity_order").on(t.workspaceId,t.date.desc(),t.createdAt.desc(),t.id.desc()), index("tx_type_idx").on(t.type)],
 );
 
+// A withdrawn comment retains only a retry marker. Live comments protect the
+// transaction from deletion, including deletion through its parent account.
+export const transactionComments = pgTable("transaction_comments", {
+  id: text("id").primaryKey(),
+  transactionId: text("transaction_id").references(() => transactions.id, { onDelete: "restrict" }),
+  authorId: text("author_id").references(() => users.id, { onDelete: "set null" }),
+  body: text("body"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, t => [
+  index("transaction_comment_page").on(t.transactionId, t.createdAt, t.id),
+  check("transaction_comment_content", sql`(${t.body} IS NULL AND ${t.transactionId} IS NULL) OR
+    (${t.body} IS NOT NULL AND ${t.transactionId} IS NOT NULL AND char_length(trim(${t.body})) BETWEEN 1 AND 1000)`),
+]);
+
 // Money moved between two accounts (not income or expense).
+export const purchaseAllocations = pgTable("purchase_allocations", {
+  transactionId: text("transaction_id").notNull().references(()=>transactions.id,{onDelete:"cascade"}),
+  categoryId: text("category_id").notNull().references(()=>categories.id,{onDelete:"restrict"}),
+  amount: numeric("amount",{precision:14,scale:2}).notNull(),
+}, t=>[primaryKey({columns:[t.transactionId,t.categoryId]}),index("allocation_category_idx").on(t.categoryId)]);
+
+export const refundLinks=pgTable("refund_links",{
+  id:text("id").primaryKey(),workspaceId:ws(),actorId:text("actor_id").notNull(),
+  creditId:text("credit_id").notNull().unique().references(()=>transactions.id,{onDelete:"restrict"}),
+  purchaseId:text("purchase_id").notNull().references(()=>transactions.id,{onDelete:"restrict"}),
+  portions:jsonb("portions").$type<{categoryId:string|null;amount:string}[]>().notNull(),
+  createdAt:timestamp("created_at").notNull().defaultNow(),
+},t=>[index("refund_purchase_idx").on(t.workspaceId,t.purchaseId)]);
+
 export const transfers = pgTable(
   "transfers",
   {
@@ -70,7 +107,7 @@ export const transfers = pgTable(
     note: text("note").notNull().default(""),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
-  (t) => [index("transfer_ws_date_idx").on(t.workspaceId, t.date)],
+  (t) => [index("transfer_ws_date_idx").on(t.workspaceId, t.date), index("transfers_activity_order").on(t.workspaceId,t.date.desc(),t.createdAt.desc(),t.id.desc())],
 );
 
 // Monthly spending budget for an expense category.
@@ -140,6 +177,25 @@ export const splits = pgTable(
   },
   (t) => [index("split_ws_idx").on(t.workspaceId)],
 );
+
+// The reviewed IOUs and request identity survive a reversal. Reopening releases
+// the payment link but never removes the payment from the ledger.
+export const reimbursements = pgTable("reimbursements", {
+  id: text("id").primaryKey(), workspaceId: ws(), actorId: text("actor_id").notNull(),
+  peerId: text("peer_id").notNull(), kind: txKind("kind").notNull(),
+  amount: numeric("amount", {precision:14, scale:2}).notNull(),
+  method: text("method").notNull(), splitIds: text("split_ids").array().notNull(),
+  requestHash: text("request_hash").notNull(),
+  transactionId: text("transaction_id").unique().references(() => transactions.id, {onDelete:"restrict"}),
+  transferId: text("transfer_id").unique().references(() => transfers.id, {onDelete:"restrict"}),
+  createdAt: timestamp("created_at", {withTimezone:true}).defaultNow().notNull(),
+  reopenedAt: timestamp("reopened_at", {withTimezone:true}),
+}, t => [
+  index("reimbursement_household_idx").on(t.workspaceId, t.createdAt),
+  check("reimbursement_terms", sql`${t.actorId} <> ${t.peerId} AND ${t.amount} > 0 AND cardinality(${t.splitIds}) > 0
+    AND ${t.method} IN ('link','record','outside') AND num_nonnulls(${t.transactionId},${t.transferId}) =
+    CASE WHEN ${t.reopenedAt} IS NOT NULL OR ${t.method}='outside' THEN 0 ELSE 1 END`),
+]);
 
 // A savings target with progress.
 export const goals = pgTable(
@@ -217,6 +273,17 @@ export const workspaces = pgTable("workspaces", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+// A new, isolated ledger inside a household; no row means ordinary shared tracker.
+// Data remains in the existing ledger tables, without mixing household/private balances.
+export const personalLedgers = pgTable("personal_ledgers", {
+  ledgerId: text("ledger_id").primaryKey().references(() => workspaces.id, {onDelete:"cascade"}),
+  householdId: text("household_id").notNull().references(() => workspaces.id, {onDelete:"restrict"}),
+  personId: text("person_id").notNull().references(() => users.id, {onDelete:"restrict"}),
+}, t => [
+  unique("personal_ledger_per_member").on(t.householdId,t.personId),
+  check("personal_ledger_distinct",sql`${t.ledgerId} <> ${t.householdId}`),
+]);
+
 export const workspaceMembers = pgTable(
   "workspace_members",
   {
@@ -227,6 +294,57 @@ export const workspaceMembers = pgTable(
   },
   (t) => [primaryKey({ columns: [t.workspaceId, t.userId] }), index("wm_user_idx").on(t.userId)],
 );
+
+// Each row is an explicit opt-in. Leaving a household also removes its opt-ins.
+export const notificationPreferences = pgTable("notification_preferences", {
+  workspaceId: text("workspace_id").notNull(),
+  userId: text("user_id").notNull(),
+  topic: text("topic").$type<HouseholdTopic>().notNull(),
+  channel: text("channel").$type<DeliveryChannel>().notNull(),
+}, t => [
+  primaryKey({columns:[t.workspaceId,t.userId,t.topic,t.channel]}),
+  foreignKey({columns:[t.workspaceId,t.userId],foreignColumns:[workspaceMembers.workspaceId,workspaceMembers.userId]}).onDelete("cascade"),
+  check("notification_household_only", sql`${t.workspaceId} NOT LIKE 'personal:%'`),
+  check("notification_topic", sql`${t.topic} IN ('upcoming','posted','budget','monthly','mention')`),
+  check("notification_channel", sql`${t.channel} IN ('email','push')`),
+]);
+
+export const invitationPreferences = pgTable("invitation_preferences", {
+  userId: text("user_id").notNull().references(() => users.id, {onDelete:"cascade"}),
+  channel: text("channel").$type<DeliveryChannel>().notNull(),
+}, t => [
+  primaryKey({columns:[t.userId,t.channel]}),
+  check("invitation_channel", sql`${t.channel} IN ('email','push')`),
+]);
+
+export const commentMentions = pgTable("comment_mentions", {
+  commentId: text("comment_id").notNull().references(() => transactionComments.id, {onDelete:"cascade"}),
+  workspaceId: text("workspace_id").notNull(),
+  userId: text("user_id").notNull(),
+}, t => [
+  primaryKey({columns:[t.commentId,t.userId]}),
+  foreignKey({columns:[t.workspaceId,t.userId],foreignColumns:[workspaceMembers.workspaceId,workspaceMembers.userId]}).onDelete("cascade"),
+  check("mention_household_only", sql`${t.workspaceId} NOT LIKE 'personal:%'`),
+]);
+
+// A null report is a revoked share. Retaining its revision invalidates old previews.
+export const accountShares = pgTable("account_shares", {
+  id: text("id").primaryKey(),
+  ledgerId: text("ledger_id").notNull().references(() => personalLedgers.ledgerId, {onDelete:"cascade"}),
+  accountId: text("account_id").notNull().references(() => accounts.id, {onDelete:"cascade"}),
+  householdId: text("household_id").notNull(),
+  ownerId: text("owner_id").notNull(),
+  recipientId: text("recipient_id").notNull(),
+  revision: text("revision").notNull(),
+  report: jsonb("report"),
+  updatedAt: timestamp("updated_at", {withTimezone:true}).defaultNow().notNull(),
+}, t => [
+  unique("account_share_recipient").on(t.accountId, t.recipientId),
+  foreignKey({columns:[t.householdId,t.ownerId],foreignColumns:[workspaceMembers.workspaceId,workspaceMembers.userId]}).onDelete("cascade"),
+  foreignKey({columns:[t.householdId,t.recipientId],foreignColumns:[workspaceMembers.workspaceId,workspaceMembers.userId]}).onDelete("cascade"),
+  check("account_share_other_member", sql`${t.ownerId} <> ${t.recipientId}`),
+  index("account_share_inbox").on(t.householdId, t.recipientId),
+]);
 
 export const sessions = pgTable("sessions", {
   id: text("id").primaryKey(),
@@ -333,3 +451,128 @@ export const fileImports = pgTable("file_imports", {
   version: integer("version").notNull().default(1), stagedBy: text("staged_by").notNull(),
   approvedBy: text("approved_by"), approvedAt: timestamp("approved_at"), createdAt: timestamp("created_at").notNull().defaultNow(),
 }, t=>[unique("import_ws_file_key").on(t.workspaceId,t.fileHash)]);
+
+// One normalized receipt image per transaction. Remove it explicitly before deleting its parent.
+export const receiptImages = pgTable("receipt_images", {
+  transactionId:text("transaction_id").primaryKey().references(()=>transactions.id,{onDelete:"restrict"}),
+  id:text("id").notNull().unique(), jpeg:text("jpeg").notNull(), bytes:integer("bytes").notNull(),
+  createdAt:timestamp("created_at").notNull().defaultNow(),
+});
+export const captureDrafts = pgTable("capture_drafts", {
+  workspaceId:ws(), userId:text("user_id").notNull().references(()=>users.id,{onDelete:"cascade"}),
+  id:text("id").notNull(),version:integer("version").notNull(),payload:jsonb("payload").notNull(),
+  updatedAt:timestamp("updated_at").notNull().defaultNow(),
+},t=>[primaryKey({columns:[t.workspaceId,t.userId,t.id]})]);
+
+export const monthlyPlans = pgTable("monthly_plans",{
+  workspaceId:ws(),categoryId:text("category_id").notNull().references(()=>categories.id,{onDelete:"restrict"}),
+  month:date("month").notNull(),amount:numeric("amount",{precision:14,scale:2}).notNull(),
+  rollover:boolean("rollover").notNull(),version:integer("version").notNull().default(1),
+},t=>[primaryKey({columns:[t.workspaceId,t.categoryId,t.month]})]);
+
+export const goalReservations = pgTable("goal_reservations",{
+  id:text("id").primaryKey(), workspaceId:ws(),actorId:text("actor_id").notNull(),
+  goalId:text("goal_id").notNull().references(()=>goals.id,{onDelete:"restrict"}),
+  accountId:text("account_id").notNull().references(()=>accounts.id,{onDelete:"restrict"}),
+  delta:numeric("delta",{precision:14,scale:2}).notNull(),createdAt:timestamp("created_at").notNull().defaultNow(),
+},t=>[index("goal_reservation_account_idx").on(t.workspaceId,t.accountId)]);
+
+export const payPeriodPlans=pgTable("pay_period_plans",{
+  workspaceId:ws(),accountId:text("account_id").notNull().references(()=>accounts.id,{onDelete:"restrict"}),
+  start:date("start_date").notNull(),next:date("next_date").notNull(),cadence:text("cadence").notNull(),
+  expected:numeric("expected",{precision:14,scale:2}).notNull(),limit:numeric("spending_limit",{precision:14,scale:2}).notNull(),
+  version:integer("version").notNull().default(1),
+},t=>[primaryKey({columns:[t.workspaceId,t.accountId,t.start]})]);
+export const annualGoalPlans=pgTable("annual_goal_plans",{
+  workspaceId:ws(),goalId:text("goal_id").notNull().references(()=>goals.id,{onDelete:"restrict"}),
+  due:date("due").notNull(),version:integer("version").notNull().default(1),
+},t=>[primaryKey({columns:[t.workspaceId,t.goalId]})]);
+
+export const budgetMoves = pgTable("budget_moves", {
+  id:text("id").primaryKey(), workspaceId:ws(), month:date("month").notNull(),
+  fromCategory:text("from_category").notNull().references(()=>categories.id,{onDelete:"restrict"}),
+  toCategory:text("to_category").notNull().references(()=>categories.id,{onDelete:"restrict"}),
+  amount:numeric("amount",{precision:14,scale:2}).notNull(), note:text("note").notNull().default(""),
+  actorId:text("actor_id").notNull(), createdAt:timestamp("created_at").notNull().defaultNow(),
+},t=>[index("budget_move_month_idx").on(t.workspaceId,t.month),
+  check("budget_move_valid",sql`${t.amount}>0 AND ${t.fromCategory}<>${t.toCategory} AND extract(day from ${t.month})=1`)]);
+
+export const goalOpeningReviews = pgTable("goal_opening_reviews", {
+  id:text("id").primaryKey(), workspaceId:ws(),
+  goalId:text("goal_id").notNull().references(()=>goals.id,{onDelete:"restrict"}),
+  version:integer("version").notNull(), actorId:text("actor_id").notNull(),
+  opening:numeric("opening",{precision:14,scale:2}).notNull(),
+  reserved:numeric("reserved",{precision:16,scale:2}).notNull(),
+  outside:numeric("outside",{precision:14,scale:2}).notNull(),
+  createdAt:timestamp("created_at").notNull().defaultNow(),
+},t=>[unique("goal_opening_review_version").on(t.workspaceId,t.goalId,t.version),
+  check("goal_opening_review_amount",sql`${t.outside}>=0 AND ${t.outside}<=${t.opening} AND ${t.version}>0`)]);
+
+export const forecastScenarios = pgTable("forecast_scenarios", {
+  workspaceId:ws(), accountId:text("account_id").notNull().references(()=>accounts.id,{onDelete:"cascade"}),
+  scenario:text("scenario").notNull(), daily:numeric("daily",{precision:14,scale:2}).notNull(),
+  buffer:numeric("buffer",{precision:14,scale:2}).notNull(),version:integer("version").notNull(),
+},t=>[primaryKey({columns:[t.workspaceId,t.accountId,t.scenario]}),
+  check("forecast_scenario_values",sql`${t.scenario} IN ('base','conservative') AND ${t.daily}>=0 AND ${t.buffer}>=0 AND ${t.version}>0`)]);
+
+export const householdSetup=pgTable("household_setup",{
+  workspaceId:ws().primaryKey(),timezone:text("timezone").notNull(),
+  billsSkipped:boolean("bills_skipped").notNull().default(false),inviteSkipped:boolean("invite_skipped").notNull().default(false),
+});
+export const openingCutoffs=pgTable("opening_cutoffs",{
+  workspaceId:ws(),accountId:text("account_id").primaryKey().references(()=>accounts.id,{onDelete:"cascade"}),
+  throughDate:date("through_date").notNull(),statementBalance:numeric("statement_balance",{precision:14,scale:2}).notNull(),
+});
+export const pilotFeedback=pgTable("pilot_feedback",{
+  id:text("id").primaryKey(),workspaceId:ws(),actor:text("actor").notNull().references(()=>users.id,{onDelete:"cascade"}),
+  severity:text("severity").notNull(),message:text("message").notNull(),status:text("status").notNull().default("received"),
+  createdAt:timestamp("created_at",{withTimezone:true}).notNull().defaultNow(),
+},t=>[index("pilot_feedback_member").on(t.workspaceId,t.actor,t.createdAt.desc())]);
+
+// Debt reviews and currency bookings are additive. The SQL migrations also
+// guard edits to booked ledger amounts and coordinate old and new refund flows.
+export const financeAccounts=pgTable("finance_accounts",{
+  workspaceId:ws(),accountId:text("account_id").notNull().references(()=>accounts.id,{onDelete:"restrict"}),
+  role:text("role").notNull(),reviewedBalance:numeric("reviewed_balance").notNull(),adjustment:numeric("adjustment").notNull(),
+  interpretation:text("interpretation").notNull(),reviewer:text("reviewer").notNull(),
+  reviewedAt:timestamp("reviewed_at",{withTimezone:true}).notNull().defaultNow(),
+},t=>[primaryKey({columns:[t.workspaceId,t.accountId]})]);
+
+export const debtStatements=pgTable("debt_statements",{
+  workspaceId:text("workspace_id").notNull(),accountId:text("account_id").notNull(),starts:date("starts").notNull(),
+  ends:date("ends").notNull(),due:date("due").notNull(),closing:numeric("closing").notNull(),minimum:numeric("minimum").notNull(),
+},t=>[primaryKey({columns:[t.workspaceId,t.accountId,t.ends]}),foreignKey({columns:[t.workspaceId,t.accountId],
+  foreignColumns:[financeAccounts.workspaceId,financeAccounts.accountId]}).onDelete("cascade")]);
+
+export const loanTerms=pgTable("loan_terms",{
+  workspaceId:text("workspace_id").notNull(),accountId:text("account_id").notNull(),apr:numeric("apr").notNull(),
+  payment:numeric("payment").notNull(),monthlyFee:numeric("monthly_fee").notNull(),variable:boolean("variable").notNull(),
+},t=>[primaryKey({columns:[t.workspaceId,t.accountId]}),foreignKey({columns:[t.workspaceId,t.accountId],
+  foreignColumns:[financeAccounts.workspaceId,financeAccounts.accountId]}).onDelete("cascade")]);
+
+export const financeBooks=pgTable("finance_books",{
+  workspaceId:text("workspace_id").primaryKey().references(()=>workspaces.id,{onDelete:"cascade"}),currency:text("currency").notNull(),
+});
+const bookId=()=>text("workspace_id").notNull().references(()=>financeBooks.workspaceId,{onDelete:"cascade"});
+export const accountDenominations=pgTable("account_denominations",{
+  workspaceId:bookId(),accountId:text("account_id").notNull(),currency:text("currency").notNull(),
+},t=>[primaryKey({columns:[t.workspaceId,t.accountId]}),foreignKey({columns:[t.workspaceId,t.accountId],
+  foreignColumns:[financeAccounts.workspaceId,financeAccounts.accountId]}).onDelete("cascade")]);
+export const valuationQuotes=pgTable("valuation_quotes",{
+  workspaceId:bookId(),currency:text("currency").notNull(),asOf:timestamp("as_of",{withTimezone:true}).notNull(),
+  rate:numeric("rate").notNull(),source:text("source").notNull(),
+},t=>[primaryKey({columns:[t.workspaceId,t.currency,t.asOf]})]);
+export const financeOperations=pgTable("finance_operations",{
+  id:text("id").primaryKey(),workspaceId:bookId(),actor:text("actor").notNull(),fingerprint:text("fingerprint").notNull(),
+});
+export const financeBookings=pgTable("finance_bookings",{
+  id:text("id").primaryKey(),operationId:text("operation_id").notNull().references(()=>financeOperations.id,{onDelete:"restrict"}),
+  workspaceId:bookId(),transactionId:text("transaction_id").unique().references(()=>transactions.id,{onDelete:"restrict"}),
+  transferId:text("transfer_id").unique().references(()=>transfers.id,{onDelete:"restrict"}),refundOf:text("refund_of").references(()=>transactions.id,{onDelete:"restrict"}),
+  kind:text("kind").notNull(),originalAmount:numeric("original_amount").notNull(),originalCurrency:text("original_currency").notNull(),
+  originalRate:numeric("original_rate").notNull(),accountAmount:numeric("account_amount").notNull(),accountCurrency:text("account_currency").notNull(),
+  reportingAmount:numeric("reporting_amount"),reportingCurrency:text("reporting_currency").notNull(),bookedRate:numeric("booked_rate"),
+  source:text("source").notNull(),asOf:timestamp("as_of",{withTimezone:true}).notNull(),received:numeric("received"),
+  destinationCurrency:text("destination_currency"),exchangeRate:numeric("exchange_rate"),residual:numeric("residual"),
+  principalPaid:numeric("principal_paid"),interestPaid:numeric("interest_paid"),feesPaid:numeric("fees_paid"),
+},t=>[index("finance_bookings_workspace").on(t.workspaceId),index("finance_refunds_purchase").on(t.workspaceId,t.refundOf).where(sql`${t.refundOf} IS NOT NULL`)]);

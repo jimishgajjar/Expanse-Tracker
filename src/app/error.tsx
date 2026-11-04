@@ -22,7 +22,7 @@ export default function ErrorPage({
   unstable_retry: () => void;
 }) {
   useEffect(() => {
-    console.error("[dashboard] render failed:", error);
+    console.error("[dashboard] render failed", error.digest ?? "unavailable");
   }, [error]);
 
   return (

@@ -709,7 +709,7 @@ export async function Landing() {
               <span className="size-2 rounded-full bg-positive" />
               <span>Accounts, activity, and planning together</span>
             </div>
-            <p>Expense Tracker. Private financial ledger.</p>
+            <Link href="/help" className="py-2 underline">Privacy, support &amp; limitations</Link>
           </div>
         </div>
       </footer>

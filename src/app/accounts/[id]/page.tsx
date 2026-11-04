@@ -2,6 +2,9 @@ import { notFound, redirect } from "next/navigation";
 import { DetailShell } from "@/components/detail-shell";
 import { getCurrentUser } from "@/lib/session";
 import { getActiveWorkspace } from "@/lib/workspace";
+import { canEditSharedLedger, isPersonalLedger } from "@/lib/household-access";
+import { householdFeaturesEnabled } from "@/lib/household-features";
+import Link from "next/link";
 import {
   getAccountsWithBalances,
   getCategories,
@@ -43,13 +46,16 @@ export default async function AccountPage({
   );
 
   return (
-    <SettingsProvider currency={settings.currency} locale={settings.locale}>
+    <SettingsProvider workspace={ws?.id} actor={user.id} currency={settings.currency} locale={settings.locale}>
       <DetailShell
         accounts={accounts}
         section="Accounts"
         title={account.name}
         accountId={account.id}
       >
+        {householdFeaturesEnabled() && ws && isPersonalLedger(ws.id) && <Link href={`/accounts/${account.id}/sharing`} className="mb-3 inline-flex min-h-9 items-center rounded-lg border px-3 text-xs font-medium hover:bg-muted">
+          Manage account sharing
+        </Link>}
         <AccountDetailView
           key={account.id}
           account={account}
@@ -57,7 +63,7 @@ export default async function AccountPage({
           transfers={xfers}
           accounts={accounts}
           categories={categories}
-          canEdit={ws?.role !== "viewer"}
+          canEdit={canEditSharedLedger(ws?.role)}
           reviewsEnabled={statementReviewsEnabled()}
         />
       </DetailShell>

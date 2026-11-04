@@ -20,8 +20,9 @@ import { logout } from "@/lib/auth";
 import { ImportForm } from "@/components/import-form";
 import { ChangePasswordForm } from "@/components/change-password-form";
 import { DeleteAccountForm } from "@/components/delete-account-form";
-import { NotificationsToggle } from "@/components/notifications-toggle";
+import { HouseholdNotifications } from "./household-notifications";
 import { CURRENCIES } from "@/lib/currencies";
+import { useExportHref } from "./settings-provider";
 
 export function SettingsDialog({
   trigger,
@@ -35,6 +36,7 @@ export function SettingsDialog({
   canEdit?: boolean;
 }) {
   const id = useId();
+  const exportHref = useExportHref();
   const [error, setError] = useState("");
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -121,7 +123,7 @@ export function SettingsDialog({
           variant="outline"
           size="sm"
           className="w-full"
-          onClick={() => window.location.assign("/api/export")}
+          onClick={() => window.location.assign(exportHref)}
         >
           Export to Excel
         </Button>
@@ -130,13 +132,8 @@ export function SettingsDialog({
           Use a transaction file to bring income and expenses into your tracker.
         </p>
       </PanelSection>
-      <PanelSection title="Notifications">
-        <NotificationsToggle />
-        <p className="text-xs text-muted-foreground">
-          Get a reminder before a recurring payment posts, and a confirmation
-          when it does — by email and on this device. Turn alerts on per rule in
-          the Recurring panel.
-        </p>
+      <PanelSection title="Reminders and digests">
+        <HouseholdNotifications />
       </PanelSection>
       <PanelSection title="Account & security">
         <p className="text-xs text-muted-foreground">

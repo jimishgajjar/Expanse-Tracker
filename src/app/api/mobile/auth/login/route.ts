@@ -7,6 +7,7 @@ import { rateLimit, retryMessage } from "@/lib/rate-limit";
 import { verifyPassword } from "@/lib/password";
 import { createApiSession } from "@/lib/session";
 import { userWorkspaces } from "@/lib/mobile-api";
+import { signInTracker } from "@/lib/household-access";
 
 export const dynamic = "force-dynamic";
 
@@ -27,13 +28,13 @@ export async function POST(req: Request) {
   }
 
   const wss = await userWorkspaces(u.id);
-  const active = wss.find((w) => w.ownerId === u.id) ?? wss[0];
-  const token = await createApiSession(u.id, active?.id ?? null);
+  const active = signInTracker(wss,u.id);
+  const token = await createApiSession(u.id, active);
 
   return NextResponse.json({
     token,
     user: { id: u.id, email: u.email, name: u.name, emailVerified: !!u.emailVerifiedAt },
     workspaces: wss,
-    activeWorkspaceId: active?.id ?? null,
+    activeWorkspaceId: active,
   });
 }
