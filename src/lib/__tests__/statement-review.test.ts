@@ -174,7 +174,13 @@ it("selects the old migration journal for pre-release backups, retaining the new
   const finance=[...debt,"finance_books","account_denominations","valuation_quotes","finance_operations","finance_bookings"];
   expect(JSON.parse(readFileSync(join(backupMigrationsForTables("./drizzle",finance),"meta/_journal.json"),"utf8")).entries.at(-1).tag).toBe("0030_booked_currencies");
   expect(()=>backupMigrationsForTables("./drizzle",[...finance,"opening_cutoffs"])).toThrow(/Incomplete/);
-  expect(backupMigrationsForTables("./drizzle",[...finance,"household_setup","opening_cutoffs","pilot_feedback"])).toBe("./drizzle");
+  const pilot=[...finance,"household_setup","opening_cutoffs","pilot_feedback"];
+  expect(JSON.parse(readFileSync(join(backupMigrationsForTables("./drizzle",pilot),"meta/_journal.json"),"utf8")).entries.at(-1).tag).toBe("0031_household_setup");
+  expect(()=>backupMigrationsForTables("./drizzle",[...pilot,"weekly_review_progress"])).toThrow(/Incomplete/);
+  const weekly=[...pilot,"weekly_review_progress","weekly_review_receipts"];
+  expect(JSON.parse(readFileSync(join(backupMigrationsForTables("./drizzle",weekly),"meta/_journal.json"),"utf8")).entries.at(-1).tag).toBe("0032_weekly_reviews");
+  expect(()=>backupMigrationsForTables("./drizzle",[...pilot,"forecast_baselines"])).toThrow(/Incomplete/);
+  expect(backupMigrationsForTables("./drizzle",[...weekly,"forecast_baselines"])).toBe("./drizzle");
 },30000);
 
 describe("investigating and correcting statement discrepancies",()=>{

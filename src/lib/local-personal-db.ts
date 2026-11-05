@@ -4,9 +4,9 @@ import type { PGlite } from "@electric-sql/pglite";
 
 // Next keeps the embedded connection through hot reloads. A preview already
 // running when a new household migration is added must use that same connection to migrate.
-const local = globalThis as typeof globalThis & { householdSchema31?: WeakMap<PGlite, Promise<void>> };
+const local = globalThis as typeof globalThis & { householdSchema33?: WeakMap<PGlite, Promise<void>> };
 async function prepareLocalSchema(client: PGlite) {
-  const { rows: [row] } = await client.query<{ present:boolean }>("SELECT to_regclass('public.pilot_feedback') IS NOT NULL AS present");
+  const { rows: [row] } = await client.query<{ present:boolean }>("SELECT to_regclass('public.forecast_baselines') IS NOT NULL AS present");
   if (row.present) return;
   const [{ drizzle }, { migrate }] = await Promise.all([
     import("drizzle-orm/pglite"), import("drizzle-orm/pglite/migrator"),
@@ -19,7 +19,7 @@ export async function localPersonalDb() {
   const [db, { PGlite }] = await Promise.all([getDb(), import("@electric-sql/pglite")]);
   if (!("$client" in db) || !(db.$client instanceof PGlite)) return null;
   const client = db.$client;
-  const known = local.householdSchema31 ??= new WeakMap();
+  const known = local.householdSchema33 ??= new WeakMap();
   let ready = known.get(client);
   if (!ready) {
     ready = prepareLocalSchema(client).catch(error => { known.delete(client); throw error; });

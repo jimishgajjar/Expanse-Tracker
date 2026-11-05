@@ -6,6 +6,7 @@ import {MerchantRulesContext} from "./settings-provider";
 import {BalanceForecast} from "./balance-forecast";
 import {MonthlyPlanner} from "./monthly-planner";
 import { HouseholdCheckIn } from "./weekly-household-check-in";
+import { WeeklyReview } from "./weekly-review";
 import { weeklyHouseholdCheckIn } from "@/lib/weekly-household";
 import {
   CalendarDays,
@@ -60,7 +61,7 @@ export function PlanningTab({
   // fragment before its destination existed.
   useEffect(()=>{
     const id=window.location.hash.slice(1);
-    if(!["weekly-check-in","balance-forecast","monthly-plan","monthly-budgets","savings-goals","upcoming-payments","shared-expenses"].includes(id))return;
+    if(!["weekly-check-in","balance-forecast","monthly-plan","monthly-budgets","savings-goals","upcoming-payments","shared-expenses"].includes(id) && !id.startsWith("schedule-") && !id.startsWith("goal-"))return;
     document.getElementById(id)?.scrollIntoView({block:"start"});
   },[]);
   const day = todayISO();
@@ -96,7 +97,7 @@ export function PlanningTab({
 
   return (
     <div className="space-y-5">
-      {checkIn && <HouseholdCheckIn review={checkIn} />}
+      {checkIn && <WeeklyReview key={workspace} workspace={workspace} sources={{ bills: recurring, goals, splits: split }} fallback={<HouseholdCheckIn review={checkIn} />} />}
       {localPlanning&&<BalanceForecast workspace={workspace} accounts={forecastAccounts} canEdit={canEdit}/>}
       {localPlanning&&<MonthlyPlanner workspace={workspace} categories={categories} budgets={budgets} goals={goals} canEdit={canEdit}/>}
       {/* 1. Monthly Category Budgets */}
@@ -284,6 +285,7 @@ export function PlanningTab({
             return (
               <div
                 key={g.id}
+                id={`goal-${g.id}`}
                 className="rounded-xl border border-border/70 bg-card p-4 transition-colors duration-150 hover:border-brand/40 shadow-2xs"
               >
                 <div className="mb-2 flex items-center justify-between gap-2">

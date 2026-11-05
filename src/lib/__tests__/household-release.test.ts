@@ -32,6 +32,18 @@ it("keeps rehearsal features off on normal databases and requires a separate pro
   expect(hostedHouseholdEnabled({...env,VERCEL_ENV:"production"})).toBe(false);
 });
 
+it("makes planning and check-in available on the dedicated hosted pilot alongside setup", () => {
+  const env = {NODE_ENV:"production" as const, VERCEL_ENV:"preview", HOUSEHOLD_RELEASE:"staging",
+    PILOT_SETUP:"1", REVIEWED_FILE_IMPORTS:"1", STATEMENT_REVIEWS_ENABLED:"1",
+    DATABASE_URL:"postgresql://staging.example.neon.tech/m10_rehearsal_"+"a".repeat(32)};
+  expect(hostedHouseholdEnabled(env)).toBe(true);
+  for (const key of ["VERCEL_ENV", "HOUSEHOLD_RELEASE", "PILOT_SETUP", "REVIEWED_FILE_IMPORTS", "STATEMENT_REVIEWS_ENABLED"]) {
+    expect(hostedHouseholdEnabled({...env,[key]:""})).toBe(false);
+  }
+  expect(hostedHouseholdEnabled({...env,VERCEL_ENV:"production"})).toBe(false);
+  expect(hostedHouseholdEnabled({...env,DATABASE_URL:"postgresql://staging.example.neon.tech/neondb"})).toBe(false);
+});
+
 it("admits same-origin HTTPS mutations and rejects missing, downgraded or forged origins",()=>{
   const url="https://tracker.example/api/transaction-comments/1";
   const request=(origin:string,host="tracker.example")=>new Request(url,{headers:{host,origin}});

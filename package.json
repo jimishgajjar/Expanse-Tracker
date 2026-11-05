@@ -17,6 +17,7 @@
     "test": "vitest run",
     "benchmark:ledger": "tsx scripts/benchmark-ledger.ts",
     "rehearse:pilot-load": "tsx scripts/rehearse-pilot-load.ts",
+    "rehearse:household-pilot": "tsx scripts/rehearse-household-pilot.ts",
     "pilot:report": "tsx scripts/pilot-report.ts",
     "pilot:triage": "tsx scripts/pilot-triage.ts",
     "rehearse:personal-backup": "tsx scripts/rehearse-personal-backup.ts",

@@ -132,7 +132,7 @@ async function capture(): Promise<{ snapshot: Snapshot; source: string }> {
     if(names.includes("purchase_allocations")){
       TABLES.push("purchase_allocations"); FINANCIAL.push("purchase_allocations"); queries.push(tableSQL("purchase_allocations"));
     }
-    for(const table of ["receipt_images","capture_drafts","monthly_plans","goal_reservations","pay_period_plans","annual_goal_plans","refund_links","budget_moves","goal_opening_reviews","forecast_scenarios","personal_ledgers","account_shares","reimbursements","transaction_comments","notification_preferences","invitation_preferences","comment_mentions",...debtTables,...currencyTables,"household_setup","opening_cutoffs","pilot_feedback"])if(names.includes(table)){
+    for(const table of ["receipt_images","capture_drafts","monthly_plans","goal_reservations","pay_period_plans","annual_goal_plans","refund_links","budget_moves","goal_opening_reviews","forecast_scenarios","personal_ledgers","account_shares","reimbursements","transaction_comments","notification_preferences","invitation_preferences","comment_mentions",...debtTables,...currencyTables,"household_setup","opening_cutoffs","pilot_feedback","weekly_review_progress","weekly_review_receipts","forecast_baselines"])if(names.includes(table)){
       TABLES.push(table); FINANCIAL.push(table); queries.push(tableSQL(table));
     }
   }
@@ -266,7 +266,7 @@ async function main() {
       const baseline = decryptBackup(readFileSync(resolve(value("compare-encrypted")!)),process.env.BACKUP_KEY ?? "") as {snapshot:Snapshot;source:string};
       if (baseline.source !== source) throw new Error("Backup comparison source mismatch.");
       for (const table of FINANCIAL) {
-        if (["reconciliation_sessions","file_imports","merchant_rule_versions","purchase_allocations","receipt_images","capture_drafts","monthly_plans","goal_reservations","pay_period_plans","annual_goal_plans","refund_links","budget_moves","goal_opening_reviews","forecast_scenarios","personal_ledgers","account_shares","reimbursements","transaction_comments","notification_preferences","invitation_preferences","comment_mentions",...debtTables,...currencyTables,"household_setup","opening_cutoffs","pilot_feedback"].includes(table) && !baseline.snapshot.tables[table]) continue;
+        if (["reconciliation_sessions","file_imports","merchant_rule_versions","purchase_allocations","receipt_images","capture_drafts","monthly_plans","goal_reservations","pay_period_plans","annual_goal_plans","refund_links","budget_moves","goal_opening_reviews","forecast_scenarios","personal_ledgers","account_shares","reimbursements","transaction_comments","notification_preferences","invitation_preferences","comment_mentions",...debtTables,...currencyTables,"household_setup","opening_cutoffs","pilot_feedback","weekly_review_progress","weekly_review_receipts","forecast_baselines"].includes(table) && !baseline.snapshot.tables[table]) continue;
         const current = new Set(stored.snapshot.tables[table].map(row => comparisonRow(table,row)));
         if (baseline.snapshot.tables[table].some(row => !current.has(comparisonRow(table,row)))) throw new Error(`Existing records changed in ${table}. Investigate without restoring over newer data.`);
       }
@@ -351,7 +351,7 @@ async function main() {
       { before: number; after: number; missingOrChanged: number }
     > = {};
     for (const table of FINANCIAL) {
-      if (["reconciliation_sessions","file_imports","merchant_rule_versions","purchase_allocations","receipt_images","capture_drafts","monthly_plans","goal_reservations","pay_period_plans","annual_goal_plans","refund_links","budget_moves","goal_opening_reviews","forecast_scenarios","personal_ledgers","account_shares","reimbursements","transaction_comments","notification_preferences","invitation_preferences","comment_mentions",...debtTables,...currencyTables,"household_setup","opening_cutoffs","pilot_feedback"].includes(table) && !existsSync(join(resolve(previous),`${table}.json`))) continue;
+      if (["reconciliation_sessions","file_imports","merchant_rule_versions","purchase_allocations","receipt_images","capture_drafts","monthly_plans","goal_reservations","pay_period_plans","annual_goal_plans","refund_links","budget_moves","goal_opening_reviews","forecast_scenarios","personal_ledgers","account_shares","reimbursements","transaction_comments","notification_preferences","invitation_preferences","comment_mentions",...debtTables,...currencyTables,"household_setup","opening_cutoffs","pilot_feedback","weekly_review_progress","weekly_review_receipts","forecast_baselines"].includes(table) && !existsSync(join(resolve(previous),`${table}.json`))) continue;
       const old: Row[] = JSON.parse(
         readFileSync(join(resolve(previous), `${table}.json`), "utf8"),
       );

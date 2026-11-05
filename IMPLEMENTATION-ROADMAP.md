@@ -1,5 +1,7 @@
 # Finance Tracker implementation roadmap
 
+**Next phase, proposed 4 November 2026.** Start with [M11 through M15](#next-phase--m11-through-m15). The November 4 release brought the web milestones together. The five-household pilot, physical-phone acceptance, and a production bank connection still require separate evidence.
+
 Prepared: 31 October 2026, America/Toronto.
 Status: proposed implementation backlog; this document does not authorize paid services, activate bank access, change the database, or claim completed implementation.
 
@@ -337,3 +339,79 @@ Re-estimate effort after M0 and after the first Sandbox/device vertical slice. T
 - [Expo internal distribution](https://docs.expo.dev/build/internal-distribution/) — platform signing/provisioning and installation behavior; recheck actual project access before building.
 
 References checked 31 October 2026. This plan makes no changes to live financial data and does not imply any proposed capability has shipped.
+
+## Next phase — M11 through M15
+
+### Who we want to serve first
+
+Start with Canadian couples who manage joint bills and keep some accounts private. Ask each couple one question. **In five minutes together, can we see what changed, agree what needs attention, and tell what we can spend before payday?** Five minutes is a proposed target. A missed bill, an unexplained balance, or a partner seeing a private transaction matters more than finishing quickly.
+
+The November 4 release at `eb66317` passed 317 tests. The release check compared balances, transactions, transfers, and financial history against restored encrypted backups. That gives us a sound starting point for releases. We have no observed household retention, support-cost baseline, or physical-phone acceptance yet.
+
+Competitors give us a useful bar. YNAB already helps people allocate available money toward upcoming needs. Monarch already lets people choose which transactions need review. Our hypothesis is that couples will return for a short shared review that explains each number while respecting what each partner keeps private. Measure that before funding a wider launch. [YNAB planning and targets](https://support.ynab.com/en_us/getting-started-ynab-basics-and-key-terms-BJCaIHaTZe) · [Monarch transaction review](https://help.monarch.com/hc/en-us/articles/28953573066260-Transactions-and-Rules-Tips-Tricks)
+
+### M11 — Find where households get stuck
+
+**First week of work.** The owner names a pilot facilitator and backup contact. The engineer rehearses the six [existing pilot tasks](docs/pilot-operations.md) on an isolated hosted tracker with a synthetic statement. Before external enrollment, rotate the database credential previously shared in chat, update the deployment and backup task together, verify a new restore, and record who can access pilot feedback. Keep the existing encrypted-on-computer backup policy. Record what happens if the computer is off or lost.
+
+With consent, observe up to five households doing setup, capture, import, reconciliation, forecast, and weekly review. Record unassisted, assisted, or unfinished for each attempt, the step that caused difficulty, and elapsed time. Keep account details out of the research record. Use the existing pilot scorecard. Follow the original cohort for four weeks.
+
+**Decision.** Aim for at least four of the first five households finishing setup unassisted, a median familiar-expense entry under ten seconds, and zero unexplained balance or privacy incidents. Show the count of failed attempts alongside the median. Rank the two largest obstacles by households affected and consequence. If setup or reconciliation repeatedly fails, fix it and repeat before adding features. With no available participants, label the run a rehearsal and leave product acceptance open.
+
+**November 4 engineering rehearsal.** The [facilitator worksheet and practice statement](docs/m11-household-observation.md) are ready. The six-task exercise passed in memory and against a dedicated synthetic Neon database. The practice ledger closed at C$90.00 after two expenses and forecast a C$70.00 low after tomorrow's bill. A signed-in local web server using a restricted role on that database served Setup, Imports and Statement review. The mobile balance and household scope matched. A new encrypted production snapshot restored 415 rows in isolation. The application type check and 318 tests passed.
+
+**Fieldwork remains open.** Observed households 0/5. Unassisted setup, capture speed, incidents in participant sessions, recurring obstacles and week-four returns are unmeasured. The remote Vercel web preview, coordinated credential replacement, staffing, feedback access and consent must be confirmed before enrollment. Use the original five for the follow-up.
+
+### M12 — Make the weekly review worth returning for
+
+**First product change, subject to M11 findings.** Extend the weekly household check-in and Attention inbox. Start with the previous review date, surface only items that changed or still need a decision, and link directly to the source. Each partner can open a bill change, review an outstanding reimbursement, or defer an item until the next review. Finishing gives them a short receipt of what they reviewed and what remains. Review status is separate from payments and posted transactions.
+
+Prototype the flow with synthetic data before saving review state. Test private accounts, changed sharing permissions, repeated clicks, a second partner reviewing concurrently, and a bill corrected after review. A shared summary must also protect private names, amounts, counts, and inferred totals.
+
+**Decision.** With a seeded discrepancy, at least four of five households should finish unassisted within five minutes, identify the discrepancy, and explain their next action. At week four, report how many eligible households returned and completed the review voluntarily. A preliminary continuation threshold is three of five. Use that result to decide whether to recruit a second cohort.
+
+**November 5 implementation.** Planning now has a resumable weekly review linked from the Overview Attention inbox. Each member can review, defer for seven household-calendar days, or undo a choice on upcoming bills, outstanding reimbursements and savings goals. Changed source facts reopen an item. The passage of a day alone does not cancel a deferral. Bill amounts retain their account's reviewed currency, with explicit currency codes. Finishing saves a retry-safe receipt with open items preserved. The latest review date and source links make it possible to resume without rechecking unchanged items. Choices are per member so one partner cannot silently clear the other's review.
+
+The additive `0032_weekly_reviews` migration stores review progress and receipts separately from the ledger. Receipts keep source identifiers and fingerprints rather than historical names or amounts, and resolve visible content again on every read. Personal accounts, including shared personal-account reports, do not enter this household summary. Removed membership clears that member's review records. Older schemas retain the existing check-in until the migration is applied. Backups cover the new records and restore rehearsal includes schemas 28 through 32.
+
+**Local verification.** The full 47-file suite passes 325 tests, including seven review integration tests. Type checking, lint and an isolated production build pass. The encrypted backup command restores schemas 28 through 32 and preserves the existing financial rows across migrations. Browser checks cover entry from Overview, reviewed/deferred choices, finish receipt, reopening, corrected bill detection without a page reload, keyboard undo and the goal source link. A 390-pixel viewport has no horizontal page overflow. The synthetic account stays at C$92.50 while its bill estimate changes from C$20 to C$27 and C$28. Initial build attempts encountered a sandbox filesystem denial and a Webpack hash error; a clean source copy with production connections disabled builds successfully. The local rehearsal is separate from the live ledger and the five-household acceptance exercise.
+
+**Acceptance remains open.** This is local engineering evidence, with no production deployment or live database change. Use the [M12 exercise](docs/m11-household-observation.md#m12-weekly-review-exercise) to collect the five-household result. Human completion time, discrepancy detection, next-action comprehension and voluntary week-four return remain unmeasured. Do not treat an automated rehearsal as evidence of habit or completion speed.
+
+### M13 — Test a purchase before committing money
+
+**Build if households use the review but still leave to work out a spending decision.** Add one temporary question to the existing forecast, such as “What if we spend C$300 on Friday?” Reuse the existing forecast, bills, goal reservations, and buffer. Show the lowest projected balance, the date, the difference from the original plan, and the assumption most likely to change the result. Mark missing account evidence or rates explicitly. Close the scenario to discard it.
+
+Add a “what actually changed?” comparison for the reviewed period. Start with dated bills and explained differences such as an early payment or an unplanned expense. Distinguish a projection error from a later ledger correction. Save a forecast baseline only when a member explicitly chooses to, with the same visibility as its source.
+
+**Decision.** Cover pay delays, refunds, transfers, missing rates, and incomplete accounts with independent examples. Require exact-cent agreement for supported scenarios, zero posted entries from simulations, and four of five participants correctly explaining why the lowest balance changed. If people already make the decision comfortably using today's forecast, defer this milestone.
+
+**November 5 implementation.** The Balance forecast now contains a compact “Can we afford this?” panel. Choose one active cash account, an amount and a date within the selected forecast period. The temporary scenario reuses dated entries, scheduled bills, the daily spending estimate, goal reservations and the cash buffer. It shows the original and proposed lowest balance, their dates, the difference, and cash remaining above protected funds. A sensitivity example moves the largest incoming amount seven days later; when none exists, it explains the effect of extra daily spending. Missing account evidence or unconfirmed assumptions prevent a confident answer. Closing the panel discards the purchase, and calculations never create transactions.
+
+Members can explicitly save the original forecast, excluding the hypothetical purchase. “What actually changed?” compares that baseline with current recorded activity through today or the saved period's end. It separates earlier-history and later-ledger corrections from changed amounts, posting dates, additional activity and the everyday allowance. Only unique schedule/entry matches within three days are paired; duplicate matches and linked refunds remain separate. Every displayed difference reconciles exactly to the change in recorded balance. A missing match is not described as an unpaid bill.
+
+The additive `0033_forecast_baselines` table holds member-scoped evidence, identifiers and fingerprints, without historical transaction names, notes or category labels. Every read rechecks membership, account and source visibility. Repeated saves with the same request ID cannot create a second baseline; changed evidence requires recalculation. Existing databases can calculate temporary scenarios before the migration, while saving stays unavailable. Encrypted backups include baseline records, with migration/restore rehearsals through schema 33. This release supports cash accounts in the tracker's reporting currency; foreign-denomination accounts and accounts affected by cross-currency transfers explicitly require a currency-aware forecast rather than displaying unreliable converted totals.
+
+**Local verification.** Eight M13 integration tests cover exact cents, pre-deposit lows, delayed incoming payments, reservations, missing evidence/rates, refunds, transfers, ambiguous matching, ledger corrections, retries and permission changes. The full 48-file suite passes 333 tests; type checking, lint and an isolated production build also pass. The final suite used one worker after an earlier concurrent run hit memory exhaustion and sandbox file-read denials. Encrypted backup/restore passes for schemas 28–33, preserving the existing financial rows. Browser checks in a separate synthetic household confirm a C$300 purchase leaves a C$575 low and C$275 above protected funds, while C$800 produces a C$225 protected-cash shortfall. The saved C$1,000 projection reconciles to C$875 through an early C$100 bill and C$25 additional expense. A saved current plan still compares at C$875 with zero difference after the purchase scenario is discarded. Date changes, close/reopen, saved-plan persistence and a 390-pixel layout are checked. No live migration, deployment or live ledger change is part of this implementation.
+
+**Acceptance remains open.** The engineering implementation is complete locally. The [M13 household exercise](docs/m11-household-observation.md#m13-purchase-decision-exercise) is ready, but the four-of-five comprehension criterion is unmeasured. M11 observed households remain 0/5. The strongest reason to defer broader rollout is that household need and comprehension have not yet been demonstrated; a passing calculation does not establish that a purchase is safe or that this feature helps people decide.
+
+### M14 — Prove the phone experience and recovery
+
+Run alongside the pilot as devices become available. Prioritize a phone-sized web path from Add to saved entry, account history, and weekly review. Test keyboard navigation, large text, screen readers, a slow connection, and a retry after a lost response. Measure real page load and interaction for consenting participants separately from database benchmarks. Use the performance targets in section 8.
+
+Complete the existing [native acceptance checklist](docs/m9-native-acceptance.md) on physical Android and iPhone hardware before distributing the respective build. Rehearse an offline draft, force quit, reconnect, revocation, and notification privacy. Time a clean restore with the protected key and backups. Target a recoverable backup under 24 hours old and recovery within four hours. Record failures and dependencies, including iOS signing and the availability of the backup computer.
+
+**Decision.** Ship each platform independently when its critical tasks pass. A retried transaction must produce exactly one posting. A removed member must lose access. A simulator or a mobile-sized browser is insufficient evidence for native distribution.
+
+### M15 — Decide whether to expand or connect banks
+
+After the four-week cohort, the owner reviews repeat usage, unresolved discrepancies, support minutes, actual monthly costs per active household, and the reason each household returned or stopped. Separate participant interest, willingness to pay, and actual payment. If a larger pilot is justified, try one recruitment channel and count invitations, activations, four-week returns, and operator hours. Use those observations to decide whether a paid offering could cover delivery and support.
+
+Real-bank connectivity remains an optional branch requiring a new owner decision. Pursue it if repeated manual import is a leading reason households stop. Verify current Canadian Transactions coverage for the exact RBC and TD connections and account types, obtain provider access and actual pricing, set a spend cap, and agree on consent, deletion, and incident handling. Start with one consenting household in observation-only mode. Exercise disconnect, replay, and pending-to-posted changes. Move to explicit Match existing / Import / Ignore only after the history reconciles without duplicate postings. Manual file review stays available. [Plaid institution coverage](https://plaid.com/docs/institutions/) · [Plaid transaction updates](https://plaid.com/docs/transactions/sync-migration/)
+
+### Sequence and protection of the live ledger
+
+Start M11 immediately. Prototype M12 once the first observed sessions identify friction. M13 competes with fixing the biggest observed obstacle. M14 can proceed independently when devices are available. Decide M15 after four weeks of observations. The order can change as evidence arrives.
+
+For every production data change, take a fresh encrypted backup, restore it separately, rehearse the migration, and compare original financial rows and per-account balances at the same write boundary. Verify the signed-in workflow on the deployed commit. On unexplained drift or a privacy failure, stop rollout, preserve newer activity, and follow the recovery procedure in section 7. Keep autonomous ledger edits, investment trading, and a broad visual redesign outside this phase.

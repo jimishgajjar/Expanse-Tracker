@@ -7,8 +7,11 @@ export function hostedHouseholdEnabled(env: NodeJS.ProcessEnv = process.env) {
   if (env.HOUSEHOLD_RELEASE !== "staging") return false;
   try {
     const target = new URL(env.DATABASE_URL);
-    return ["postgresql:", "postgres:"].includes(target.protocol) && target.hostname.endsWith(".neon.tech")
-      && /^\/m7_rehearsal_[a-f0-9]{32}$/.test(target.pathname);
+    if (!["postgresql:", "postgres:"].includes(target.protocol) || !target.hostname.endsWith(".neon.tech")) return false;
+    if (/^\/m7_rehearsal_[a-f0-9]{32}$/.test(target.pathname)) return true;
+    return env.VERCEL_ENV === "preview" && env.PILOT_SETUP === "1"
+      && env.REVIEWED_FILE_IMPORTS === "1" && env.STATEMENT_REVIEWS_ENABLED === "1"
+      && /^\/m10_rehearsal_[a-f0-9]{32}$/.test(target.pathname);
   } catch { return false; }
 }
 

@@ -11,6 +11,8 @@ import type {forecastBalances} from "@/lib/balance-forecast";
 import type {AccountDTO} from "@/lib/queries";
 import {useFormat} from "./settings-provider";
 import {Button} from "./ui/button";
+import {PurchaseCheck} from "./purchase-check";
+import type {PlanOptions} from "@/lib/affordability-model";
 
 type Forecast=Awaited<ReturnType<typeof forecastBalances>>;
 const control="mt-1 block min-h-9 w-full rounded-lg border bg-background px-2 text-sm";
@@ -82,6 +84,7 @@ function ForecastResult({workspace,account,horizon,scenario,includeExpectedPay,c
         {explain("spendable")}
       </div>:<p>{data.assumptions.length?"Confirm everyday spending and buffer amounts for each active cash account to see the spending estimate.":"Spending estimates apply to active cash, bank, savings and wallet accounts."}</p>}
       {metric&&<ForecastExplanation key={metric} data={data} metric={metric} onClose={()=>setMetric(null)}/>}
+      <PurchaseCheck workspace={workspace} accounts={data.openingAccounts.filter(a=>a.eligible)} horizon={horizon as PlanOptions["horizon"]} scenario={scenario} includeExpectedPay={includeExpectedPay} start={data.start} end={data.end!} canEdit={canEdit}/>
       <details><summary className="cursor-pointer py-1 font-medium">Projected changes · {p.days.length} {p.days.length===1?"dated group":"dated groups"}</summary>
         {p.days.length===0&&<p>No dated changes found in this period.</p>}
         {p.days.slice(0,limit).map(d=><div key={d.date} className="border-t py-2">

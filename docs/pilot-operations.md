@@ -16,6 +16,8 @@ An owner enters the account's opening balance when creating it. In Setup, previe
 
 ## Six observed tasks
 
+For M11 use the [facilitator worksheet](m11-household-observation.md) and [practice statement](pilot-statement.csv). Run `npm run rehearse:household-pilot` to check the fixture in a fresh in-memory database. A second mode, `npm run rehearse:household-pilot -- --hosted`, requires an operator-provisioned empty synthetic Neon database in `PILOT_REHEARSAL_URL` and its independently verified `PILOT_REHEARSAL_PROJECT`. The script checks both identities before applying migrations. Each hosted run needs its own empty database.
+
 | Task | Prompt | Completion evidence |
 | --- | --- | --- |
 | Setup | Set preferences, add an account, confirm a matching opening statement, leave and resume. | Saved preferences, account and date visible on return. Record the first five outcomes in order. |

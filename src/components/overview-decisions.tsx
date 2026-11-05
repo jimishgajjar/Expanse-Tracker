@@ -5,6 +5,8 @@ import {useEffect,useState} from "react";
 import Link from "next/link";
 import {ArrowUpRight,Bell,CalendarDays,Target} from "lucide-react";
 import {loadDecisionOverview} from "@/lib/monthly-planning-actions";
+import {readWeeklyReview} from "@/lib/weekly-review-actions";
+import type {WeeklyReviewData} from "@/lib/weekly-review-model";
 import type {decisionOverview} from "@/lib/decision-overview";
 import type {BudgetProgressDTO,CategoryDTO,RecurringDTO} from "@/lib/queries";
 import {useFormat} from "./settings-provider";
@@ -25,11 +27,12 @@ export function OverviewDecisions({workspace,budgets,categories,recurring}:{
 }){
   const trackerReady=useTrackerReady();
   const [data,setData]=useState<Outlook|null>(null),[revision,refresh]=useState(0),[error,setError]=useState("");
+  const [review,setReview]=useState<WeeklyReviewData|null>(null);
   const {money,balanceMoney,signedMoney}=useFormat();
   useEffect(()=>{
     const reload=()=>refresh(n=>n+1);
-    window.addEventListener("ledger-changed",reload);window.addEventListener("forecast-changed",reload);
-    return ()=>{window.removeEventListener("ledger-changed",reload);window.removeEventListener("forecast-changed",reload);};
+    window.addEventListener("ledger-changed",reload);window.addEventListener("forecast-changed",reload);window.addEventListener("weekly-review-changed",reload);
+    return ()=>{window.removeEventListener("ledger-changed",reload);window.removeEventListener("forecast-changed",reload);window.removeEventListener("weekly-review-changed",reload);};
   },[]);
   useEffect(()=>{
     if(!trackerReady)return;
@@ -38,6 +41,7 @@ export function OverviewDecisions({workspace,budgets,categories,recurring}:{
       if(!active)return;
       if(result.ok){setData(result.value);setError("");}else setError(result.error);
     }).catch(()=>{if(active)setError("Couldn’t load your outlook.");});
+    readWeeklyReview(workspace).then(result=>{if(active)setReview(result.ok?result.value:null);}).catch(()=>{if(active)setReview(null);});
     return ()=>{active=false;};
   },[trackerReady,workspace,revision,budgets]);
   if(error)return <div className="dashboard-panel p-4 text-sm" role="alert">{error} <button className={linkStyle} onClick={()=>refresh(n=>n+1)}>Try again</button></div>;
@@ -68,6 +72,11 @@ export function OverviewDecisions({workspace,budgets,categories,recurring}:{
       <section aria-labelledby="attention-inbox" className="dashboard-panel min-w-0 p-4 sm:p-5">
         <div className="mb-2 flex items-center gap-2"><Bell className="size-4 text-brand" aria-hidden/><h2 id="attention-inbox" className="text-sm font-semibold">Attention inbox</h2>
           <span className="ml-auto text-xs text-muted-foreground">{alerts.length} to review</span></div>
+        {review && <Link href="/?tab=planning#weekly-check-in" className="mb-2 flex min-h-11 items-center justify-between gap-3 rounded-lg border border-brand/20 bg-brand/5 p-3 text-sm hover:border-brand/50 focus-visible:outline-2">
+          <span><strong className="font-medium">Your weekly review</strong><small className="block text-muted-foreground">
+            {review.items.filter(item=>item.status==="pending").length} {review.items.filter(item=>item.status==="pending").length===1?"item":"items"} to consider{review.items.some(item=>item.changed)?" · Changes since your choices":""}
+          </small></span><ArrowUpRight className="size-4 shrink-0 text-brand" aria-hidden/>
+        </Link>}
         <div className="text-sm">{alerts.slice(0,3).map(alertRow)}
           {alerts.length>3&&<details><summary className="cursor-pointer py-2 text-xs text-brand">View {alerts.length-3} more</summary>{alerts.slice(3).map(alertRow)}</details>}
           {!alerts.length&&<p className="border-t py-3 text-muted-foreground">No items flagged by the current checks.</p>}</div>

@@ -12,14 +12,15 @@ import {scenarioName,scenarioForAccount,type ScenarioSetting} from "./forecast-s
 const options=z.object({account:z.string().min(1).max(128).nullable(),scenario:scenarioName.default("base"),includeExpectedPay:z.boolean().default(false),horizon:z.enum(["payday","30","60","90"])});
 type Entry={id:string;account:string|null;date:string;amount:string;type:"income"|"expense";note:string;category:string|null};
 type Schedule=Omit<Entry,"date">&{next:string;end:string|null;frequency:string;count:number;maximum:number|null;auto:boolean;commitment:string};
-type Event={key:string;date:string;label:string;detail:string;href:string;source:"Ledger"|"Transfer"|"Card repayment"|"Installment"|"Expected pay"|"Schedule"|"Bill estimate"|"Spending estimate";cashChange:string;change:string;overlap?:boolean;matchedSchedule?:string};
+export type ForecastEvent={key:string;date:string;label:string;detail:string;href:string;source:"Ledger"|"Transfer"|"Card repayment"|"Installment"|"Expected pay"|"Schedule"|"Bill estimate"|"Spending estimate"|"Purchase scenario";cashChange:string;change:string;overlap?:boolean;matchedSchedule?:string};
+type Event=ForecastEvent;
 type PayEstimate={account:string;name:string;first:string;next:string;date:string;expected:string;recorded:string;scheduled:string;remainder:string};
 const ledgerHref=(id:string,date:string,type:string)=>"/?"+new URLSearchParams({tab:"transactions",range:"day",date,type,entry:id});
 const scheduleHref=(id:string)=>"#schedule-"+encodeURIComponent(id);
 const signed=(row:Pick<Entry,"amount"|"type">)=>row.type==="expense"?-moneyCents(row.amount):moneyCents(row.amount);
 const matchKey=(row:Omit<Entry,"id">)=>JSON.stringify([row.account,row.date,row.type,decimalMoney(moneyCents(row.amount)),row.category,row.note.trim().toLowerCase()]);
 
-function timeline(events:Event[],opening:bigint,cashOpening:bigint,daily:bigint,start:string,end:string){
+export function projectTimeline(events:Event[],opening:bigint,cashOpening:bigint,daily:bigint,start:string,end:string){
   const days:{date:string;balance:string;events:Event[]}[]=[];
   let balance=opening,lowest=opening,lowDate=start,cash=cashOpening,lowestCash=cashOpening,cashLowDate=start;
   const grouped=new Map<string,Event[]>();
@@ -43,7 +44,7 @@ function timeline(events:Event[],opening:bigint,cashOpening:bigint,daily:bigint,
     const current=parseISO(date),gap=differenceInCalendarDays(current,previous)-1;
     // A deposit can hide a low point the night before. Close that quiet span first.
     if(gap>0&&daily>BigInt(0))closeDay(format(addDays(current,-1),"yyyy-MM-dd"),[],gap);
-    closeDay(date,grouped.get(date)!.sort((a,b)=>a.key.localeCompare(b.key)),1);
+    closeDay(date,grouped.get(date)!.sort((a,b)=>a.key.localeCompare(b.key)),date===start?0:1);
     previous=current;
   }
   const tail=differenceInCalendarDays(parseISO(end),previous);
@@ -186,7 +187,7 @@ export async function forecastBalances(db:HouseholdDb,scope:PlanningScope,raw:un
       }
     }
     if(!accounts.length)warnings.add("Add an account to start forecasting balances.");
-    const projection=timeline(events,opening,cashOpening,daily,start,end);
+    const projection=projectTimeline(events,opening,cashOpening,daily,start,end);
     const complete=assumptions.length>0&&assumptions.every(a=>a.configured);
     const bills=await missingMonthlyBills(tx,ws,account,start,end,ledger.filter(t=>t.type==="expense"));
     return {...header,coverage:{...freshness,bills},projection:{...projection,spendable:complete?decimalMoney(moneyCents(projection.lowestCash)-reserved-buffer):null},warnings:[...warnings]};

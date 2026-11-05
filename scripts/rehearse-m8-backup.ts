@@ -10,6 +10,8 @@ import { PGlite } from "@electric-sql/pglite";
 import { drizzle } from "drizzle-orm/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
 import { applyFinance } from "../src/lib/finance-posting";
+import { chooseWeeklyReview, finishWeeklyReview, loadWeeklyReview } from "../src/lib/weekly-review-store";
+import {checkAffordability,saveForecastBaseline} from "../src/lib/affordability-store";
 
 async function run() {
   const root=mkdtempSync(join(tmpdir(),"m8-synthetic-")),store=join(root,"db"),output=join(root,"encrypted");
@@ -54,6 +56,22 @@ async function run() {
     });
     await stage(31,async db=>{
       await db.exec("INSERT INTO household_setup(workspace_id,timezone) VALUES('home','America/Toronto'); INSERT INTO opening_cutoffs VALUES('bank','home','2025-01-01',151); INSERT INTO pilot_feedback(id,workspace_id,actor,severity,message) VALUES('feedback','home','owner','suggestion','Synthetic restore check')");
+    });
+    await stage(32,async db=>{
+      await db.exec("INSERT INTO recurring(id,workspace_id,account_id,type,amount,note,frequency,next_date,auto_post) VALUES('review-bill','home','bank','expense',20,'Synthetic bill','monthly','2026-11-06',false)");
+      const scope={workspace:"home",actor:"owner"},now=new Date("2026-11-05T15:00:00Z");
+      const initial=(await loadWeeklyReview(db,scope,now))!;
+      const reviewed=await chooseWeeklyReview(db,scope,{version:initial.version,key:"bill:review-bill",revision:initial.items[0].revision,choice:"reviewed"},now);
+      await finishWeeklyReview(db,scope,{id:crypto.randomUUID(),version:reviewed.version,digest:reviewed.digest},now);
+      assert.equal((await db.query("SELECT count(*)::int AS count FROM weekly_review_receipts")).rows[0].count,1);
+    });
+    await stage(33,async db=>{
+      await db.exec("INSERT INTO accounts(id,name,workspace_id,type,initial_balance) VALUES('forecast-bank','Forecast practice','home','bank',100); INSERT INTO forecast_scenarios(workspace_id,account_id,scenario,daily,buffer,version) VALUES('home','forecast-bank','base',0,5,1)");
+      const scope={workspace:"home",actor:"owner"},now=new Date("2026-11-05T15:00:00Z");
+      const options={account:"forecast-bank",scenario:"base" as const,horizon:"30" as const,includeExpectedPay:false};
+      const result=await checkAffordability(db,scope,{options,amount:"10",date:"2026-11-06"},now);
+      await saveForecastBaseline(db,scope,{id:crypto.randomUUID(),options,fingerprint:result.fingerprint},now);
+      assert.equal((await db.query("SELECT count(*)::int AS count FROM forecast_baselines")).rows[0].count,1);
     });
   } finally {rmSync(root,{recursive:true,force:true});}
 }

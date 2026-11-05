@@ -29,11 +29,14 @@ export function backupMigrationsForTables(folder: string, tables: string[]): str
   if (tables.includes("finance_books") && !tables.includes("finance_accounts")) throw Error("Missing liability review schema.");
   const pilot = ["household_setup","opening_cutoffs","pilot_feedback"];
   if (pilot.some(t=>tables.includes(t)) && (!pilot.every(t=>tables.includes(t)) || !tables.includes("finance_books"))) throw Error("Incomplete household setup schema.");
-  const stages=[...optional,["finance_accounts","0029_debt_reviews"],["finance_books","0030_booked_currencies"],["household_setup","0031_household_setup"]];
+  if(tables.includes("weekly_review_progress")!==tables.includes("weekly_review_receipts")
+    || (tables.includes("weekly_review_progress")&&!tables.includes("household_setup"))) throw Error("Incomplete weekly review schema.");
+  if(tables.includes("forecast_baselines")&&!tables.includes("weekly_review_receipts"))throw Error("Incomplete forecast baseline schema.");
+  const stages=[...optional,["finance_accounts","0029_debt_reviews"],["finance_books","0030_booked_currencies"],["household_setup","0031_household_setup"],["weekly_review_progress","0032_weekly_reviews"],["forecast_baselines","0033_forecast_baselines"]];
   const absent=stages.filter(([table,tag])=>existsSync(join(folder,tag+".sql"))&&!tables.includes(table)).map(([,tag])=>String(tag));
   if(!absent.length)return folder;
   const journal = JSON.parse(readFileSync(join(folder,"meta/_journal.json"),"utf8"));
-  if (journal.entries.some((entry:{idx:number})=>entry.idx>31)) throw new Error("Review backup compatibility for newer migrations before continuing.");
+  if (journal.entries.some((entry:{idx:number})=>entry.idx>33)) throw new Error("Review backup compatibility for newer migrations before continuing.");
   const compatible = mkdtempSync(join(tmpdir(),"expense-backup-schema-"));
   cpSync(folder,compatible,{recursive:true});
   journal.entries = journal.entries.filter((entry:{tag:string})=>!absent.includes(entry.tag));

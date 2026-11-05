@@ -219,6 +219,8 @@
       "tag": "0030_booked_currencies",
       "breakpoints": true
     },
-    {"idx":31,"version":"7","when":1793769200000,"tag":"0031_household_setup","breakpoints":true}
+    {"idx":31,"version":"7","when":1793769200000,"tag":"0031_household_setup","breakpoints":true},
+    {"idx":32,"version":"7","when":1793894400000,"tag":"0032_weekly_reviews","breakpoints":true},
+    {"idx":33,"version":"7","when":1793894500000,"tag":"0033_forecast_baselines","breakpoints":true}
   ]
 }
