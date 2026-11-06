@@ -109,7 +109,12 @@ async function visible(tx:HouseholdTransaction,s:PlanningScope,account:string,pl
   const scopes=await tx.query<{ok:boolean}>(`SELECT
     EXISTS(SELECT 1 FROM accounts a WHERE a.id=$2 AND a.workspace_id=$1 AND ${eligibleCash})
     AND NOT EXISTS(SELECT 1 FROM unnest($3::text[]) AS wanted(id) WHERE NOT EXISTS(SELECT 1 FROM goals g WHERE g.id=wanted.id AND g.workspace_id=$1))
-    AND NOT EXISTS(SELECT 1 FROM unnest($4::text[]) AS wanted(id) WHERE NOT EXISTS(SELECT 1 FROM recurring r WHERE r.id=wanted.id AND r.workspace_id=$1 AND r.account_id=$2)) AS ok`,[s.workspace,account,plan.goals,plan.rules]);
+    AND NOT EXISTS(SELECT 1 FROM unnest($4::text[]) AS wanted(id) WHERE NOT EXISTS(SELECT 1 FROM recurring r WHERE r.id=wanted.id AND r.workspace_id=$1 AND r.account_id=$2))
+    AND NOT EXISTS(SELECT 1 FROM transactions t WHERE 'entry-'||t.id=ANY($5::text[])
+      AND (t.workspace_id<>$1 OR NOT EXISTS(SELECT 1 FROM accounts a WHERE a.id=t.account_id AND a.workspace_id=$1)))
+    AND NOT EXISTS(SELECT 1 FROM transfers t WHERE 'transfer-'||t.id=ANY($5::text[])
+      AND (t.workspace_id<>$1 OR NOT EXISTS(SELECT 1 FROM accounts a WHERE a.id=t.from_account_id AND a.workspace_id=$1)
+        OR NOT EXISTS(SELECT 1 FROM accounts a WHERE a.id=t.to_account_id AND a.workspace_id=$1))) AS ok`,[s.workspace,account,plan.goals,plan.rules,plan.known.map(row=>row.key)]);
   return scopes.rows[0].ok;
 }
 export async function saveForecastBaseline(db:HouseholdDb,s:PlanningScope,raw:unknown,now=new Date()){

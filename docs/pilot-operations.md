@@ -8,6 +8,8 @@ An owner enters the account's opening balance when creating it. In Setup, previe
 
 ## Before anyone is invited
 
+Run `npm run pilot:prepare -- YYYY-MM-DD` to create blank local materials, then open the returned `START-HERE.md`. Preparation is not enrollment or consent. The original household follow-up observes days 21–27 and is finalized no earlier than day 28; the M15 report calculates calendar dates from actual enrollment.
+
 1. Nominate an operator and a backup contact. Agree on supported hours, escalation contact, retention periods and deletion of pilot observations. Give participants these details before consent.
 2. Use a separate pilot environment. Verify rejected viewer writes, stale-tab submissions, removed memberships, private exports and household switching in the actual environment. Inspect its feature flags, mail delivery, storage location, access to backups and feedback, and restricted operator access.
 3. Take an encrypted backup, restore it into a new isolated database, compare contents and exercise sign-in/export against that copy. Record elapsed recovery time and age of the latest successful backup against the 4-hour recovery and 24-hour data-loss targets. Never restore a rehearsal over the source.

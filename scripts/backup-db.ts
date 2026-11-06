@@ -6,6 +6,8 @@
  */
 import { config } from "dotenv";
 import { encryptBackup, decryptBackup } from "../src/lib/backup-envelope";
+import { unwrapRecoveryKey } from "../src/lib/recovery-key";
+import { recoverySecretInput } from "./recovery-secret-input";
 import { tmpdir } from "node:os";
 import { createHash } from "node:crypto";
 import { mkdirSync, readFileSync, writeFileSync, cpSync, existsSync, readdirSync, mkdtempSync } from "node:fs";
@@ -74,7 +76,7 @@ const value = (name: string) =>
 // Before an additive deployment, use the previous release's migrations to
 // rehearse its still-live schema. The exact migrations are saved in the backup.
 
-const hash = (s: string) => createHash("sha256").update(s).digest("hex");
+const hash = (s: string | Uint8Array) => createHash("sha256").update(s).digest("hex");
 function canonical(v: unknown): string {
   if (Array.isArray(v)) return `[${v.map(canonical).join(",")}]`;
   if (v && typeof v === "object")
@@ -205,9 +207,29 @@ async function capture(): Promise<{ snapshot: Snapshot; source: string }> {
   };
 }
 
-async function verifyRestore(snapshot: Snapshot) {
-  // Deliberately no path or DATABASE_URL: every write is confined to memory.
-  const isolated = new PGlite();
+const balancesSQL = `SELECT a.id, (a.initial_balance
+  + COALESCE((SELECT sum(CASE WHEN t.type='income' THEN t.amount ELSE -t.amount END) FROM transactions t WHERE t.account_id=a.id),0)
+  + COALESCE((SELECT sum(t.amount) FROM transfers t WHERE t.to_account_id=a.id),0)
+  - COALESCE((SELECT sum(t.amount) FROM transfers t WHERE t.from_account_id=a.id),0))::text AS balance
+  FROM accounts a ORDER BY a.id`;
+
+async function checkRestored(isolated: PGlite, snapshot: Snapshot) {
+  const localColumns = (await isolated.query<Row>(columnsSQL)).rows;
+  if (canonical(localColumns) !== canonical(snapshot.columns))
+    throw new Error("Live schema differs from archived migrations; restore rehearsal stopped.");
+  for (const table of TABLES) {
+    if (!/^[a-z][a-z0-9_]*$/.test(table)) throw new Error("Invalid backup table name.");
+    const rows = (await isolated.query<{ row: Row }>(tableSQL(table))).rows.map(r => r.row);
+    if (tableHash(rows) !== tableHash(snapshot.tables[table]))
+      throw new Error(`Restore content mismatch: ${table}`);
+  }
+  return tableHash((await isolated.query<Row>(balancesSQL)).rows);
+}
+
+async function verifyRestore(snapshot: Snapshot, directory?: string) {
+  // Never accept a connection URL. The caller exclusively creates a fresh drill directory.
+  const isolated = new PGlite(directory);
+  let balancesHash: string;
   try {
     await migrate(drizzle(isolated), { migrationsFolder });
     const localColumns = (await isolated.query<Row>(columnsSQL)).rows;
@@ -223,21 +245,34 @@ async function verifyRestore(snapshot: Snapshot) {
         );
       }
     });
-    for (const table of TABLES) {
-      const rows = (
-        await isolated.query<{ row: Row }>(tableSQL(table))
-      ).rows.map((r) => r.row);
-      if (tableHash(rows) !== tableHash(snapshot.tables[table]))
-        throw new Error(`Restore content mismatch: ${table}`);
-    }
+    balancesHash = await checkRestored(isolated, snapshot);
   } finally {
     await isolated.close();
   }
+  if (directory) {
+    // A second database instance must read the persisted files, not the previous instance's RAM.
+    const reopened = new PGlite(directory);
+    try {
+      if (await checkRestored(reopened, snapshot) !== balancesHash)
+        throw new Error("Account balances changed after reopening the restored database.");
+    } finally { await reopened.close(); }
+  }
+  return balancesHash;
 }
 
 async function main() {
+  let backupKey=process.env.BACKUP_KEY??"";
+  if(value("recovery-key")){
+    if(!value("verify-encrypted"))throw Error("Portable recovery keys are only accepted for an isolated archive verification or recovery drill.");
+    const input=await recoverySecretInput();
+    backupKey=await unwrapRecoveryKey(readFileSync(resolve(value("recovery-key")!)),input.passphrase);
+  }
+  if (args.includes("--recovery-drill") && !value("verify-encrypted"))
+    throw new Error("A recovery drill requires --verify-encrypted; it never connects to production.");
   if (value("verify-encrypted")) {
-    const saved = decryptBackup(readFileSync(resolve(value("verify-encrypted")!)), process.env.BACKUP_KEY ?? "") as {snapshot:Snapshot;migrations:Record<string,string>};
+    const started = new Date();
+    const startedClock = performance.now();
+    const saved = decryptBackup(readFileSync(resolve(value("verify-encrypted")!)), backupKey) as {snapshot:Snapshot;migrations:Record<string,string>};
     migrationsFolder = mkdtempSync(join(tmpdir(),"expense-restore-"));
     for (const [name, contents] of Object.entries(saved.migrations)) {
       const path = resolve(migrationsFolder,name);
@@ -245,6 +280,33 @@ async function main() {
       mkdirSync(dirname(path),{recursive:true}); writeFileSync(path,contents);
     }
     TABLES.splice(0,TABLES.length,...Object.keys(saved.snapshot.tables));
+    if (TABLES.some(t => !/^[a-z][a-z0-9_]*$/.test(t))) throw new Error("Invalid backup table name.");
+    if (args.includes("--recovery-drill")) {
+      // No user-provided database path and no reuse of any existing destination.
+      const root = resolve("backups/recovery-drills");
+      mkdirSync(root, { recursive: true, mode: 0o700 });
+      const drill = mkdtempSync(join(root, "restore-"));
+      const database = join(drill, "database");
+      const balancesHash = await verifyRestore(saved.snapshot, database);
+      const snapshotAgeSeconds = (started.getTime() - Date.parse(saved.snapshot.at)) / 1000;
+      if (!Number.isFinite(snapshotAgeSeconds) || snapshotAgeSeconds < 0) throw new Error("Invalid snapshot time.");
+      const durationSeconds = (performance.now() - startedClock) / 1000;
+      const receipt = {
+        version: 1, startedAt: started.toISOString(), finishedAt: new Date().toISOString(),
+        backupFile: resolve(value("verify-encrypted")!), backupSha256: hash(readFileSync(resolve(value("verify-encrypted")!))),
+        snapshotAt: saved.snapshot.at, snapshotAgeSeconds, durationSeconds,
+        tables: TABLES.length, rows: Object.values(saved.snapshot.tables).reduce((n, rows) => n + rows.length, 0),
+        accounts: saved.snapshot.tables.accounts.length, transactions: saved.snapshot.tables.transactions.length,
+        transfers: saved.snapshot.tables.transfers.length, balancesHash, database,
+        exactRowsVerified: true, reopenedFromDisk: true,
+        snapshotUnder24Hours: snapshotAgeSeconds < 86400, restoreUnder4Hours: durationSeconds < 14400,
+        scope: "Isolated local database restore. Does not prove off-machine key recovery, application cutover, or reconciliation of writes after the snapshot.",
+      };
+      const receiptFile = join(drill, "receipt.json");
+      writeFileSync(receiptFile, JSON.stringify(receipt, null, 2), { mode: 0o600, flag: "wx" });
+      console.log(JSON.stringify({ receiptFile, ...receipt }));
+      return;
+    }
     await verifyRestore(saved.snapshot);
     console.log("Encrypted backup decrypted and restored successfully in isolated memory.");
     return;

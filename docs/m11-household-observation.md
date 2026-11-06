@@ -1,5 +1,7 @@
 # Observe five households
 
+Prepare blank working materials with `npm run pilot:prepare -- YYYY-MM-DD`, using the preparation date. This creates a new ignored folder with H01–H05 worksheets, the synthetic statement, operating instructions and an empty M15 report. It does not enroll households or start the four-week clock. Open the returned `START-HERE.md` and confirm the enrollment checks below before contacting participants.
+
 ## Enrollment checklist
 
 The facilitator collects the observations. The backup contact handles an incident or withdrawal if the facilitator is away. Before inviting anyone, record their names, staffed hours, who can read feedback, when contact details and worksheets will be deleted, and how a household can withdraw. Keep that operator record and the contact-to-code key outside Git with restricted access. Use an approved, access-controlled preview with separate household workspaces. Complete the [pilot enrollment checks](pilot-operations.md#before-anyone-is-invited).
@@ -42,7 +44,7 @@ Use U for completed unassisted, A for completed with help, I for attempted but u
 
 Unexplained balance or unexpected ledger movement ___ · Visibility/privacy incident ___ · Follow-up owner and status ___
 
-Week four starts 21 days after the session and ends at the close of day 27. For the original household only, record voluntary return and completed review, the date relative to enrollment, and how it was confirmed with consent. A prompted demonstration is assisted. Track households still waiting, withdrawn, or with unknown return separately. Include all households that reached the window in the cohort report and disclose any outcome you could not verify.
+Enrollment is day 0. Week four starts 21 days after the session and ends at the close of day 27. For the original household only, record voluntary return and completed review in that window, the date relative to enrollment, and how it was confirmed with consent. Finalize its outcome **on day 28 or later**, after the whole window has elapsed. Before then, keep the M15 evidence return/review/reason fields null even if an interim observation is recorded in the worksheet. A prompted demonstration is assisted. Track households still waiting, withdrawn, or with unknown return separately; missing or withdrawn evidence is not an observed non-return. Include all original households whose full window has elapsed in the final denominator and disclose outcomes you could not verify. The M15 report prints each enrolled household's window and readout dates; it sends no reminders.
 
 ## Decide from the five sessions
 

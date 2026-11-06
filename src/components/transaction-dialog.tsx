@@ -388,7 +388,7 @@ export function TransactionDialog({
               <DialogTitle className="text-base font-bold tracking-tight text-foreground">
                 {title}
               </DialogTitle>
-              <DialogDescription className="mt-0.5 text-xs text-muted-foreground truncate">
+              <DialogDescription className="mt-0.5 text-xs text-muted-foreground">
                 {f.type === "transfer"
                   ? "Move money between your connected accounts"
                   : isEdit
@@ -418,7 +418,7 @@ export function TransactionDialog({
                   aria-pressed={isActive}
                   onClick={() => setType(t)}
                   className={cn(
-                    "flex min-h-10 min-w-0 items-center justify-center gap-1.5 rounded-lg py-1.5 text-xs font-semibold capitalize transition-colors duration-150 cursor-pointer focus-visible:outline-2 focus-visible:outline-brand disabled:opacity-50",
+                    "flex min-h-11 sm:min-h-10 min-w-0 items-center justify-center gap-1.5 rounded-lg py-1.5 text-xs font-semibold capitalize transition-colors duration-150 cursor-pointer focus-visible:outline-2 focus-visible:outline-brand disabled:opacity-50",
                     isActive
                       ? t === "income"
                         ? "bg-card text-positive shadow-xs border border-positive/25 font-bold"
@@ -803,7 +803,7 @@ export function TransactionDialog({
           <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3 border-t border-border/70 pt-4 mt-1">
             <div className="flex items-center gap-3">
               {!isEdit ? (
-                <label className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground cursor-pointer select-none">
+                <label className="flex min-h-11 sm:min-h-0 items-center gap-2 text-xs text-muted-foreground hover:text-foreground cursor-pointer select-none">
                   <input
                     type="checkbox"
                     checked={addAnother}

@@ -46,7 +46,7 @@ export function TagInput({ id, value, onChange, onPendingChange }: { id?: string
         {value.map((t) => (
           <span key={t.id} className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium" style={{ backgroundColor: `${t.color}22`, color: t.color }}>
             {t.name}
-            <button type="button" onClick={() => remove(t.id)} aria-label={`Remove ${t.name}`} className="grid size-8 place-items-center opacity-70 hover:opacity-100"><X className="size-3" /></button>
+            <button type="button" onClick={() => remove(t.id)} aria-label={`Remove ${t.name}`} className="grid size-11 sm:size-8 place-items-center opacity-70 hover:opacity-100"><X className="size-3" /></button>
           </span>
         ))}
         <input
@@ -59,19 +59,19 @@ export function TagInput({ id, value, onChange, onPendingChange }: { id?: string
             if (e.key === "Backspace" && !query && value.length) remove(value[value.length - 1].id);
           }}
           placeholder={value.length ? "" : "Add tags…"}
-          className="min-w-[6rem] flex-1 bg-transparent px-1 text-sm outline-none"
+          className="min-h-11 min-w-[6rem] flex-1 bg-transparent px-1 text-base outline-none sm:min-h-5 sm:text-sm"
         />
       </div>
       {focused && (q.length > 0 || suggestions.length > 0) && (
         <div className="absolute z-50 mt-1 max-h-48 w-full overflow-y-auto rounded-lg border bg-popover p-1 shadow-md">
           {suggestions.map((t) => (
-            <button key={t.id} type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => add(t)} className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-muted">
+            <button key={t.id} type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => add(t)} className="flex min-h-11 sm:min-h-8 w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-muted">
               <span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: t.color }} />
               {t.name}
             </button>
           ))}
           {q.length > 0 && !exact && (
-            <button type="button" disabled={creating} onMouseDown={(e) => e.preventDefault()} onClick={create} className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-muted disabled:opacity-50">
+            <button type="button" disabled={creating} onMouseDown={(e) => e.preventDefault()} onClick={create} className="flex min-h-11 sm:min-h-8 w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-muted disabled:opacity-50">
               <Plus className="size-3.5 shrink-0" /> Create &ldquo;{query.trim()}&rdquo;
             </button>
           )}

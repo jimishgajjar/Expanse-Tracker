@@ -80,6 +80,7 @@ Desktop.ini
 
 # Local DB backups (financial data — never commit)
 backups/
+*.etrk
 _backup.mjs
 _verifycol.mjs
 

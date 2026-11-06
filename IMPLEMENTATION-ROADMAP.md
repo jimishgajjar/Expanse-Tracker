@@ -396,7 +396,13 @@ The additive `0033_forecast_baselines` table holds member-scoped evidence, ident
 
 **Acceptance remains open.** The engineering implementation is complete locally. The [M13 household exercise](docs/m11-household-observation.md#m13-purchase-decision-exercise) is ready, but the four-of-five comprehension criterion is unmeasured. M11 observed households remain 0/5. The strongest reason to defer broader rollout is that household need and comprehension have not yet been demonstrated; a passing calculation does not establish that a purchase is safe or that this feature helps people decide.
 
+**November 6 follow-up.** The subsequent November 5 schema-33 release is recorded in the private `backups/release33-preservation.json`; its original financial rows and account balances matched. New local checks now hide a saved baseline when one of its recorded transactions or transfer endpoints crosses outside the household. Deleting an entry within the household remains a ledger correction that can be explained. Two additional integration regressions cover these visibility boundaries. These follow-up changes require no database migration and have not been deployed. Participant comprehension is still unmeasured; [M15's report](docs/m15-expansion-decision.md) tracks it explicitly.
+
 ### M14 — Prove the phone experience and recovery
+
+Local implementation and dated evidence: [M14 mobile and recovery](docs/m14-mobile-recovery.md). The disk restore and lost-response retry have passed locally. Physical-device acceptance, participant performance measurements, and recovery independent of the original Windows profile remain open; M14 is not fully accepted yet.
+
+**November 6 follow-up.** Portable passphrase-protected recovery-key export and isolated restore are implemented, with a local masked prompt and fresh-process synthetic verification. The real portable key still needs the owner's local passphrase and independent storage. A fresh drill of the retained nightly archive restored all 416 rows and account-balance fingerprints in 5.016 seconds without a production connection. This is database-recovery evidence, not replacement-machine or full app-cutover acceptance.
 
 Run alongside the pilot as devices become available. Prioritize a phone-sized web path from Add to saved entry, account history, and weekly review. Test keyboard navigation, large text, screen readers, a slow connection, and a retry after a lost response. Measure real page load and interaction for consenting participants separately from database benchmarks. Use the performance targets in section 8.
 
@@ -405,6 +411,10 @@ Complete the existing [native acceptance checklist](docs/m9-native-acceptance.md
 **Decision.** Ship each platform independently when its critical tasks pass. A retried transaction must produce exactly one posting. A removed member must lose access. A simulator or a mobile-sized browser is insufficient evidence for native distribution.
 
 ### M15 — Decide whether to expand or connect banks
+
+**November 6 implementation.** [M15 decision workflow](docs/m15-expansion-decision.md) and `npm run phase:decision -- <anonymous-evidence.json>` validate the original cohort, dated four-week follow-up, M13 comprehension, M14 release/recovery evidence, support labor, invoice costs, reasons and recruitment denominators. Missing evidence remains unknown; synthetic results never satisfy human gates. A passing result requires owner review and never enables banks. With no supplied participant results, the current decision is **hold for evidence**. The implementation is ready; the four-week acceptance decision cannot honestly be marked complete yet.
+
+**Pilot preparation follow-up, November 6.** The owner confirmed that no pilot results are available. `npm run pilot:prepare -- YYYY-MM-DD` now creates a new local packet with five blank worksheets, the synthetic statement and empty evidence/report files, without overwriting earlier packets or counting worksheets as enrolled households. The decision report shows per-household observation dates (days 21–27) and final readout dates (day 28 onward), retaining missing outcomes as unknown. Preparation does not invite anyone, enable banks or change a database. The [facilitator guide](docs/m11-household-observation.md) and [M15 workflow](docs/m15-expansion-decision.md) share the same timing rules.
 
 After the four-week cohort, the owner reviews repeat usage, unresolved discrepancies, support minutes, actual monthly costs per active household, and the reason each household returned or stopped. Separate participant interest, willingness to pay, and actual payment. If a larger pilot is justified, try one recruitment channel and count invitations, activations, four-week returns, and operator hours. Use those observations to decide whether a paid offering could cover delivery and support.
 

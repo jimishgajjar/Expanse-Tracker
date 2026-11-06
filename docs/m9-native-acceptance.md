@@ -32,6 +32,8 @@ On November 4, 2026, 310 automated tests passed across 45 files. The mobile Type
 
 ## Physical acceptance still required
 
+The November 5 [M14 verification record](m14-mobile-recovery.md) adds real browser lost-response testing, focused native regressions and disk recovery evidence. It does not close the physical-device rows below.
+
 Use a native development build that includes Expo LocalAuthentication and SecureStore. Use only synthetic accounts on an isolated backend. Set `EXPO_PUBLIC_API_BASE` explicitly before starting Metro or building the client. The normal release configuration points at the live website.
 
 For an Android USB development run, start `npm run dev:finance` in the repository. Run `adb reverse tcp:3138 tcp:3138`, set the client API to `http://127.0.0.1:3138/api/mobile`, and start the mobile development client. A physical iPhone needs a reachable isolated HTTPS backend and a provisioned install. The Expo account had no registered Apple team on November 4, 2026.

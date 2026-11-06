@@ -136,3 +136,18 @@ it("supports a temporary check when baseline storage is not yet migrated",async(
   try {expect(await check()).toMatchObject({canSave:false,calculation:{status:"within_plan"}});expect((await listForecastBaselines(db,scope,"bank")).available).toBe(false);}
   finally {await db.exec("ALTER TABLE held_forecast_baselines RENAME TO forecast_baselines");}
 });
+it("hides historical evidence when a recorded source moves outside the household",async()=>{
+  const request=await save();
+  await db.exec("UPDATE transactions SET workspace_id='private',account_id='secret' WHERE id='old-out'");
+  expect((await listForecastBaselines(db,scope,"bank")).items).toHaveLength(0);
+  await expect(compareForecastBaseline(db,scope,"bank",request.id,now)).rejects.toThrow("source access");
+});
+it("hides a saved plan after a transfer endpoint becomes private, while allowing ordinary deleted-entry corrections",async()=>{
+  await db.exec("INSERT INTO transfers(id,workspace_id,from_account_id,to_account_id,amount,date) VALUES('prior-transfer','home','bank','other',5,'2026-11-04')");
+  const request=await save();
+  await db.exec("DELETE FROM transactions WHERE id='old-out'");
+  expect((await compareForecastBaseline(db,scope,"bank",request.id,now)).difference).toBe("1.00");
+  await db.exec("UPDATE accounts SET workspace_id='private' WHERE id='other'");
+  expect((await listForecastBaselines(db,scope,"bank")).items).toHaveLength(0);
+  await expect(compareForecastBaseline(db,scope,"bank",request.id,now)).rejects.toThrow("source access");
+});
