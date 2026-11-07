@@ -153,23 +153,24 @@ export async function DetailShell({
         </header>
         <main
           id="detail-content"
-          className="mx-auto max-w-[1440px] px-4 pt-5 pb-28 sm:px-6 sm:pt-6 lg:px-8 lg:pb-8"
+          className="mobile-nav-content mx-auto max-w-[1440px] px-4 pt-5 pb-28 sm:px-6 sm:pt-6 lg:px-8 lg:pb-8"
         >
           {children}
         </main>
       </div>
       <nav
         aria-label="Mobile navigation"
-        className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t bg-card pb-[env(safe-area-inset-bottom)] lg:hidden"
+        className="mobile-tab-bar"
       >
         {links.map((link) => (
           <Link
             key={link.label}
             href={link.href}
-            className="flex min-h-16 flex-col items-center justify-center gap-1 text-[11px] text-muted-foreground hover:text-brand"
+            aria-current={link.label === (section === "Accounts" ? "Accounts" : "Activity") ? "page" : undefined}
+            className="mobile-tab-item"
           >
-            <link.icon className="size-5" />
-            {link.label}
+            <link.icon aria-hidden="true" className="mobile-tab-icon" />
+            <span>{link.label === "Overview" ? "Home" : link.label}</span>
           </Link>
         ))}
       </nav>

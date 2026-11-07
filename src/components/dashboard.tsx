@@ -437,7 +437,7 @@ export function Dashboard({
           </header>
           <main
             id="main-content"
-            className="mx-auto max-w-[1440px] space-y-5 px-4 pt-5 pb-28 sm:px-6 sm:pt-6 lg:pb-8 xl:px-8"
+            className="mobile-nav-content mx-auto max-w-[1440px] space-y-5 px-4 pt-5 pb-28 sm:px-6 sm:pt-6 lg:pb-8 xl:px-8"
           >
             {!emailVerified && <VerifyBanner email={userEmail} />}
             <div className="flex flex-wrap items-center justify-between gap-4">
@@ -575,7 +575,7 @@ export function Dashboard({
         </div>
         <nav
           aria-label="Mobile navigation"
-          className="fixed inset-x-0 bottom-0 z-30 flex justify-around border-t border-border bg-background px-2 pt-1.5 pb-safe lg:hidden shadow-xs"
+          className="mobile-tab-bar"
         >
           {(
             [
@@ -587,51 +587,40 @@ export function Dashboard({
             ] as const
           ).map(([id, Icon, label]) => {
             const isAdd = id === "add";
+            if (isAdd && !canEdit) return null;
+            const isActive = tab === id ||
+              (id === "more" && ["accounts", "planning", "settings"].includes(tab));
             const button = (
               <button
+                key={id}
                 type="button"
                 aria-label={isAdd ? "Add transaction" : label}
                 aria-current={tab === id ? "page" : undefined}
+                aria-expanded={id === "more" ? moreOpen : undefined}
+                aria-haspopup={id === "more" ? "dialog" : undefined}
+                data-active={isActive || undefined}
                 onClick={
                   isAdd
                     ? undefined
                     : () => (id === "more" ? setMoreOpen(true) : changeTab(id))
                 }
                 className={cn(
-                  "flex min-h-12 flex-1 flex-col items-center justify-center gap-1 rounded-xl px-2 text-[11px] font-medium transition-colors",
-                  tab === id ? "text-brand font-semibold" : "text-muted-foreground",
+                  "mobile-tab-item",
+                  isAdd && "mobile-tab-add",
                 )}
               >
-                <span
-                  className={cn(
-                    "grid place-items-center transition-transform motion-reduce:transition-none motion-reduce:transform-none",
-                    isAdd
-                      ? "size-8 rounded-lg bg-brand text-brand-foreground shadow-xs active:scale-95"
-                      : "h-6 w-10 rounded-lg",
-                    !isAdd && tab === id && "bg-brand/10 text-brand",
-                  )}
-                >
-                  <Icon className={cn(isAdd ? "size-4" : "size-4.5")} />
-                </span>
-                <span className="leading-tight">{label}</span>
+                <Icon aria-hidden="true" className="mobile-tab-icon" />
+                <span>{label}</span>
               </button>
             );
             return id === "add" ? (
-              canEdit ? (
-                <TransactionDialog
-                  key={id}
-                  accounts={liveAccounts}
-                  categories={categories}
-                  trigger={button}
-                />
-              ) : (
-                <span key={id} className="flex-1" />
-              )
-            ) : (
-              <span key={id} className="flex flex-1">
-                {button}
-              </span>
-            );
+              <TransactionDialog
+                key={id}
+                accounts={liveAccounts}
+                categories={categories}
+                trigger={button}
+              />
+            ) : button;
           })}
         </nav>
         <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
