@@ -107,7 +107,8 @@ export function CategoryDonut({
         id: t.categoryId,
         name,
         value: 0,
-        color: t.category?.color ?? colorFor(name),
+        // Uncategorised matches the neutral grey used by Insights (analytics.ts).
+        color: t.category ? (t.category.color ?? colorFor(name)) : "#9b9a97",
         icon: t.category?.icon ?? "circle-help",
       };
       seg.value += t.amount;

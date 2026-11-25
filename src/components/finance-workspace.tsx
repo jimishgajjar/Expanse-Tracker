@@ -8,7 +8,15 @@ import { saveFinance } from "@/lib/finance-actions";
 import { todayISO } from "@/lib/dates";
 import { displayMoney,minor,money,payoff } from "@/lib/finance-money";
 
-const control="block w-full rounded-md border bg-background px-2 py-1.5 text-sm";
+const control="block min-h-9 w-full rounded-lg border border-input bg-background px-3 py-1.5 text-sm text-foreground transition-colors focus-visible:border-ring focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/30";
+/** Group a stored decimal string for reading ("170101.00" → "170,101.00") without converting it to a float. */
+function groupDigits(raw:string|null|undefined) {
+  if (raw==null || raw==="") return "—";
+  const [whole,fraction]=String(raw).split(".");
+  const sign=whole.startsWith("-")?"−":"";
+  const digits=whole.replace(/^[-+]/,"").replace(/\B(?=(\d{3})+(?!\d))/g,",");
+  return sign+digits+(fraction!==undefined?"."+fraction:"");
+}
 function Field({label,children}:{label:string;children:ReactNode}) {
   return <label className="grid content-start gap-1 text-xs text-muted-foreground">{label}{children}</label>;
 }
@@ -92,17 +100,16 @@ export function FinanceWorkspace({workspace,data,debtOnly}:{workspace:string;dat
   }
   const [generation,setGeneration]=useState(0);
   return <div className="space-y-4">
-    <section className="dashboard-panel p-4"><h2 className="mb-2 font-semibold">Account balances</h2>
-      {data.accounts.map(a=><div key={a.id} className="flex flex-wrap items-baseline justify-between gap-1 border-t py-2 text-sm">
-        <span>{a.name} <small className="text-muted-foreground">{a.role??"Awaiting owner review"}{a.archived?" · archived":""}</small></span>
-        <span>{a.uncertain?"Transfer or precision review needed":a.currency?displayMoney(a.balance,a.currency):"Recorded "+a.raw+" · currency unconfirmed"}
+    <section className="dashboard-panel p-4 sm:p-5"><h2 className="mb-2 text-sm font-semibold">Account balances</h2>
+      {data.accounts.map(a=><div key={a.id} className="flex flex-wrap items-baseline justify-between gap-1 border-t border-border/70 py-2.5 text-sm">
+        <span className="min-w-0"><span className="font-medium">{a.name}</span> <small className="text-xs text-muted-foreground">{a.role??"Awaiting owner review"}{a.archived?" · archived":""}</small></span>
+        <span className="amount text-right">{a.uncertain?"Transfer or precision review needed":a.currency?displayMoney(a.balance,a.currency):<>{groupDigits(a.raw)} <small className="text-xs text-muted-foreground">· currency unconfirmed</small></>}
           {a.rate && <small className="block text-right text-muted-foreground">Rate {a.rate} · {a.quote_source} · {a.quote_date?.slice(0,10)}</small>}</span>
       </div>)}
     </section>
     {editor && <section className="dashboard-panel space-y-3 p-4">
-      <nav aria-label="Financial actions" className="flex flex-wrap gap-2">{(Object.entries(modes) as [Mode,string][]).filter(([key])=>
+      <nav aria-label="Financial actions" className="segmented">{(Object.entries(modes) as [Mode,string][]).filter(([key])=>
         (owner || key==="post") && (data.report || key==="review") && (!debtOnly || key!=="quote")).map(([key,label])=><button type="button" key={key} aria-pressed={mode===key}
-          className={"rounded-md border px-3 py-1.5 text-sm "+(mode===key?"bg-foreground text-background":"")}
           onClick={()=>{setMode(key);setExisting("");setMessage("");request.current=null;}}>{label}</button>)}</nav>
       <form key={mode+generation} onSubmit={submit} className="space-y-3">
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -115,7 +122,7 @@ export function FinanceWorkspace({workspace,data,debtOnly}:{workspace:string;dat
               <option value="cash">Liquid cash</option><option value="asset">Other asset</option><option value="card">Credit card</option><option value="loan">Loan</option></select></Field>
             {!account?.role && ["card","loan"].includes(role) && <Field label="How is today's recorded balance expressed?"><select className={control} value={meaning} onChange={e=>setMeaning(e.target.value)}>
               <option value="signed">Signed value (negative means owed)</option><option value="owed">Positive amount owed</option></select></Field>}
-            <p className="text-sm">Recorded {account?.raw??"—"} → signed position {account?.role?account.balance:(meaning==="owed" && account && Number(account.raw)>0?"−":"")+(account?.raw??"—")}. This confirms the denomination of this account’s existing entries.</p>
+            <p className="text-sm">Recorded <span className="amount">{account?groupDigits(account.raw):"—"}</span> → signed position <span className="amount">{account?.role?account.balance:(meaning==="owed" && account && Number(account.raw)>0?"−":"")+(account?groupDigits(account.raw):"—")}</span>. This confirms the denomination of this account’s existing entries.</p>
             <label className="self-center text-sm"><input required type="checkbox"/> I checked the account and balance against my records.</label>
           </>}
           {mode==="quote" && <><Currency name="currency" label="Value one unit of"/><Input name="rate" label={"Rate in "+data.report+" per unit"}/></>}

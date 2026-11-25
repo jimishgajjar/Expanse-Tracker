@@ -4,6 +4,7 @@ import { z } from "zod";
 import type { AppDb } from "./db";
 import type { Batch, Entry, Source, Mapping } from "./file-import-model";
 import { normalize, ImportProblem } from "./file-import-parser";
+import { suggestCategories } from "./import-category-suggest";
 export type Scope={workspace:string;actor:string;name:string};
 const authorized=(s:Scope)=>sql`EXISTS(SELECT 1 FROM workspace_members WHERE workspace_id=${s.workspace} AND user_id=${s.actor} AND role IN ('owner','member'))`;
 const batchColumns=sql`id,filename,file_hash AS "fileHash",currency,version,rows,receipt`;
@@ -30,6 +31,7 @@ export async function stageBatch(db:AppDb,s:Scope,file:Source,mapping:Mapping,co
   const setup=await importSetup(db,s,file.headers);
   if(setup.currency!==confirmedCurrency)throw new ImportProblem("Confirm the workspace currency before previewing rows.");
   const rows=normalize(file,mapping,setup.currency,setup.accounts,setup.categories);
+  await suggestCategories(db,s.workspace,s.actor,rows);
   // Old deployments may not have the optional setup tables yet.
   const installed = await db.execute(sql`SELECT to_regclass('public.opening_cutoffs') IS NOT NULL AS present`);
   if (installed.rows[0]?.present) {

@@ -93,3 +93,18 @@ it("reads real XLSX dates and blocks formulas even with a cached numeric result"
   const rows=normalize(src,{...defaultMapping(src.headers),fallback:"a"},"CAD",[{id:"a",name:"Bank"}],[]);
   expect(rows[0]).toMatchObject({date:"2026-11-03",amount:"2.25",type:"expense",errors:[]});expect(rows[1].errors.length).toBeGreaterThan(0);
 });
+it("suggests categories from history and reads card statements with purchase-positive signs",async()=>{
+  await client.exec("INSERT INTO categories(id,workspace_id,name,kind) VALUES ('food','w','Groceries','expense'); INSERT INTO transactions(id,workspace_id,account_id,category_id,type,date,amount,note) VALUES ('h1','w','bank','food','expense','2026-09-01',20,'WALMART #1001 TORONTO'),('h2','w','bank','food','expense','2026-09-08',25,'WALMART #1001 TORONTO')");
+  const source=await parseSource(csv("Date,Amount,Note\n2026-10-05,42.10,WALMART #2002 TORONTO ON\n2026-10-06,-300.00,PAYMENT THANK YOU\n2026-10-07,9.99,Unknown shop","card.csv"));
+  const b=await stageBatch(db,s,source,{...defaultMapping(source.headers),fallback:"bank",cardStatement:true},"CAD");
+  expect(b.rows[0]).toMatchObject({type:"expense",amount:"42.10",categoryId:"food",category:"Groceries",suggested:true});
+  expect(b.rows[1]).toMatchObject({type:"income",categoryId:null});expect(b.rows[1].notice).toMatch(/transfer/);
+  expect(b.rows[2]).toMatchObject({type:"expense",categoryId:null});expect(b.rows[2].suggested).toBeUndefined();
+  await approveBatch(db,s,b.id,b.version,{"2":"import","3":"ignore","4":"import"});
+  expect((await client.query<{category_id:string}>("SELECT category_id FROM transactions WHERE note='WALMART #2002 TORONTO ON'")).rows[0].category_id).toBe("food");
+});
+it("keeps bank-file signs when the card statement option is off",async()=>{
+  const source=await parseSource(csv("Date,Amount,Note\n2026-10-05,42.10,Salary\n2026-10-06,-3.00,Fee","bank2.csv"));
+  const rows=normalize(source,{...defaultMapping(source.headers),fallback:"bank"},"CAD",[{id:"bank",name:"Bank"}],[]);
+  expect(rows.map(r=>r.type)).toEqual(["income","expense"]);expect(rows.every(r=>!r.notice)).toBe(true);
+});

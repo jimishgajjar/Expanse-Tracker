@@ -69,6 +69,8 @@ Desktop.ini
 /scripts/seed-notion.ts
 /scripts/test-email.ts
 /scripts/copy-neon-to-local.ts
+# Household-specific ledger tidy-up rules (names and payees): never commit.
+/scripts/organize-ledger.ts
 
 # agent design skills (local tooling — reinstall via `npx skills` / `npx impeccable`)
 /.agents/

@@ -1,8 +1,62 @@
 "use client";
 
-import { ArrowDownLeft, ArrowUpRight, ArrowRightLeft, ShieldCheck } from "lucide-react";
+import { useMemo } from "react";
+import { ArrowDownLeft, ArrowUpRight, Scale, TrendingDown, TrendingUp } from "lucide-react";
 import { useFormat } from "./settings-provider";
 import { cn } from "@/lib/utils";
+
+type Entry = { type: string; amount: number; date: string };
+const BINS = 24;
+const day = (iso: string) => Date.parse(iso.slice(0, 10) + "T00:00:00Z");
+
+/** Split the period into equal slices and total income and spending in each. */
+function series(entries: Entry[], start?: string, end?: string) {
+  const dated = entries.filter((e) => /^\d{4}-\d{2}-\d{2}/.test(e.date));
+  if (!dated.length) return null;
+  const times = dated.map((e) => day(e.date));
+  const valid = (s?: string) => (s && /^\d{4}-\d{2}-\d{2}/.test(s) ? day(s) : NaN);
+  let from = valid(start), to = valid(end);
+  if (!Number.isFinite(from) || from < Date.UTC(1990, 0, 1)) from = Math.min(...times);
+  // Stop the line at today (or the last entry) so a running period has no flat tail.
+  const lastEntry = Math.max(...times) + 86400000;
+  to = Number.isFinite(to) ? Math.min(to, Math.max(Date.now() + 86400000, lastEntry)) : lastEntry;
+  const span = Math.max(to - from, 86400000);
+  const income = Array<number>(BINS).fill(0), expense = Array<number>(BINS).fill(0);
+  for (const e of dated) {
+    const i = Math.min(BINS - 1, Math.max(0, Math.floor(((day(e.date) - from) / span) * BINS)));
+    (e.type === "income" ? income : expense)[i] += e.amount;
+  }
+  let running = 0;
+  const cumulative = income.map((v, i) => (running += v - expense[i]));
+  return { income, expense, cumulative };
+}
+
+function Sparkline({ values }: { values: number[] }) {
+  const min = Math.min(0, ...values), max = Math.max(0, ...values);
+  const range = max - min || 1;
+  const points = values.map((v, i) => `${(i / (values.length - 1)) * 100},${30 - ((v - min) / range) * 28}`);
+  const zero = 30 - ((0 - min) / range) * 28;
+  return (
+    <svg viewBox="0 0 100 32" preserveAspectRatio="none" className="h-14 w-full" aria-hidden>
+      <line x1="0" x2="100" y1={zero} y2={zero} stroke="currentColor" strokeOpacity="0.25" strokeDasharray="2 3" vectorEffect="non-scaling-stroke" />
+      <polygon points={`0,${zero} ${points.join(" ")} 100,${zero}`} fill="currentColor" fillOpacity="0.14" />
+      <polyline points={points.join(" ")} fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+    </svg>
+  );
+}
+
+function MiniBars({ values, tone }: { values: number[]; tone: (v: number) => string }) {
+  // Twelve bars read better than twenty-four at tile width.
+  const merged = Array.from({ length: values.length / 2 }, (_, i) => values[i * 2] + values[i * 2 + 1]);
+  const max = Math.max(1, ...merged.map(Math.abs));
+  return (
+    <div className="flex h-8 items-end gap-[3px]" aria-hidden>
+      {merged.map((v, i) => (
+        <span key={i} className={cn("flex-1 rounded-sm", v === 0 ? "bg-border" : tone(v))} style={{ height: v === 0 ? 2 : `${Math.max(8, (Math.abs(v) / max) * 100)}%` }} />
+      ))}
+    </div>
+  );
+}
 
 export function SummaryCards({
   totalBalance,
@@ -12,7 +66,10 @@ export function SummaryCards({
   rangeLabel,
   accountsCount,
   comparison,
-  decisionView=false,
+  decisionView = false,
+  transactions = [],
+  rangeStart,
+  rangeEnd,
 }: {
   totalBalance: number;
   income: number;
@@ -20,139 +77,98 @@ export function SummaryCards({
   net: number;
   rangeLabel: string;
   accountsCount: number;
-  decisionView?:boolean;
+  decisionView?: boolean;
   comparison?: { prevIncome: number; prevExpense: number } | null;
+  transactions?: Entry[];
+  rangeStart?: string;
+  rangeEnd?: string;
 }) {
   const { money, signedMoney, balanceMoney } = useFormat();
+  const data = useMemo(() => series(transactions, rangeStart, rangeEnd), [transactions, rangeStart, rangeEnd]);
 
   const delta = (current: number, previous?: number) =>
     previous ? Math.round(((current - previous) / Math.abs(previous)) * 100) : null;
-
   const incomeDelta = delta(income, comparison?.prevIncome);
   const expenseDelta = delta(expense, comparison?.prevExpense);
+  const prevNet = comparison ? comparison.prevIncome - comparison.prevExpense : undefined;
+  const netDelta = delta(net, prevNet);
   const retained = income > 0 ? Math.round((net / income) * 100) : null;
 
-  const metrics = [
-    {
-      label: "Income",
-      value: money(income),
-      icon: ArrowDownLeft,
-      tone: "text-positive",
-      badgeTone: "bg-positive/10 text-positive",
-      change: incomeDelta,
-      subtext:
-        incomeDelta !== null
-          ? `${incomeDelta > 0 ? "+" : ""}${incomeDelta}% vs prior period`
-          : "Total deposits",
-    },
-    {
-      label: "Expenses",
-      value: money(expense),
-      icon: ArrowUpRight,
-      tone: "text-negative",
-      badgeTone: "bg-negative/10 text-negative",
-      change: expenseDelta,
-      subtext:
-        expenseDelta !== null
-          ? `${expenseDelta > 0 ? "+" : ""}${expenseDelta}% vs prior period`
-          : "Total spending",
-    },
-    {
-      label: "Net cash flow",
-      value: signedMoney(net),
-      icon: ArrowRightLeft,
-      tone: net < 0 ? "text-negative" : "text-positive",
-      badgeTone: net < 0 ? "bg-negative/10 text-negative" : "bg-positive/10 text-positive",
-      change: null,
-      subtext:
-        retained === null
-          ? "Income less expenses"
-          : retained >= 0
-            ? `${retained}% of income retained`
-            : "Expenses exceed income",
-    },
+  const tiles = [
+    { label: "Income", value: money(income), icon: ArrowDownLeft, tone: "text-positive", chip: "bg-positive/10 text-positive",
+      change: incomeDelta, good: (d: number) => d >= 0, bars: data?.income, bar: () => "bg-positive/70" },
+    { label: "Expenses", value: money(expense), icon: ArrowUpRight, tone: "text-foreground", chip: "bg-negative/10 text-negative",
+      change: expenseDelta, good: (d: number) => d <= 0, bars: data?.expense, bar: () => "bg-negative/60" },
+    { label: "Net cash flow", value: signedMoney(net), icon: Scale, tone: net < 0 ? "text-negative" : "text-positive",
+      chip: net < 0 ? "bg-negative/10 text-negative" : "bg-positive/10 text-positive",
+      change: netDelta, good: (d: number) => d >= 0, bars: data ? data.income.map((v, i) => v - data.expense[i]) : undefined,
+      bar: (v: number) => (v < 0 ? "bg-negative/60" : "bg-positive/70") },
   ];
 
   return (
-    <section
-      aria-label={decisionView?"Current position":"Financial summary"}
-      className="balance-summary rounded-2xl border border-border/80 bg-card shadow-2xs"
-    >
-      <div className="balance-summary-main">
-        {/* Total Balance */}
-        <div className="balance-summary-total flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-xs font-medium text-muted-foreground">
-                {decisionView?"Current position":"Total balance"}
-              </span>
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-brand/20 bg-brand/10 px-2 py-0.5 text-[10px] font-semibold text-brand">
-                <span className="size-1.5 rounded-full bg-brand animate-pulse" />
-                {decisionView?"Ledger balance":"Live"}
-              </span>
-            </div>
-            <h2
-              className={cn(
-                "amount mt-2 break-words text-[clamp(1.75rem,2.8vw,2.4rem)] font-bold leading-tight tracking-tight",
-                totalBalance < 0 ? "text-negative" : "text-foreground",
-              )}
-            >
-              {balanceMoney(totalBalance)}
-            </h2>
-          </div>
-          <div className="mt-4 flex items-center justify-between border-t border-border/60 pt-3 text-xs text-muted-foreground">
-            <span className="flex items-center gap-1.5">
-              <ShieldCheck className="size-3.5 text-brand" />
-              <span>
-                {accountsCount} {decisionView?"tracked":"active"} {accountsCount === 1 ? "account" : "accounts"}
-              </span>
-            </span>
-            <span className="text-[11px] font-medium text-muted-foreground">{decisionView?"All ledger dates":"Verified"}</span>
-          </div>
+    <section aria-label={decisionView ? "Current position" : "Financial summary"} className="grid gap-3 xl:grid-cols-[minmax(320px,1fr)_minmax(0,2fr)]">
+      {/* The one committed moment on this screen: the household's position. */}
+      <div className="relative flex min-w-0 flex-col justify-between overflow-hidden rounded-2xl bg-brand-deep p-5 text-brand-deep-foreground sm:p-6">
+        <div>
+          <p className="text-xs font-medium opacity-80">{decisionView ? "Current position" : "Total balance"}</p>
+          <h2 className="amount mt-1.5 break-words text-[clamp(1.9rem,3vw,2.6rem)] font-bold leading-none tracking-tight">
+            {balanceMoney(totalBalance)}
+          </h2>
+          <p className="mt-2 text-xs opacity-80">
+            Across {accountsCount} {accountsCount === 1 ? "account" : "accounts"} · all dates
+          </p>
         </div>
-
-        {/* Period Cash Flow */}
-        <div className="balance-summary-period">
-          <div className="mb-3 flex items-center justify-between">
-            <p className="text-xs font-medium text-muted-foreground">
-              Cash flow <span className="font-normal text-foreground">· {rangeLabel}</span>
-            </p>
-            <span className="text-[11px] text-muted-foreground">Excludes transfers</span>
-          </div>
-
-          <dl className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            {metrics.map(({ label, value, icon: MetricIcon, tone, badgeTone, subtext }) => (
-              <div
-                key={label}
-                className="group min-w-0 transition-colors duration-150 motion-reduce:transition-none"
-              >
-                <dt className="flex items-center justify-between text-xs font-medium text-muted-foreground">
-                  <span>{label}</span>
-                  <span className={cn("grid size-6 place-items-center rounded-lg", badgeTone)}>
-                    <MetricIcon className="size-3.5" aria-hidden />
-                  </span>
-                </dt>
-                <dd className={cn("amount mt-2 break-words text-lg font-bold tracking-tight", tone)}>
-                  {value}
-                </dd>
-                <dd className="mt-1.5 text-[11px] text-muted-foreground truncate">
-                  {subtext}
-                </dd>
-              </div>
-            ))}
-          </dl>
+        <div className="mt-5">
+          {data ? <Sparkline values={data.cumulative} /> : <div className="h-14" />}
+          <p className="mt-1.5 flex flex-wrap items-baseline justify-between gap-x-3 text-xs">
+            <span className="opacity-80">Net cash flow · {rangeLabel}</span>
+            <span className="amount font-semibold">{signedMoney(net)}</span>
+          </p>
         </div>
       </div>
 
-      {/* Footer Note */}
-      <div className="balance-summary-note flex items-center justify-between border-t border-border/60 bg-muted/20 px-4 py-2.5 text-[11px] text-muted-foreground">
-        <span className="flex items-center gap-2">
-          <span className="size-1.5 rounded-full bg-brand" aria-hidden />
-          Total balance includes internal transfers. Cash flow aggregates external activity only.
-        </span>
-        <span className="hidden sm:inline font-medium text-foreground">
-          Display currency
-        </span>
+      <div className="grid min-w-0 gap-3">
+        <dl className="grid gap-3 sm:grid-cols-3">
+          {tiles.map(({ label, value, icon: TileIcon, tone, chip, change, good, bars, bar }) => (
+            <div key={label} className="dashboard-panel flex min-w-0 flex-col justify-between gap-3 p-4">
+              <div>
+                <dt className="flex items-center justify-between gap-2 text-xs font-medium text-muted-foreground">
+                  <span>{label}</span>
+                  <span className={cn("grid size-6 place-items-center rounded-md", chip)}><TileIcon className="size-3.5" aria-hidden /></span>
+                </dt>
+                <dd className={cn("amount mt-1.5 break-words text-xl font-bold tracking-tight", tone)}>{value}</dd>
+                <dd className="mt-1 text-[11px] text-muted-foreground">
+                  {change === null ? "No prior period to compare" : (
+                    <span className={cn("inline-flex items-center gap-1 font-medium", good(change) ? "text-positive" : "text-negative")}>
+                      {change >= 0 ? <TrendingUp className="size-3" aria-hidden /> : <TrendingDown className="size-3" aria-hidden />}
+                      {change > 0 ? "+" : ""}{change}%
+                      <span className="font-normal text-muted-foreground">vs prior period</span>
+                    </span>
+                  )}
+                </dd>
+              </div>
+              {bars && <MiniBars values={bars} tone={bar} />}
+            </div>
+          ))}
+        </dl>
+        <div className="dashboard-panel flex flex-wrap items-center gap-x-5 gap-y-2 p-4">
+          <div className="min-w-32">
+            <p className="text-xs font-medium text-muted-foreground">Savings rate</p>
+            <p className={cn("amount text-xl font-bold tracking-tight", retained !== null && retained < 0 ? "text-negative" : "text-foreground")}>
+              {retained === null ? "—" : `${retained}%`}
+            </p>
+          </div>
+          <div className="min-w-40 flex-1">
+            <div className="h-2 overflow-hidden rounded-full bg-muted" role="img" aria-label={retained === null ? "No income in this period" : `${retained}% of income kept`}>
+              <div className={cn("h-full rounded-full", retained !== null && retained < 0 ? "bg-negative" : "bg-brand")} style={{ width: `${Math.max(0, Math.min(100, Math.abs(retained ?? 0)))}%` }} />
+            </div>
+            <p className="mt-1.5 text-[11px] text-muted-foreground">
+              {retained === null ? "No income recorded in this period."
+                : retained >= 0 ? <>Kept <span className="amount font-medium text-foreground">{money(net)}</span> of <span className="amount">{money(income)}</span> earned. Transfers between your accounts are not counted.</>
+                : <>Spent <span className="amount font-medium text-negative">{money(-net)}</span> more than you earned. Transfers between your accounts are not counted.</>}
+            </p>
+          </div>
+        </div>
       </div>
     </section>
   );

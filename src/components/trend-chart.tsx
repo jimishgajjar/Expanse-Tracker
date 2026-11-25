@@ -128,7 +128,7 @@ export function TrendChart({
               <div className="min-w-0 flex-1 overflow-x-auto pb-2">
                 <div
                   className="relative flex gap-1 pt-1"
-                  style={{ minWidth: `${data.length * 16}px` }}
+                  style={{ minWidth: `${data.length * 12}px` }}
                 >
                   {/* Subtle horizontal grid lines */}
                   <div
@@ -183,11 +183,12 @@ export function TrendChart({
                           )}
                         </span>
 
-                        <span className="mt-2 block h-6 text-[10px] font-medium leading-4 text-muted-foreground truncate">
-                          {i % Math.max(1, Math.ceil(data.length / 10)) === 0 ||
-                          isSelected
-                            ? d.label
-                            : ""}
+                        <span className="relative mt-2 block h-6 text-[10px] font-medium leading-4 text-muted-foreground">
+                          {i % Math.max(1, Math.ceil(data.length / 8)) === 0 && (
+                            <span className={cn("absolute left-1/2 -translate-x-1/2 whitespace-nowrap", isSelected && "text-foreground")}>
+                              {d.label}
+                            </span>
+                          )}
                         </span>
                       </button>
                     );

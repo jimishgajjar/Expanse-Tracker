@@ -1,6 +1,8 @@
 "use client";
 
-import { useId, useState, useTransition, type ReactElement } from "react";
+import { useEffect, useId, useState, useTransition, type ReactElement } from "react";
+import { budgetSuggestions, type BudgetSuggestion } from "@/lib/budget-suggestions";
+import { useFormat } from "./settings-provider";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { FormError } from "./form-error";
@@ -22,20 +24,43 @@ export function BudgetManager({
   categories: CategoryDTO[];
   trigger: ReactElement;
 }) {
-  const expenseCats = categories.filter((c) => c.kind === "expense");
-  const current: Record<string, number> = {};
-  budgets.forEach((b) => (current[b.categoryId] = b.budget));
-
   return (
     <ManagerPanel trigger={trigger} title="Monthly budgets" icon={Gauge}
       description="Set a monthly limit for each expense category. Each category saves separately.">
-        <p className="text-xs text-muted-foreground">Clear an amount and select Remove to delete its limit.</p>
+      <BudgetList budgets={budgets} categories={categories} />
+    </ManagerPanel>
+  );
+}
+
+/** Mounted when the panel opens, so suggestions are fetched only when someone looks. */
+function BudgetList({ budgets, categories }: { budgets: BudgetProgressDTO[]; categories: CategoryDTO[] }) {
+  const [suggestions, setSuggestions] = useState<Map<string, BudgetSuggestion> | null>(null);
+  useEffect(() => {
+    let live = true;
+    budgetSuggestions()
+      .then((rows) => { if (live) setSuggestions(new Map(rows.map((r) => [r.categoryId, r]))); })
+      .catch(() => { if (live) setSuggestions(new Map()); });
+    return () => { live = false; };
+  }, []);
+  const current: Record<string, number> = {};
+  budgets.forEach((b) => (current[b.categoryId] = b.budget));
+  // Busiest categories first: that is where a limit makes the most difference.
+  const expenseCats = categories
+    .filter((c) => c.kind === "expense")
+    .sort((a, b) => (suggestions?.get(b.id)?.average ?? 0) - (suggestions?.get(a.id)?.average ?? 0));
+
+  return (
+      <>
+        <p className="text-xs text-muted-foreground">
+          Suggestions use your average spending over the last three full months, rounded up. Nothing changes until you press Save. Clear an amount and select Remove to delete its limit.
+        </p>
         <div className="space-y-3">
           {expenseCats.map((c) => (
             <BudgetRow
               key={`${c.id}:${current[c.id] ?? ""}`}
               category={c}
               amount={current[c.id]}
+              suggestion={suggestions?.get(c.id)}
             />
           ))}
           {expenseCats.length === 0 && (
@@ -44,18 +69,21 @@ export function BudgetManager({
             </p>
           )}
         </div>
-    </ManagerPanel>
+      </>
   );
 }
 
 function BudgetRow({
   category,
   amount,
+  suggestion,
 }: {
   category: CategoryDTO;
   amount?: number;
+  suggestion?: BudgetSuggestion;
 }) {
   const router = useRouter();
+  const { money } = useFormat();
   const id = useId();
   const [error, setError] = useState("");
   const initial = amount != null ? String(amount) : "";
@@ -137,6 +165,24 @@ function BudgetRow({
               : "Save"}
         </Button>
       </div>
+      {suggestion && suggestion.suggested > 0 && (
+        <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+          <span className="amount">
+            3-month average {money(suggestion.average)} · highest month {money(suggestion.peak)}
+            {suggestion.months < 3 && ` · spent in ${suggestion.months} of 3 months`}
+          </span>
+          {String(suggestion.suggested) !== val.trim() && (
+            <button
+              type="button"
+              disabled={pending}
+              onClick={() => { setVal(String(suggestion.suggested)); setError(""); }}
+              className="rounded-md bg-brand/10 px-2 py-1 font-medium text-brand hover:bg-brand/15"
+            >
+              Use {money(suggestion.suggested)}
+            </button>
+          )}
+        </p>
+      )}
       <div id={`${id}-error`}>
         <FormError>{error}</FormError>
       </div>

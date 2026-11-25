@@ -168,9 +168,6 @@ function AccountCard({
         "account-card group relative flex min-w-0 flex-col justify-between rounded-xl border border-border/80 bg-card p-4 transition-colors hover:border-brand/40 shadow-2xs",
         a.archived && "opacity-70 hover:opacity-100",
       )}
-      style={{
-        borderTop: `3px solid ${a.color || "var(--brand)"}`,
-      }}
     >
       <div>
         {/* Top Header: Account Icon + Type Badge + More Actions */}
@@ -236,7 +233,11 @@ function AccountCard({
             </span>
             <div className="min-w-0">
               <h3 className="truncate text-sm font-medium text-foreground transition-colors group-hover:text-brand" title={a.name}>{a.name}</h3>
-              <p className="mt-0.5 text-[11px] capitalize text-muted-foreground">{a.type}{a.archived ? " · Archived" : ""}</p>
+              {(a.type.toLowerCase() !== a.name.trim().toLowerCase() || a.archived) && (
+                <p className="mt-0.5 text-[11px] capitalize text-muted-foreground">
+                  {[a.type.toLowerCase() !== a.name.trim().toLowerCase() && a.type, a.archived && "Archived"].filter(Boolean).join(" · ")}
+                </p>
+              )}
             </div>
           </div>
 

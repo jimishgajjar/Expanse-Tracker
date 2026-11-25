@@ -42,9 +42,7 @@ export function AccountSharing({account,initial}:{account:string;initial:Options
     } finally { setBusy(false); }
   }
   return <div className="space-y-4">
-    <div><p className="text-xs text-muted-foreground">{options.household}</p><h1 className="text-xl font-semibold">Share {options.name}</h1>
-      <p className="mt-1 text-sm text-muted-foreground">Share a read-only copy with one household member. Future activity stays private until you approve another copy.</p></div>
-    <section className="grid gap-3 rounded-xl border bg-card p-4">
+    <section className="dashboard-panel grid gap-3 p-4 sm:p-5">
       <label className="grid gap-1 text-sm font-medium">Household member
         <select disabled={busy} value={recipient} onChange={e=>{setRecipient(e.target.value);setPreview(null);setMessage("");setPhotos(false);}} className="rounded-lg border bg-background p-2">
           <option value="">Choose a member</option>

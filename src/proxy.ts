@@ -4,7 +4,7 @@ import { REQUIRED_HEADER, requiresTrackerView, VIEW_HEADER } from "@/lib/tracker
 
 // Note: /api/mobile/* self-authenticates with a Bearer token (and returns JSON
 // 401), so it bypasses this cookie-based redirect gate.
-const PUBLIC = ["/login", "/signup", "/forgot", "/reset", "/verify", "/api/cron", "/api/mobile", "/manifest.webmanifest", "/sw.js"];
+const PUBLIC = ["/login", "/signup", "/forgot", "/reset", "/verify", "/api/cron", "/api/mobile", "/manifest.webmanifest", "/sw.js", "/offline.html"];
 
 // Optimistic gate: anything without a session cookie is bounced to /login.
 // The real session check happens in the page (getCurrentUser).

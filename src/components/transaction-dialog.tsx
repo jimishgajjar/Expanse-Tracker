@@ -37,6 +37,8 @@ import { Icon } from "@/components/icon";
 import { CategoryPicker } from "./category-picker";
 import {allocationSchema,balanced,cents,type Allocation} from "@/lib/purchase-allocation";
 import { CategoryHistoryHint } from "./category-history-hint";
+import { QuickEntryChips } from "./quick-entry-chips";
+import { looksOffline, queueOffline, type OutboxItem } from "@/lib/offline-outbox";
 import {openDrafts,changeDraft} from "@/lib/capture-draft-actions";
 import type {CaptureDraft} from "@/lib/capture-drafts";
 import { CalendarDatePicker } from "./calendar-date-picker";
@@ -276,6 +278,7 @@ export function TransactionDialog({
       return;
     }
     submitting.current = true;
+    let offlinePayload: OutboxItem["payload"] | null = null;
     start(async () => {
       try {
         let res;
@@ -301,6 +304,7 @@ export function TransactionDialog({
             }:{}),
           };
           if (!isEdit) requestId.current ??= crypto.randomUUID();
+          if (!isEdit && !draftVersion) offlinePayload = payload;
           res = isEdit
             ? await updateTransaction(transaction!.id, payload)
             : await createTransaction({ ...payload, requestId: requestId.current,...(draftVersion?{draft:{workspace,actor,version:draftVersion}}:{}) });
@@ -342,6 +346,16 @@ export function TransactionDialog({
           setError(res.error);
         }
       } catch {
+        // No connection: keep the entry on this device and send it, with the same
+        // request id, once the phone is back online (see OfflineOutbox).
+        if (offlinePayload && workspace && actor && requestId.current && looksOffline()
+          && queueOffline(workspace, actor, { requestId: requestId.current, payload: offlinePayload })) {
+          toast.success("You're offline. Saved on this device and will sync when you're back online.");
+          requestId.current = null;
+          setSaved(true);
+          setOpen(false);
+          return;
+        }
         setError("Couldn't confirm the save. Retry without changing the form, or check Activity first.");
       } finally {
         submitting.current = false;
@@ -436,6 +450,31 @@ export function TransactionDialog({
               );
             })}
           </div>
+
+          {open && !isEdit && !seed && !draftVersion && f.type !== "transfer" && workspace && (
+            <QuickEntryChips
+              workspace={workspace}
+              accounts={accounts}
+              categories={categories}
+              onPick={(entry) => {
+                setPortions([]);
+                setF((s) => ({
+                  ...s,
+                  type: entry.type,
+                  amount: String(entry.amount),
+                  note: entry.note,
+                  accountId: entry.accountId,
+                  categoryId: entry.categoryId && categories.some((c) => c.id === entry.categoryId) ? entry.categoryId : NONE,
+                }));
+                // Amounts vary (groceries, fuel): put the cursor there to adjust before saving.
+                requestAnimationFrame(() => {
+                  const input = document.getElementById(fieldId + "-amount") as HTMLInputElement | null;
+                  input?.focus();
+                  input?.select();
+                });
+              }}
+            />
+          )}
 
           {/* Hero Amount & Custom Calendar Date Card */}
           <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-12">

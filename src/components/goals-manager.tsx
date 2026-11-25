@@ -85,6 +85,20 @@ export function GoalsManager({
   );
 }
 
+/** Common household sinking funds. Picking one only fills the form; the person sets the amount. */
+const GOAL_IDEAS = [
+  { name: "Car costs fund", hint: "Insurance, servicing, tyres and repairs, saved monthly", months: 12 },
+  { name: "Emergency fund", hint: "Three to six months of essential costs", months: 12 },
+  { name: "Family support", hint: "Money set aside for transfers home", months: 6 },
+  { name: "Annual bills", hint: "Yearly renewals and subscriptions", months: 12 },
+  { name: "Travel", hint: "Flights and trips", months: 9 },
+] as const;
+function monthsAhead(months: number) {
+  const d = new Date();
+  d.setMonth(d.getMonth() + months);
+  return d.toISOString().slice(0, 10);
+}
+
 function AddForm({ onAdded }: { onAdded: (g: GoalDTO) => void }) {
   const router = useRouter();
   const [pending, start] = useTransition();
@@ -121,6 +135,23 @@ function AddForm({ onAdded }: { onAdded: (g: GoalDTO) => void }) {
   }
   return (
     <form onSubmit={add} className="space-y-4 rounded-xl border bg-card p-4">
+      <div className="space-y-1.5">
+        <p className="text-xs text-muted-foreground">Start from an idea</p>
+        <div className="flex flex-wrap gap-1.5">
+          {GOAL_IDEAS.map((idea) => (
+            <button
+              key={idea.name}
+              type="button"
+              aria-pressed={name === idea.name}
+              title={idea.hint}
+              onClick={() => { setName(idea.name); if (!deadline && idea.months) setDeadline(monthsAhead(idea.months)); }}
+              className="rounded-full border border-border px-2.5 py-1 text-xs font-medium text-muted-foreground transition-colors hover:border-brand/40 hover:text-foreground aria-pressed:border-brand/50 aria-pressed:bg-brand/10 aria-pressed:text-brand"
+            >
+              {idea.name}
+            </button>
+          ))}
+        </div>
+      </div>
       <label className="grid gap-1.5 text-xs font-medium">
         Goal name
         <Input

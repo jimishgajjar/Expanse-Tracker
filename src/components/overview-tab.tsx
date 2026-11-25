@@ -1,10 +1,11 @@
 "use client";
 
 import { ArrowRight, Plus } from "lucide-react";
-import {use} from "react";
+import {use, type ReactNode} from "react";
 import Link from "next/link";
 import {useSearchParams} from "next/navigation";
-import {MerchantRulesContext} from "./settings-provider";
+import {MerchantRulesContext, useSettings} from "./settings-provider";
+import {CustomiseOverview, useOverviewLayout, type OverviewSectionId} from "./overview-layout";
 import {OverviewDecisions} from "./overview-decisions";
 import { AccountsSection } from "./accounts-section";
 import { SummaryCards } from "./summary-cards";
@@ -94,6 +95,13 @@ export function OverviewTab({
     .slice(0, 3);
 
   const net = income - expense;
+  const { actor } = useSettings();
+  const { layout } = useOverviewLayout(workspace, actor ?? "me");
+  const sections = renderSections({
+    workspace, decisions, accounts, transactions, recentTransactions, transferCount, transfers, categories,
+    totalBalance, rangeLabel, rangeType, rangeStart, rangeEnd, comparison, canEdit, budgets, recurring,
+    onActivity, onPlanning, activityParams, income, expense, net, watch, upcoming,
+  });
 
   return (
     <div className="overview-layout space-y-5">
@@ -121,7 +129,27 @@ export function OverviewTab({
         </div>
       )}
 
-      {/* 1. Summary Cards */}
+      {layout.order.filter((id) => !layout.hidden.includes(id)).map((id) => <div key={id} className="min-w-0">{sections[id]}</div>)}
+      <div className="flex justify-end">
+        <CustomiseOverview workspace={workspace} actor={actor ?? "me"} />
+      </div>
+    </div>
+  );
+}
+
+function renderSections(p: {
+  workspace: string; decisions: boolean; accounts: AccountDTO[]; transactions: TransactionDTO[];
+  recentTransactions: TransactionDTO[]; transferCount?: number; transfers: TransferDTO[]; categories: CategoryDTO[];
+  totalBalance: number; rangeLabel: string; rangeType: RangeType; rangeStart: string; rangeEnd: string;
+  comparison?: { prevIncome: number; prevExpense: number } | null; canEdit: boolean; budgets: BudgetProgressDTO[];
+  recurring: RecurringDTO[]; onActivity: () => void; onPlanning: () => void; activityParams: URLSearchParams;
+  income: number; expense: number; net: number; watch: BudgetProgressDTO[]; upcoming: RecurringDTO[];
+}): Record<OverviewSectionId, ReactNode> {
+  const { workspace, decisions, accounts, transactions, recentTransactions, transferCount, transfers, categories,
+    totalBalance, rangeLabel, rangeType, rangeStart, rangeEnd, comparison, canEdit, budgets, recurring,
+    onActivity, onPlanning, activityParams, income, expense, net, watch, upcoming } = p;
+  return {
+    summary: (
       <SummaryCards
         totalBalance={totalBalance}
         income={income}
@@ -131,18 +159,23 @@ export function OverviewTab({
         accountsCount={accounts.length}
         comparison={comparison}
         decisionView={decisions}
+        transactions={transactions}
+        rangeStart={rangeStart}
+        rangeEnd={rangeEnd}
       />
-
-      {/* 2. Accounts Section */}
+    ),
+    accounts: (
       <AccountsSection
         accounts={accounts}
         categories={categories}
         canEdit={canEdit}
         showTotal={false}
       />
-
-      {decisions?<OverviewDecisions key={workspace} workspace={workspace} budgets={budgets} categories={categories} recurring={recurring}/>:<MoneyBrief recurring={recurring} budgets={budgets} expense={expense} comparison={comparison} rangeLabel={rangeLabel} />}
-      {/* 3. Activity & Budget Grid */}
+    ),
+    planning: decisions
+      ? <OverviewDecisions key={workspace} workspace={workspace} budgets={budgets} categories={categories} recurring={recurring}/>
+      : <MoneyBrief recurring={recurring} budgets={budgets} expense={expense} comparison={comparison} rangeLabel={rangeLabel} />,
+    activity: (
       <div className={decisions?"min-w-0":"grid items-start gap-4 min-[1200px]:items-stretch min-[1200px]:grid-cols-[minmax(0,1.6fr)_minmax(280px,1fr)]"}>
         <div className="grid min-w-0">
           <section className="dashboard-panel flex flex-col justify-between p-4 sm:p-5">
@@ -194,8 +227,8 @@ export function OverviewTab({
         </div>
         {!decisions&&<RadarPanel watch={watch} upcoming={upcoming} onPlanning={onPlanning} />}
       </div>
-
-      {/* 4. Trend & Category Distribution */}
+    ),
+    charts: (
       <div className="grid items-start gap-4 min-[1200px]:items-stretch min-[1200px]:grid-cols-2">
         <TrendChart
           transactions={transactions}
@@ -205,6 +238,6 @@ export function OverviewTab({
         />
         <CategoryDonut transactions={transactions} />
       </div>
-    </div>
-  );
+    ),
+  };
 }

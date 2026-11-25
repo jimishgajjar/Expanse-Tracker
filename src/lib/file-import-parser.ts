@@ -83,7 +83,7 @@ export function normalize(source:Source,m:Mapping,currency:string,accounts:Ref[]
       if(parts){const [,a,b,y]=parts;date=[y,(m.dateOrder==="DMY"?b:a).padStart(2,"0"),(m.dateOrder==="DMY"?a:b).padStart(2,"0")].join("-");}}
     if(!statementDate.safeParse(date).success)errors.push("Invalid date for the chosen format.");
     if(!/^-?\d{1,12}(\.\d{1,2})?$/.test(amount)||Number(amount)===0)errors.push("Use a non-zero decimal amount (up to two decimal places).");
-    else {if(m.type<0)type=amount.startsWith("-")?"expense":"income";
+    else {if(m.type<0)type=amount.startsWith("-")===!m.cardStatement?"expense":"income";
       else if(amount.startsWith("-")&&type!=="expense")errors.push("Negative amount conflicts with its type.");
       amount=decimalMoney(moneyCents(amount.replace(/^-/,"")));}
     if(type!=="income"&&type!=="expense")errors.push("Only income and expense rows can be imported.");
@@ -94,6 +94,7 @@ export function normalize(source:Source,m:Mapping,currency:string,accounts:Ref[]
     const cc=category&&!/^uncategorised$|^uncategorized$/i.test(category)?categories.filter(c=>c.kind===type&&c.name.toLowerCase()===category.toLowerCase()):[];
     if(category&&!/^uncategorised$|^uncategorized$/i.test(category)&&cc.length!==1)errors.push("Category does not identify one existing category of this type.");
     const row:Entry={line,date:date.slice(0,32),amount:amount.slice(0,32),type:type.slice(0,32),note:get("note").slice(0,500),account:aa[0]?.name??account.slice(0,120),category:category.slice(0,120),accountId:aa[0]?.id??null,categoryId:cc[0]?.id??null,errors,candidates:[],repeated:false};
+    if(m.cardStatement&&m.type<0&&type==="income")row.notice="Payment or refund on the card. If this is your bill payment, ignore this row and record a transfer from your bank account instead, so it isn't counted as income.";
     if(!errors.length){const k=JSON.stringify([date,type,amount,row.accountId]);const matches=group.get(k)??[];matches.push(row);group.set(k,matches);}
     return row;
   });

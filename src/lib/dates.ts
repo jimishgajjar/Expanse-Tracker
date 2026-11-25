@@ -17,6 +17,13 @@ const iso = (d: Date) => format(d, "yyyy-MM-dd");
 
 export const todayISO = () => format(new Date(), "yyyy-MM-dd");
 
+/** Display a stored yyyy-MM-dd day as "24 Nov", adding the year only when it differs from today's. */
+export function shortDay(day: string | null | undefined): string {
+  if (!day || !/^\d{4}-\d{2}-\d{2}/.test(day)) return day ?? "";
+  const d = parseISO(day.slice(0, 10));
+  return format(d, d.getFullYear() === new Date().getFullYear() ? "d MMM" : "d MMM yyyy");
+}
+
 /** Resolve a granularity + anchor date into a [start, end) string range and a label. */
 export function getRange(type: RangeType, anchor: string): { start: string; end: string; label: string } {
   const a = parseISO(anchor);

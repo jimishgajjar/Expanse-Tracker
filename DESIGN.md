@@ -74,3 +74,21 @@ The overview starts with one financial summary: current balance on the left and 
 Accounts follow immediately with direct history links and visible income, expense, and transfer actions. Phone cards put account identity and balance on the same row while retaining 44px action targets. Recent activity and the planning radar share the next row; income versus expense and category breakdown share the row below. Use subtle 12px surface corners and hairline dividers. Match paired panel heights and keep all chart navigation and category links available.
 
 These are presentation changes only. Preserve existing database contracts, balance calculations, permissions, and mutation confirmations. Use the isolated local preview database for validation; no live-data migration is required.
+
+## November internal-page polish
+
+Standalone tool pages (Debt & currencies, imports, exports, setup, help, feedback, shared accounts, account sharing) use the shared `PageShell`: a slim sticky bar with the brand mark and one back link, then a centred column (narrow 672px, default 768px, wide 1024px) with an optional eyebrow, a 24px title and a one-line description. Sections use `dashboard-panel page-section`; inline links use `.text-link`; two-to-five-way switches use `.segmented`.
+
+No decorative colour stripes: account cards and the balance summary rely on hairlines and icon tint, not 3px coloured borders. No status pills that do not report state. Navigation marks the active item with a tinted background and a brand-coloured icon only. Stored ISO dates are shown as "24 Nov" (year added only when it differs) through `shortDay`. The debt-and-currency summary appears as a full panel only after it is configured; before that, Overview shows a single dashed invitation row.
+
+## Household shortcuts (November)
+
+- **Card statements and categories.** Imports accept credit-card statements (purchases positive). Rows without a category get the one this household used before for the same description or merchant (first two words, letters only), marked "suggested from your history". Payments on the card carry a notice to record them as a transfer. When a "Credit card bill" style category is 10% or more of a period's spending, Overview and Insights show a dismissible explanation with links to import a statement or add a card account. None of this edits existing entries.
+- **Budget and goal starting points.** The budget panel shows each category's three-month average and highest month, with a "Use" button that fills (never saves) a tidy rounded limit. The goal form offers sinking-fund ideas (car costs, emergency, family support, annual bills, travel) that fill the name and a target date.
+- **Customisable Overview.** Each person can show, hide and reorder Overview sections (balance, accounts, planning, activity, charts). The arrangement is kept per person and per device in browser storage; at least one section stays visible.
+- **Quick add.** New-entry forms show up to six repeat entries (same description, account and category at least twice in 120 days). Picking one fills the form and selects the amount for adjustment; Save is still required.
+- **Offline capture and install.** A new expense or income saved while offline is kept on that device and sent with its original request id when the connection returns (the server's receipt prevents duplicates). An "entries saved on this device" panel lists anything waiting. The service worker caches only a static offline page, never financial pages or API responses. "Install app" appears where the browser supports it, with Share → Add to Home Screen steps on iPhone.
+
+## Financial summary header (November)
+
+Overview opens with a statement-style header. Left: one deep-emerald panel (`--brand-deep`) with the current balance and a sparkline of cumulative net cash flow for the selected period, the screen's single committed colour moment. Right: three KPI tiles (Income, Expenses, Net cash flow), each with the figure, a change against the prior period coloured by whether it is good for the household (higher spending is red), and twelve mini bars; below them a savings-rate strip with a progress bar and a plain-language sentence. All figures come from the same period entries as before; transfers stay excluded from cash flow.

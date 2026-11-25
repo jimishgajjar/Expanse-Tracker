@@ -50,11 +50,9 @@ export function SharedAccountInbox() {
   },[selected,attempt]);
   function select(id:string) { shown.current=null;setInbox(null);setMessage("");setSelected(id); }
   return <section className="space-y-3">
-    <h1 className="text-xl font-semibold">Accounts shared with me</h1>
-    <p className="text-sm text-muted-foreground">These copies show the activity their owners approved. Household balances count only accounts in the household tracker.</p>
-    {message && <p role="status" className="text-sm">{message} <button className="text-brand underline" onClick={()=>setAttempt(n=>n+1)}>Refresh</button></p>}
-    {!inbox && !message && <p role="status" className="text-sm">Checking access…</p>}
-    {inbox && !inbox.list.length && <p className="rounded-xl border p-4 text-sm">No household members have shared an account with you.</p>}
+    {message && <p role="status" className="text-sm">{message} <button className="text-link" onClick={()=>setAttempt(n=>n+1)}>Refresh</button></p>}
+    {!inbox && !message && <p role="status" className="text-sm text-muted-foreground">Checking access…</p>}
+    {inbox && !inbox.list.length && <p className="dashboard-panel p-6 text-center text-sm text-muted-foreground">No household members have shared an account with you.</p>}
     {inbox?.list.map(item=><Button key={item.id} size="sm" variant={selected===item.id?"secondary":"outline"} className="mr-2" onClick={()=>select(selected===item.id?"":item.id)} aria-expanded={selected===item.id}>
       {item.name} · {item.owner}</Button>)}
     {inbox?.detail && <><p className="text-xs text-muted-foreground">Shared {new Date(inbox.list.find(i=>i.id===selected)!.date).toLocaleString()}</p>

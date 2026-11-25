@@ -6,7 +6,7 @@ import Link from "next/link";
 import { use, useEffect, useState } from "react";
 import { DeferredTools, DeferredPlanning, DeferredAnalytics } from "./deferred-sections";
 import { PagedActivity } from "./paged-activity";
-import { CommandPalette, CommandSearchTrigger } from "./command-palette";
+import { CommandPalette, CommandSearchTrigger, ShortcutHint } from "./command-palette";
 import {
   CalendarDays,
   Download,
@@ -43,6 +43,9 @@ import { TransactionDialog } from "@/components/transaction-dialog";
 import { PeriodBar } from "@/components/period-bar";
 import { OverviewTab } from "@/components/overview-tab";
 import { PositionSummary } from "./position-summary";
+import { CardBillAdvice } from "./card-bill-advice";
+import { OfflineOutbox } from "./offline-outbox";
+import { InstallAppButton } from "./install-app-button";
 import type { FinanceReport } from "@/lib/finance-position";
 import { AccountsSection } from "@/components/accounts-section";
 import { SettingsTab } from "@/components/settings-tab";
@@ -250,9 +253,6 @@ export function Dashboard({
         >
           <item.icon className="size-[18px] shrink-0" />
           <span className="truncate">{item.label}</span>
-          {tab === item.id && (
-            <span className="ml-auto size-1.5 rounded-full bg-brand" />
-          )}
         </button>
       ))}
     </nav>
@@ -337,14 +337,12 @@ export function Dashboard({
             >
               <Settings className={cn("size-[18px] transition-colors", tab === "settings" ? "text-brand" : "text-muted-foreground group-hover:text-foreground")} />
               <span>Settings</span>
-              {tab === "settings" && (
-                <span className="ml-auto size-1.5 rounded-full bg-brand" />
-              )}
             </button>
             <a href={trackerExportHref(activeWorkspaceId)} className="nav-item group">
               <Download className="size-[18px] text-muted-foreground group-hover:text-foreground transition-colors" />
               <span>Export data</span>
             </a>
+            <InstallAppButton />
             <div className="mt-2 flex items-center justify-between gap-2 rounded-xl border border-border/70 bg-card/60 p-2 shadow-2xs">
               <button
                 type="button"
@@ -413,7 +411,7 @@ export function Dashboard({
                 >
                   <Search className="size-3.5" />
                   <span className="font-medium">Search</span>
-                  <kbd className="rounded border border-border/80 bg-muted/70 px-1 font-mono text-[10px] text-muted-foreground">⌘K</kbd>
+                  <ShortcutHint className="bg-muted/70" />
                 </button>
                 <button
                   type="button"
@@ -440,6 +438,7 @@ export function Dashboard({
             className="mobile-nav-content mx-auto max-w-[1440px] space-y-5 px-4 pt-5 pb-28 sm:px-6 sm:pt-6 lg:pb-8 xl:px-8"
           >
             {!emailVerified && <VerifyBanner email={userEmail} />}
+            {canEdit && <OfflineOutbox workspace={activeWorkspaceId} actor={currentUserId} />}
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div>
                 <h1 className="text-2xl font-semibold tracking-[-0.035em] text-foreground">
@@ -449,7 +448,7 @@ export function Dashboard({
                   {page.description}
                 </p>
               </div>
-              {canEdit && tab !== "settings" && reviewedBook && !showOriginal && <Link href="/financial-position" className="rounded-md bg-brand px-3 py-2 text-sm text-brand-foreground">Book activity</Link>}
+              {canEdit && tab !== "settings" && reviewedBook && !showOriginal && <Link href="/financial-position" className="inline-flex h-9 items-center rounded-lg bg-brand px-3.5 text-xs font-medium text-brand-foreground transition-colors hover:bg-brand/90">Book activity</Link>}
               {canEdit && tab !== "settings" && showOriginalTools && (
                 <TransactionDialog
                   accounts={liveAccounts}
@@ -473,7 +472,10 @@ export function Dashboard({
               />
             )}
             <div key={tab} className="surface-enter space-y-3">
-              {finance && ["overview","analytics","accounts","planning","transactions"].includes(tab) && <PositionSummary data={finance}/>}
+              {finance && (finance.position ? ["overview","analytics","accounts","planning","transactions"].includes(tab) : tab === "overview") && <PositionSummary data={finance}/>}
+              {(tab === "overview" || tab === "analytics") && showOriginalTools && (
+                <CardBillAdvice workspace={activeWorkspaceId} categories={categories} transactions={transactions} canEdit={canEdit} />
+              )}
               {reviewedBook && tab!=="settings" && <div className="space-y-2 text-xs text-muted-foreground"><p>Original tracker reports, budgets and forecasts use a single display currency ({currencyCode}). They may combine accounts with different denominations.</p>
                 <button type="button" aria-expanded={showOriginal} className="font-medium text-brand underline" onClick={()=>setShowOriginal(!showOriginal)}>{showOriginal?"Hide":"Show"} original tracker tools</button></div>}
               {tab === "overview" && showOriginalTools && (
@@ -650,6 +652,7 @@ export function Dashboard({
                   <Download className="size-[18px]" />
                   Export data
                 </a>
+                <InstallAppButton />
                 <form action={logout}>
                   <button
                     type="submit"

@@ -10,6 +10,8 @@ import type {WeeklyReviewData} from "@/lib/weekly-review-model";
 import type {decisionOverview} from "@/lib/decision-overview";
 import type {BudgetProgressDTO,CategoryDTO,RecurringDTO} from "@/lib/queries";
 import {useFormat} from "./settings-provider";
+import {shortDay} from "@/lib/dates";
+import {cn} from "@/lib/utils";
 
 type Outlook=Awaited<ReturnType<typeof decisionOverview>>;
 type Item={title:string;detail:string;href:string};
@@ -72,24 +74,24 @@ export function OverviewDecisions({workspace,budgets,categories,recurring}:{
       <section aria-labelledby="attention-inbox" className="dashboard-panel min-w-0 p-4 sm:p-5">
         <div className="mb-2 flex items-center gap-2"><Bell className="size-4 text-brand" aria-hidden/><h2 id="attention-inbox" className="text-sm font-semibold">Attention inbox</h2>
           <span className="ml-auto text-xs text-muted-foreground">{alerts.length} to review</span></div>
-        {review && <Link href="/?tab=planning#weekly-check-in" className="mb-2 flex min-h-11 items-center justify-between gap-3 rounded-lg border border-brand/20 bg-brand/5 p-3 text-sm hover:border-brand/50 focus-visible:outline-2">
+        {review && (()=>{const pending=review.items.filter(item=>item.status==="pending").length;const changed=review.items.some(item=>item.changed);return <Link href="/?tab=planning#weekly-check-in" className={cn("mb-2 flex min-h-11 items-center justify-between gap-3 rounded-lg border p-3 text-sm focus-visible:outline-2",pending||changed?"border-brand/25 bg-brand/5 hover:border-brand/50":"border-border/70 hover:bg-muted/50")}>
           <span><strong className="font-medium">Your weekly review</strong><small className="block text-muted-foreground">
-            {review.items.filter(item=>item.status==="pending").length} {review.items.filter(item=>item.status==="pending").length===1?"item":"items"} to consider{review.items.some(item=>item.changed)?" · Changes since your choices":""}
-          </small></span><ArrowUpRight className="size-4 shrink-0 text-brand" aria-hidden/>
-        </Link>}
+            {pending?`${pending} ${pending===1?"item":"items"} to consider`:"Nothing waiting · all caught up"}{changed?" · Changes since your choices":""}
+          </small></span><ArrowUpRight className={cn("size-4 shrink-0",pending||changed?"text-brand":"text-muted-foreground")} aria-hidden/>
+        </Link>;})()}
         <div className="text-sm">{alerts.slice(0,3).map(alertRow)}
           {alerts.length>3&&<details><summary className="cursor-pointer py-2 text-xs text-brand">View {alerts.length-3} more</summary>{alerts.slice(3).map(alertRow)}</details>}
           {!alerts.length&&<p className="border-t py-3 text-muted-foreground">No items flagged by the current checks.</p>}</div>
       </section>
       <section aria-labelledby="money-outlook" className="dashboard-panel min-w-0 p-4 sm:p-5">
         <div className="flex flex-wrap items-center gap-2"><CalendarDays aria-hidden className="size-4 text-brand"/><h2 id="money-outlook" className="text-sm font-semibold">Upcoming cash needs</h2><span className="ml-auto text-xs text-muted-foreground">30 days · Base</span></div>
-        <p className="mt-1 text-xs text-muted-foreground">{data.start} through {data.end} · Updated {new Date(data.calculatedAt).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"})}</p>
+        <p className="mt-1 text-xs text-muted-foreground">{shortDay(data.start)} – {shortDay(data.end)} · Updated {new Date(data.calculatedAt).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"})}</p>
         <dl className="my-3 grid grid-cols-2 gap-3 border-y py-3 text-xs">
           <div><dt>Projected household balance</dt><dd className="amount text-lg font-semibold">{data.closing===null?"Unavailable":<Link className="underline decoration-dotted underline-offset-4" href="/?tab=planning&explain=closing#balance-forecast">{amount(data.closing)}</Link>}</dd></div>
-          <div><dt>Lowest active cash balance</dt><dd className="amount text-lg font-semibold">{data.cashAccounts&&data.lowestCash!==null?<Link className="underline decoration-dotted underline-offset-4" href="/?tab=planning&explain=lowestCash#balance-forecast">{amount(data.lowestCash)}</Link>:"Unavailable"}</dd>{data.cashAccounts>0&&<small>{data.lowDate}</small>}</div>
+          <div><dt>Lowest active cash balance</dt><dd className="amount text-lg font-semibold">{data.cashAccounts&&data.lowestCash!==null?<Link className="underline decoration-dotted underline-offset-4" href="/?tab=planning&explain=lowestCash#balance-forecast">{amount(data.lowestCash)}</Link>:"Unavailable"}</dd>{data.cashAccounts>0&&<small className="text-muted-foreground">{shortDay(data.lowDate)}</small>}</div>
         </dl>
         {data.spendable!==null&&<p className="mb-2 text-xs">{Number(data.spendable)<0?"Projected shortfall":"Available above the cash buffer"} · <Link className="amount text-brand underline" href="/?tab=planning&explain=spendable#balance-forecast">{money(Math.abs(Number(data.spendable)))}</Link></p>}
-        {data.upcoming.map(e=><div key={e.key} className="flex justify-between gap-2 py-1 text-xs"><span>{e.label}<small className="block text-muted-foreground">{e.date} · {e.source} · {e.detail}</small></span><span className="amount">{signedMoney(Number(e.change))}{e.cashChange!==e.change&&<small className="block">Cash {signedMoney(Number(e.cashChange))}</small>}</span></div>)}
+        {data.upcoming.map(e=><div key={e.key} className="flex justify-between gap-2 py-1 text-xs"><span>{e.label}<small className="block text-muted-foreground">{shortDay(e.date)} · {e.source} · {e.detail}</small></span><span className="amount">{signedMoney(Number(e.change))}{e.cashChange!==e.change&&<small className="block">Cash {signedMoney(Number(e.cashChange))}</small>}</span></div>)}
         {!data.upcomingCount&&<p className="text-xs text-muted-foreground">No dated payments, transfers or income in this period.</p>}
         <Jump href={forecastHref}>{data.upcomingCount>3?`Open forecast · ${data.upcomingCount} dated entries`:"Open forecast"}</Jump>
       </section>

@@ -69,7 +69,7 @@ export function BudgetsCard({
             </div>
             <h3 className="text-sm font-bold text-foreground">No monthly budgets configured</h3>
             <p className="mt-1 text-xs text-muted-foreground max-w-sm mx-auto">
-              Set monthly spending targets on your categories to track pace, get automated telemetry warnings, and safeguard your savings.
+              Set a monthly limit on the categories that matter, such as money sent abroad or car costs. Limits are suggested from your last three months, and Overview flags a category once it reaches 80%.
             </p>
             {canEdit && (
               <div className="mt-4">

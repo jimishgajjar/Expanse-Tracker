@@ -35,5 +35,36 @@ self.addEventListener("notificationclick", (event) => {
   );
 });
 
-// A fetch handler (network passthrough) qualifies this as an installable PWA.
-self.addEventListener("fetch", () => {});
+// Offline fallback. Only the static offline page is cached: financial pages and API
+// responses are never stored, so nothing private is kept by the service worker.
+const OFFLINE_CACHE = "offline-v1";
+const OFFLINE_URL = "/offline.html";
+
+self.addEventListener("install", (event) => {
+  event.waitUntil(
+    caches.open(OFFLINE_CACHE)
+      .then((cache) => cache.add(new Request(OFFLINE_URL, { cache: "reload" })))
+      .catch(() => { /* Installing must not fail because the page was unreachable. */ })
+      .then(() => self.skipWaiting()),
+  );
+});
+
+self.addEventListener("activate", (event) => {
+  event.waitUntil(
+    caches.keys()
+      .then((keys) => Promise.all(keys.filter((key) => key.startsWith("offline-") && key !== OFFLINE_CACHE).map((key) => caches.delete(key))))
+      .then(() => self.clients.claim()),
+  );
+});
+
+// Network first for page loads; show the offline page only when the network fails.
+// Every other request passes straight through (and qualifies this as an installable PWA).
+self.addEventListener("fetch", (event) => {
+  const request = event.request;
+  if (request.mode !== "navigate" || request.method !== "GET") return;
+  event.respondWith(
+    fetch(request).catch(() =>
+      caches.match(OFFLINE_URL).then((page) => page || new Response("You're offline.", { status: 503, headers: { "Content-Type": "text/plain" } })),
+    ),
+  );
+});

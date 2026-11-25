@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
+
+const noSubscribe = () => () => {};
 import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import {
@@ -30,6 +32,7 @@ import {
 import { Icon } from "@/components/icon";
 import { useExportHref } from "./settings-provider";
 import type { AccountDTO, CategoryDTO } from "@/lib/queries";
+import { cn } from "@/lib/utils";
 
 export function CommandPalette({
   accounts,
@@ -234,15 +237,33 @@ export function CommandSearchTrigger({ onClick }: { onClick: () => void }) {
       type="button"
       onClick={onClick}
       className="group flex w-full items-center justify-between rounded-lg border border-border/80 bg-muted/30 hover:bg-muted/60 px-2.5 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors duration-150 cursor-pointer shadow-2xs motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-brand active:scale-[0.98]"
-      aria-label="Open command palette (Cmd+K)"
+      aria-label="Open command palette (Ctrl+K or Cmd+K)"
     >
-      <span className="flex items-center gap-2">
-        <Search className="size-3.5 text-muted-foreground group-hover:text-foreground" />
-        <span>Search or jump to…</span>
+      <span className="flex min-w-0 items-center gap-2">
+        <Search className="size-3.5 shrink-0 text-muted-foreground group-hover:text-foreground" />
+        <span className="truncate">Search…</span>
       </span>
-      <kbd className="inline-flex h-4.5 select-none items-center gap-1 rounded border border-border/80 bg-card px-1.5 font-mono text-[10px] font-semibold text-muted-foreground">
-        <span className="text-xs">⌘</span>K
-      </kbd>
+      <ShortcutHint />
     </button>
+  );
+}
+
+/** Shows ⌘K on Apple devices and Ctrl K elsewhere (Ctrl K is rendered first to keep hydration stable). */
+export function ShortcutHint({ className }: { className?: string }) {
+  const mac = useSyncExternalStore(
+    noSubscribe,
+    () => /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent),
+    () => false,
+  );
+  return (
+    <kbd
+      aria-hidden
+      className={cn(
+        "inline-flex h-5 shrink-0 select-none items-center rounded border border-border/80 bg-card px-1.5 font-sans text-[10px] font-semibold text-muted-foreground",
+        className,
+      )}
+    >
+      {mac ? "⌘K" : "Ctrl K"}
+    </kbd>
   );
 }

@@ -273,7 +273,7 @@
 }
 .balance-summary { overflow: hidden; }
 .balance-summary-main { display: grid; }
-.balance-summary-total { padding: 24px; border-top: 3px solid var(--brand); }
+.balance-summary-total { padding: 24px; }
 .balance-summary-period { min-width: 0; padding: 20px 24px; border-top: 1px solid var(--border); }
 .balance-summary-metrics { display: grid; gap: 20px; }
 .balance-summary-note {
@@ -293,7 +293,7 @@
 /* Keep the balance and cash flow on one line on typical laptop screens. */
 @media (min-width: 75rem) {
   .balance-summary-main { grid-template-columns: minmax(220px, 1fr) minmax(0, 2.1fr); }
-  .balance-summary-total { padding: 24px; border-top: 0; border-left: 3px solid var(--brand); }
+  .balance-summary-total { padding: 24px; }
   .balance-summary-period { border-top: 0; border-left: 1px solid var(--border); }
 }
 @media (max-width: 479px) {
@@ -337,17 +337,80 @@
   background: color-mix(in srgb, var(--brand) 9%, transparent);
   font-weight: 600;
 }
-.nav-item-active::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 9px;
-  bottom: 9px;
-  width: 3px;
-  border-radius: 0 4px 4px 0;
-  background: var(--brand);
-}
+.nav-item-active > svg { color: var(--brand); }
 button:focus-visible, a:focus-visible, summary:focus-visible { outline:2px solid var(--ring); outline-offset:3px; }
+
+/* Standalone tool pages (imports, exports, help, setup…) share one quiet shell. */
+.page-shell-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb, var(--card) 92%, transparent);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+.page-section { display: grid; gap: 12px; padding: 16px; }
+@media (min-width: 640px) { .page-section { padding: 20px; } }
+.page-section > h2 { font-size: 14px; font-weight: 600; letter-spacing: -0.01em; color: var(--foreground); }
+.page-section > p, .page-prose p { font-size: 14px; line-height: 1.6; color: var(--muted-foreground); }
+.text-link {
+  color: var(--brand);
+  font-weight: 500;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--brand) 35%, transparent);
+  text-underline-offset: 4px;
+  transition: text-decoration-color 150ms;
+}
+.text-link:hover { text-decoration-color: currentColor; }
+.segmented {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 10px;
+  background: var(--muted);
+}
+.segmented > :is(a, button) {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 4px 12px;
+  border-radius: 7px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted-foreground);
+  transition: background-color 150ms, color 150ms;
+}
+.segmented > :is(a, button):hover { color: var(--foreground); }
+.segmented > :is([aria-current="page"], [aria-pressed="true"]) {
+  background: var(--card);
+  color: var(--foreground);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.08);
+}
+.app-shell input[type="file"] {
+  width: 100%;
+  min-height: 44px;
+  padding: 6px;
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+  background: var(--card);
+  font-size: 13px;
+  color: var(--muted-foreground);
+  cursor: pointer;
+}
+.app-shell input[type="file"]:hover { border-color: color-mix(in srgb, var(--brand) 45%, var(--border)); }
+.app-shell input[type="file"]::file-selector-button {
+  margin-right: 12px;
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--muted);
+  color: var(--foreground);
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+}
 .pb-safe { padding-bottom:max(8px, env(safe-area-inset-bottom)); }
 
 /* A shared floating tab bar for the dashboard and internal mobile pages. */
@@ -496,6 +559,7 @@ button:focus-visible, a:focus-visible, summary:focus-visible { outline:2px solid
 @media (pointer: coarse) {
   .pilot-content :is(a,button,select,input:not([type=checkbox]),summary) { min-height:44px; }
   .pilot-content a { display:inline-flex; align-items:center; }
+.pilot-content p a { display:inline; min-height:0; }
   .pilot-content :is(input,select,textarea) { font-size:16px; }
 }
 /* Density affects reading rhythm, never reduces phone hit targets. */
