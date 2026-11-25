@@ -511,27 +511,24 @@ export function CategoryDetailView({
       {/* 2. Primary Financial Calculations Metric Cards */}
       <section className="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {/* Card 1: Filtered / Total Volume */}
-        <div className="dashboard-panel p-4 flex flex-col justify-between">
+        <div className="flex flex-col justify-between rounded-2xl bg-brand-deep p-4 text-brand-deep-foreground">
           <div>
-            <span className="text-[11px] font-semibold  text-muted-foreground">
+            <span className="text-[11px] font-semibold opacity-80">
               {hasActiveFilters ? "Filtered total" : "All-time total"}
             </span>
             <p
-              className={cn(
-                "amount mt-2 truncate text-xl font-bold tracking-tight sm:text-2xl",
-                category.kind === "income" ? "text-positive" : "text-negative",
-              )}
+              className="amount mt-2 truncate text-xl font-bold tracking-tight sm:text-2xl"
             >
               {money(hasActiveFilters ? filteredTotal : lifetimeStats.totalLifetime)}
             </p>
           </div>
-          <div className="mt-3 text-[11px] text-muted-foreground border-t border-border/60 pt-2 flex items-center justify-between">
+          <div className="mt-3 text-[11px] opacity-80 border-t border-current/20 pt-2 flex items-center justify-between">
             <span>
               {filteredTransactions.length} transaction
               {filteredTransactions.length === 1 ? "" : "s"}
             </span>
             {hasActiveFilters && (
-              <span className="font-semibold text-foreground">
+              <span className="font-semibold">
                 of {money(lifetimeStats.totalLifetime)}
               </span>
             )}

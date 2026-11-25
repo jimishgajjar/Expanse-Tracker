@@ -31,7 +31,7 @@ function series(entries: Entry[], start?: string, end?: string) {
   return { income, expense, cumulative };
 }
 
-function Sparkline({ values }: { values: number[] }) {
+export function Sparkline({ values }: { values: number[] }) {
   const min = Math.min(0, ...values), max = Math.max(0, ...values);
   const range = max - min || 1;
   const points = values.map((v, i) => `${(i / (values.length - 1)) * 100},${30 - ((v - min) / range) * 28}`);

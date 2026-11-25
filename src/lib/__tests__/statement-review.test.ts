@@ -180,7 +180,10 @@ it("selects the old migration journal for pre-release backups, retaining the new
   const weekly=[...pilot,"weekly_review_progress","weekly_review_receipts"];
   expect(JSON.parse(readFileSync(join(backupMigrationsForTables("./drizzle",weekly),"meta/_journal.json"),"utf8")).entries.at(-1).tag).toBe("0032_weekly_reviews");
   expect(()=>backupMigrationsForTables("./drizzle",[...pilot,"forecast_baselines"])).toThrow(/Incomplete/);
-  expect(backupMigrationsForTables("./drizzle",[...weekly,"forecast_baselines"])).toBe("./drizzle");
+  const baselines=[...weekly,"forecast_baselines"];
+  expect(JSON.parse(readFileSync(join(backupMigrationsForTables("./drizzle",baselines),"meta/_journal.json"),"utf8")).entries.at(-1).tag).toBe("0033_forecast_baselines");
+  expect(()=>backupMigrationsForTables("./drizzle",[...weekly,"user_preferences"])).toThrow(/Incomplete/);
+  expect(backupMigrationsForTables("./drizzle",[...baselines,"user_preferences"])).toBe("./drizzle");
 },30000);
 
 describe("investigating and correcting statement discrepancies",()=>{

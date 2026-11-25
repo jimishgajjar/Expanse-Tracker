@@ -265,6 +265,14 @@ export const users = pgTable("users", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+// Per-person display preferences (e.g. the Overview layout), synced across devices.
+export const userPreferences = pgTable("user_preferences", {
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  key: text("key").notNull(),
+  value: jsonb("value").notNull(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (t) => [primaryKey({ name: "user_preferences_pk", columns: [t.userId, t.key] })]);
+
 // A "tracker" — a personal one per user, shareable with others.
 export const workspaces = pgTable("workspaces", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),

@@ -113,31 +113,18 @@ export function AnalyticsTab(props: AnalyticsTabProps) {
 
   return (
     <div className="space-y-4">
-      {/* Horizontally scrollable segmented nav bar with Precision Glass Pillbox */}
       <div className="-mx-3 overflow-x-auto px-3 sm:mx-0 sm:px-0">
-        <div className="inline-flex gap-1 rounded-lg bg-muted/50 p-1">
+        <nav aria-label="Insights views" className="segmented flex-nowrap">
           {VIEWS.map((v) => {
             const IconCmp = v.icon;
-            const isActive = view === v.key;
             return (
-              <button
-                key={v.key}
-                type="button"
-                onClick={() => setView(v.key)}
-                aria-current={isActive ? "page" : undefined}
-                className={cn(
-                  "flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold whitespace-nowrap transition-colors duration-150 motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-brand",
-                  isActive
-                    ? "bg-foreground text-background shadow-xs font-bold"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted/60",
-                )}
-              >
-                <IconCmp className="size-3.5" />
+              <button key={v.key} type="button" onClick={() => setView(v.key)} aria-pressed={view === v.key} className="gap-1.5 whitespace-nowrap">
+                <IconCmp className="size-3.5" aria-hidden />
                 <span>{v.label}</span>
               </button>
             );
           })}
-        </div>
+        </nav>
       </div>
 
       {view === "summary" && <SummaryView {...props} />}

@@ -24,6 +24,7 @@ import { DropdownMenuItem } from "./ui/dropdown-menu";
 import { TransactionHistory } from "./transaction-history";
 import { TransactionComments } from "./transaction-comments";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { ConvertTransferDialog } from "./convert-transfer-dialog";
 import {
   createTransaction,
   createTransfer,
@@ -302,6 +303,7 @@ function Row({
             {receipts&&<ReceiptPanel transactionId={t.id} canEdit trigger={<DropdownMenuItem closeOnClick={false} nativeButton render={<button type="button"/>}><Paperclip/>Receipt</DropdownMenuItem>}/>}
             <TransactionHistory id={t.id} accounts={accounts} categories={categories} trigger={<DropdownMenuItem closeOnClick={false} nativeButton render={<button type="button" />}><History />History &amp; access</DropdownMenuItem>} />
             <TransactionDialog template={t} accounts={accounts} categories={categories} trigger={<DropdownMenuItem closeOnClick={false} nativeButton render={<button type="button" />}><Copy />Repeat transaction</DropdownMenuItem>} />
+            {t.accountId && <ConvertTransferDialog t={t} accounts={accounts} trigger={<DropdownMenuItem closeOnClick={false} nativeButton render={<button type="button" />}><ArrowRightLeft />Not really {t.type === "expense" ? "spending" : "income"}…</DropdownMenuItem>} />}
             <ConfirmDialog
               trigger={<DropdownMenuItem variant="destructive" closeOnClick={false} nativeButton render={<button type="button" />}><Trash2 />Delete transaction</DropdownMenuItem>}
               title="Delete transaction?"

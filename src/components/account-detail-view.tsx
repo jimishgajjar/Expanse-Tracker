@@ -9,6 +9,8 @@ import { ReconcileAccount } from "./reconcile-account";
 import { AccountDialog } from "@/components/account-dialog";
 import { DetailActivity } from "@/components/detail-activity";
 import { useFormat } from "@/components/settings-provider";
+import { Sparkline } from "@/components/summary-cards";
+import { useMemo } from "react";
 import { cn } from "@/lib/utils";
 import type {
   AccountDTO,
@@ -37,6 +39,17 @@ export function AccountDetailView({
   const { money, balanceMoney } = useFormat();
   const transferNet =
     account.balance - account.initialBalance - account.income + account.expense;
+  // Running balance after each dated movement, oldest first.
+  const history = useMemo(() => {
+    const moves = [
+      ...transactions.filter((t) => t.accountId === account.id).map((t) => ({ date: t.date, delta: t.type === "income" ? t.amount : -t.amount })),
+      ...transfers.flatMap((x) => [
+        ...(x.toAccountId === account.id ? [{ date: x.date, delta: x.amount }] : []),
+        ...(x.fromAccountId === account.id ? [{ date: x.date, delta: -x.amount }] : []),
+      ]),
+    ].sort((a, b) => a.date.localeCompare(b.date));
+    return moves.reduce<number[]>((out, m) => [...out, (out.at(-1) ?? account.initialBalance) + m.delta], []);
+  }, [transactions, transfers, account.id, account.initialBalance]);
 
   return (
     <div className="space-y-5">
@@ -108,62 +121,34 @@ export function AccountDetailView({
         </div>
       </div>
 
-      {/* Account Balance Hero Card */}
-      <div className="dashboard-panel p-4 sm:p-5">
-        <p className="text-xs font-semibold  text-muted-foreground">
-          Current balance
-        </p>
-        <p
-          className={cn(
-            "font-mono tabular-nums text-3xl font-semibold tracking-tight mt-1",
-            account.balance < 0 ? "text-negative" : "text-foreground",
-          )}
-        >
-          {balanceMoney(account.balance)}
-        </p>
-
-        {/* 4-Metric Grid */}
-        <div className="mt-4 pt-4 border-t border-border/60 grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-          <div className="min-w-0">
-            <span className="text-[11px] font-medium text-muted-foreground">
-              Opening balance
-            </span>
-            <p className="font-mono text-sm sm:text-base font-semibold text-foreground mt-0.5 tabular-nums">
-              {money(account.initialBalance)}
+      {/* Balance: the one committed colour moment, same as Overview. */}
+      <section aria-label="Account balance" className="grid gap-3 lg:grid-cols-[minmax(300px,1fr)_minmax(0,1.6fr)]">
+        <div className="flex min-w-0 flex-col justify-between overflow-hidden rounded-2xl bg-brand-deep p-5 text-brand-deep-foreground sm:p-6">
+          <div>
+            <p className="text-xs font-medium opacity-80">Current balance</p>
+            <p className="amount mt-1.5 break-words text-[clamp(1.75rem,3vw,2.4rem)] font-bold leading-none tracking-tight">
+              {balanceMoney(account.balance)}
             </p>
+            <p className="mt-2 text-xs opacity-80">{history.length ? `Running balance over ${history.length} entries` : "No entries yet"}</p>
           </div>
-
-          <div className="min-w-0">
-            <span className="text-[11px] font-medium text-muted-foreground flex items-center gap-1">
-              <TrendingUp className="size-3 text-positive" />
-              Total In
-            </span>
-            <p className="font-mono text-sm sm:text-base font-semibold text-positive mt-0.5 tabular-nums">
-              +{money(account.income)}
-            </p>
-          </div>
-
-          <div className="min-w-0">
-            <span className="text-[11px] font-medium text-muted-foreground flex items-center gap-1">
-              <TrendingDown className="size-3 text-negative" />
-              Total Out
-            </span>
-            <p className="font-mono text-sm sm:text-base font-semibold text-negative mt-0.5 tabular-nums">
-              -{money(account.expense)}
-            </p>
-          </div>
-
-          <div className="min-w-0">
-            <span className="text-[11px] font-medium text-muted-foreground flex items-center gap-1">
-              <ArrowRightLeft className="size-3 text-muted-foreground" />
-              Net transfers
-            </span>
-            <p className="font-mono text-sm sm:text-base font-semibold text-foreground mt-0.5 tabular-nums">
-              {balanceMoney(transferNet)}
-            </p>
-          </div>
+          <div className="mt-5">{history.length > 1 ? <Sparkline values={history} /> : <div className="h-14" />}</div>
         </div>
-      </div>
+        <dl className="grid grid-cols-2 gap-3">
+          {[
+            { label: "Opening balance", value: money(account.initialBalance), tone: "text-foreground", icon: null },
+            { label: "Total in", value: `+${money(account.income)}`, tone: "text-positive", icon: TrendingUp },
+            { label: "Total out", value: `−${money(account.expense)}`, tone: "text-negative", icon: TrendingDown },
+            { label: "Net transfers", value: balanceMoney(transferNet), tone: "text-foreground", icon: ArrowRightLeft },
+          ].map(({ label, value, tone, icon: TileIcon }) => (
+            <div key={label} className="dashboard-panel min-w-0 p-4">
+              <dt className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                {TileIcon && <TileIcon className="size-3.5" aria-hidden />}{label}
+              </dt>
+              <dd className={cn("amount mt-1.5 break-words text-lg font-bold tracking-tight", tone)}>{value}</dd>
+            </div>
+          ))}
+        </dl>
+      </section>
 
       {/* Account Activity Ledger */}
       <DetailActivity

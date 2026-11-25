@@ -34,7 +34,8 @@ import {
 } from "@/components/ui/sheet";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { CommentsAvailable, SettingsProvider } from "@/components/settings-provider";
-import { trackerExportHref } from "@/lib/household-access";
+import { isPersonalLedger, trackerExportHref } from "@/lib/household-access";
+import { DeletePrivateTracker } from "./delete-private-tracker";
 import { CategoryManager } from "@/components/category-manager";
 import { RecurringManager } from "@/components/recurring-manager";
 import { PrivateAccountsButton, WorkspaceSwitcher } from "@/components/workspace-switcher";
@@ -539,6 +540,7 @@ export function Dashboard({
                   {privateAccountsAvailable && <Link href="/shared-accounts" className="inline-flex min-h-9 items-center text-sm font-medium text-brand underline-offset-4 hover:underline">Accounts shared with me →</Link>}
                 </div>
               )}
+              {tab === "accounts" && canEdit && isPersonalLedger(activeWorkspaceId) && <DeletePrivateTracker key={activeWorkspaceId} workspace={activeWorkspaceId} name={workspaceName} />}
               {tab === "planning" && showOriginalTools && (
                 <DeferredPlanning workspace={activeWorkspaceId} forecastAccounts={accounts}
                   budgets={budgetProgress}

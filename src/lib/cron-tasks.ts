@@ -55,7 +55,7 @@ export async function sendMonthlyDigests(now = new Date()): Promise<number> {
     if (!txns.length) continue;
 
     const sym = await symbolFor(db, ws.id, symCache);
-    const fmt = (n: number) => `${sym}${n.toFixed(2)}`;
+    const fmt = (n: number) => `${sym}${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     const income = txns.filter((t) => t.type === "income").reduce((s, t) => s + Number(t.amount), 0);
     const expense = txns.filter((t) => t.type === "expense").reduce((s, t) => s + Number(t.amount), 0);
     const net = income - expense;
@@ -65,7 +65,16 @@ export async function sendMonthlyDigests(now = new Date()): Promise<number> {
     const names = catSpend.size
       ? new Map((await db.select({ id: categories.id, name: categories.name }).from(categories).where(and(eq(categories.workspaceId,ws.id),inArray(categories.id, [...catSpend.keys()])))).map((c) => [c.id, c.name]))
       : new Map<string, string>();
-    const top = [...catSpend.entries()].sort((a, b) => b[1] - a[1])[0];
+    const ranked = [...catSpend.entries()].sort((a, b) => b[1] - a[1]);
+    // The month before, for a like-for-like comparison of spending.
+    const before = monthRange(subMonths(prev, 1));
+    const prevSpend = (await db.select({ amount: transactions.amount }).from(transactions)
+      .where(and(eq(transactions.workspaceId, ws.id), eq(transactions.type, "expense"), gte(transactions.date, before.start), lt(transactions.date, before.end))))
+      .reduce((sum, t) => sum + Number(t.amount), 0);
+    const change = prevSpend > 0 ? Math.round(((expense - prevSpend) / prevSpend) * 100) : null;
+    const savingsRate = income > 0 ? Math.round((net / income) * 100) : null;
+    const limits = await db.select({ categoryId: budgets.categoryId, amount: budgets.amount }).from(budgets).where(eq(budgets.workspaceId, ws.id));
+    const over = limits.filter((b) => (catSpend.get(b.categoryId) ?? 0) > Number(b.amount));
     const biggest = txns.filter((t) => t.type === "expense").sort((a, b) => Number(b.amount) - Number(a.amount))[0];
 
     const url = "/?tab=analytics&range=month&date=" + start;
@@ -79,7 +88,10 @@ export async function sendMonthlyDigests(now = new Date()): Promise<number> {
           { label: "Income", value: fmt(income) },
           { label: "Expenses", value: fmt(expense) },
           { label: "Net saved", value: fmt(net) },
-          ...(top ? [{ label: "Top category", value: `${names.get(top[0]) ?? "Uncategorized"} · ${fmt(top[1])}` }] : []),
+          ...(savingsRate !== null ? [{ label: "Savings rate", value: `${savingsRate}% of income kept` }] : []),
+          ...(change !== null ? [{ label: "Spending vs month before", value: `${change > 0 ? "+" : ""}${change}%` }] : []),
+          ...ranked.slice(0, 3).map(([id, amount], i) => ({ label: i === 0 ? "Top categories" : "", value: `${names.get(id) ?? "Uncategorized"} · ${fmt(amount)}` })),
+          ...(over.length ? [{ label: "Over budget", value: over.map((b) => `${names.get(b.categoryId) ?? "A category"} (${fmt(catSpend.get(b.categoryId) ?? 0)} of ${fmt(Number(b.amount))})`).join(", ") }] : []),
           ...(biggest ? [{ label: "Biggest expense", value: `${biggest.note || "—"} · ${fmt(Number(biggest.amount))}` }] : []),
         ],
       },

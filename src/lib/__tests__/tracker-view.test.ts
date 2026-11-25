@@ -8,7 +8,7 @@ import * as schema from "../db/schema";
 import { proxy } from "@/proxy";
 import { getSession, createApiSession } from "../session";
 import { createAccount, createTransaction } from "../actions";
-import { enterPersonalTracker } from "../personal-actions";
+import { deletePrivateTracker, enterPersonalTracker } from "../personal-actions";
 import { removeMember } from "../sharing";
 import { GET as me } from "@/app/api/mobile/me/route";
 import { GET as bootstrap } from "@/app/api/mobile/bootstrap/route";
@@ -48,6 +48,27 @@ beforeAll(async () => {
     INSERT INTO accounts(id,workspace_id,name) VALUES ('shared-bank','home','Shared bank');`);
 }, 60000);
 afterAll(() => pg.close());
+
+it("invalidates web and mobile forms after private tracker deletion without retargeting household writes", async () => {
+  const web = client(await createApiSession("owner", "home"));
+  const stamp = async () => (await getSession())!.viewKey;
+  const shared = await web("/", "GET", null, stamp);
+  expect(await web("/", "POST", shared, () => enterPersonalTracker("home"))).toEqual({ ok: true });
+  const session = await web("/", "GET", null, getSession);
+  const personal = session!.workspaceId!;
+  const phone = client(await createApiSession("owner", personal), true);
+  const mobileStamp = await phone("/api/mobile/me", "GET", null, stamp);
+  expect(await web("/", "POST", session!.viewKey, () => deletePrivateTracker({
+    workspace: personal, confirmation: "My private accounts · Test household",
+  }))).toEqual({ ok: true });
+  expect(await web("/", "GET", null, async () => (await getSession())!.workspaceId)).toBeNull();
+  for (const oldView of [shared, session!.viewKey]) {
+    expect(await web("/", "POST", oldView, () => createAccount({ name: "Stale form" }))).toMatchObject({ ok: false });
+  }
+  const write = () => addAccount(new Request("http://localhost", { method: "POST", body: JSON.stringify({ name: "Stale mobile form" }) }));
+  expect((await phone("/api/mobile/accounts", "POST", mobileStamp, write)).status).toBe(401);
+  expect((await pg.query("SELECT name FROM accounts WHERE workspace_id='home'")).rows).toEqual([{ name: "Shared bank" }]);
+});
 
 it("rejects stale web forms and clears the mobile view after a second signed-in member revokes access", async () => {
   const web = client(await createApiSession("member", "home"));

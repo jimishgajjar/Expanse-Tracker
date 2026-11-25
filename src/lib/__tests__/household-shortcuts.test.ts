@@ -88,3 +88,13 @@ it("flags a card-bill category only when it is a meaningful share of spending", 
   expect(cardBillShare([{ id: "x", name: "CC payment", kind: "expense" }], [tx("x", 1)])?.share).toBe(100);
   expect(cardBillShare([{ id: "x", name: "Discover", kind: "expense" }], [tx("x", 1)])).toBeNull();
 });
+
+it("saves a person's overview layout to their account and validates it", async () => {
+  const { loadPreference, savePreference } = await import("../user-preferences");
+  const key = "overview-layout:w:owner";
+  expect(await loadPreference(key)).toBeNull();
+  expect(await savePreference(key, { order: ["activity", "summary"], hidden: ["charts"] })).toBe(true);
+  expect(await loadPreference(key)).toEqual({ order: ["activity", "summary"], hidden: ["charts"] });
+  expect(await savePreference("password", { order: [], hidden: [] })).toBe(false);
+  expect(await savePreference(key, { order: "nope" })).toBe(false);
+});

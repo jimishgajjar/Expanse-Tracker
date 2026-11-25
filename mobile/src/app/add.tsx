@@ -72,6 +72,19 @@ function EntryForm({asTab}:{asTab:boolean}) {
   );
   const dismiss = () => asTab ? router.navigate("/home") : (router.canGoBack() ? router.back() : router.replace("/home"));
   const types: TxType[] = isEdit ? ["expense", "income"] : ["expense", "income", "transfer"];
+  // Repeat entries (same description, account and category twice in 120 days) for one-tap fill.
+  type Quick = { type: "income" | "expense"; note: string; accountId: string; categoryId: string | null; amount: number };
+  const [quick, setQuick] = useState<Quick[]>([]);
+  useEffect(() => {
+    if (isEdit) return;
+    let live = true;
+    api<{ entries: Quick[] }>("/quick-entries")
+      .then((r) => { if (live) setQuick(r.entries.filter((e) => accounts.some((a) => a.id === e.accountId))); })
+      .catch(() => { /* Offline or older server: quick add simply stays hidden. */ });
+    return () => { live = false; };
+    // Fetch once per screen; accounts only filter the result.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isEdit]);
   const accent = ACCENT[type];
   const symbol = data?.settings.currency ?? "";
 
@@ -213,6 +226,25 @@ function EntryForm({asTab}:{asTab:boolean}) {
             autoFocus={!isEdit}
           />
         </View>
+        {!isEdit && type !== "transfer" && quick.length > 0 && (
+          <View>
+            <Text style={s.label}>Quick add</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+              {quick.map((q) => (
+                <Pressable
+                  key={`${q.type}:${q.note}:${q.accountId}:${q.categoryId}`}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Fill ${q.note}, ${symbol}${q.amount}`}
+                  onPress={() => { setType(q.type); setAmount(String(q.amount)); setNote(q.note); setAccountId(q.accountId); setCategoryId(q.categoryId); setError(null); }}
+                  style={({ pressed }) => [s.quickChip, pressed && { opacity: 0.6 }]}
+                >
+                  <Text style={s.quickNote} numberOfLines={1}>{q.note}</Text>
+                  <Text style={s.quickAmount}>{symbol}{q.amount.toFixed(2)}</Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+          </View>
+        )}
         <Pressable style={s.dateChip} onPress={() => setShowDate((v) => !v)}>
           <Feather name="calendar" size={14} color={colors.inkSoft} />
           <Text style={s.dateText}>{format(parseISO(date), "EEE, d MMM yyyy")}</Text>
@@ -345,6 +377,9 @@ const s = StyleSheet.create({
   toggleBtn: { paddingVertical: 8, paddingHorizontal: 18, borderRadius: radius.pill },
   toggleText: { fontSize: 14, fontWeight: "600", color: colors.inkSoft },
   amountRow: { flexDirection: "row", alignItems: "center", justifyContent: "center" },
+  quickChip: { flexDirection: "row", alignItems: "center", gap: 8, minHeight: 44, paddingHorizontal: 12, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.card },
+  quickNote: { maxWidth: 150, color: colors.ink, fontSize: 14, fontWeight: "600" },
+  quickAmount: { color: colors.inkSoft, fontSize: 13, fontVariant: ["tabular-nums"] },
   currency: { fontSize: 28, fontWeight: "700", marginRight: 4 },
   amountHero: { fontSize: 42, fontWeight: "700", letterSpacing: -1, minWidth: 90, padding: 0, fontVariant: ["tabular-nums"] },
   dateChip: { flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, borderRadius: radius.pill, paddingHorizontal: 14, paddingVertical: 8 },

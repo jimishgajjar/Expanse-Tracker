@@ -1,6 +1,7 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { useEffect, useSyncExternalStore } from "react";
+import { loadPreference, savePreference } from "@/lib/user-preferences";
 import { ArrowDown, ArrowUp, Eye, EyeOff, LayoutGrid, RotateCcw } from "lucide-react";
 import { ManagerPanel } from "./manager-panel";
 import { Button } from "./ui/button";
@@ -18,8 +19,10 @@ export type OverviewLayout = { order: OverviewSectionId[]; hidden: OverviewSecti
 
 const DEFAULT: OverviewLayout = { order: OVERVIEW_SECTIONS.map((s) => s.id), hidden: [] };
 const ids = new Set<string>(DEFAULT.order);
-// Per person and per device: each of you sees your own arrangement on your own phone.
+// Per person. Kept in this browser for instant loads and synced to the account so the
+// same arrangement follows each person to their other devices.
 const storageKey = (workspace: string, actor: string) => `overview-layout:${workspace}:${actor}`;
+const synced = new Set<string>();
 const listeners = new Set<() => void>();
 const cache = new Map<string, { raw: string | null; value: OverviewLayout }>();
 
@@ -50,12 +53,27 @@ function subscribe(fn: () => void) {
   return () => { listeners.delete(fn); window.removeEventListener("storage", fn); };
 }
 
+function writeLocal(key: string, raw: string) {
+  try { localStorage.setItem(key, raw); } catch { /* Keep the default. */ }
+  listeners.forEach((fn) => fn());
+}
+
 export function useOverviewLayout(workspace: string, actor: string) {
   const key = storageKey(workspace, actor);
   const layout = useSyncExternalStore(subscribe, () => read(key), () => DEFAULT);
+  // Once per page load, adopt the arrangement saved to the account (from another device).
+  useEffect(() => {
+    if (synced.has(key)) return;
+    synced.add(key);
+    void loadPreference(key).then((value) => {
+      if (!value) return;
+      const raw = JSON.stringify(parse(JSON.stringify(value)));
+      if (raw !== JSON.stringify(read(key))) writeLocal(key, raw);
+    });
+  }, [key]);
   function save(next: OverviewLayout) {
-    try { localStorage.setItem(key, JSON.stringify(next)); } catch { /* Keep the default. */ }
-    listeners.forEach((fn) => fn());
+    writeLocal(key, JSON.stringify(next));
+    void savePreference(key, next);
   }
   return { layout, save, reset: () => save(DEFAULT) };
 }
@@ -77,7 +95,7 @@ export function CustomiseOverview({ workspace, actor }: { workspace: string; act
     <ManagerPanel
       title="Customise overview"
       icon={LayoutGrid}
-      description="Choose which sections you see and in what order. This is saved for you on this device only."
+      description="Choose which sections you see and in what order. It is saved for you and follows you to your other devices."
       trigger={
         <Button variant="ghost" size="sm" className="gap-1.5 text-xs text-muted-foreground hover:text-foreground">
           <LayoutGrid className="size-3.5" /> Customise

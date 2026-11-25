@@ -92,3 +92,11 @@ No decorative colour stripes: account cards and the balance summary rely on hair
 ## Financial summary header (November)
 
 Overview opens with a statement-style header. Left: one deep-emerald panel (`--brand-deep`) with the current balance and a sparkline of cumulative net cash flow for the selected period, the screen's single committed colour moment. Right: three KPI tiles (Income, Expenses, Net cash flow), each with the figure, a change against the prior period coloured by whether it is good for the household (higher spending is red), and twelve mini bars; below them a savings-rate strip with a progress bar and a plain-language sentence. All figures come from the same period entries as before; transfers stay excluded from cash flow.
+
+## Correcting entries that were really transfers
+
+Activity rows offer "Not really spending…" / "Not really income…". The dialog turns the entry into a transfer between the household's own accounts and, when the matching opposite entry on the other account is found (same amount, within a week), removes that too. An income can instead be folded into its account's starting balance. Both are single atomic statements that keep every account balance unchanged; the removed entries stay in edit history with a pointer to the new transfer. Entries with receipts, comments, refund links or reimbursements must be cleared first.
+
+## Consistent headers
+
+Account and category detail pages reuse the Overview's deep-emerald balance panel (account: running-balance sparkline; category: the total tile). Insights' view switcher uses the shared `.segmented` control. The Overview layout is stored per person in `user_preferences` (migration 0034) and mirrored in browser storage for instant loads; without the table it stays per device.
