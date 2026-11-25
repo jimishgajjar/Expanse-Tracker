@@ -11,6 +11,8 @@
   --font-sans: var(--font-sans);
   --font-mono: var(--font-geist-mono);
   --font-heading: var(--font-sans);
+  --font-display: var(--font-display);
+  --color-brass: var(--brass);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -61,102 +63,99 @@
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/*
-  "Quiet premium ledger" — one committed emerald brand accent, a single cool-neutral
-  gray family (no warm cream, no AI-purple), tabular figures, hairline surfaces.
-*/
-/* Light surfaces with cool ink and an attractive, vibrant emerald accent. */
 :root {
-  --background: #f6f8f7;
-  --foreground: #090e0c;
+  /* "Intaglio": the inks of a cheque or banknote. Cool green-white paper, deep
+     engraving green, a seal red for money going out, and brass used sparingly. */
+  --background: #f3f6f4;
+  --foreground: #10261f;
   --card: #ffffff;
-  --card-foreground: #090e0c;
+  --card-foreground: #10261f;
   --popover: #ffffff;
-  --popover-foreground: #090e0c;
-  --primary: #059669;
+  --popover-foreground: #10261f;
+  --primary: #0d6e55;
   --primary-foreground: #ffffff;
-  --brand: #059669;
+  --brand: #0d6e55;
   --brand-foreground: #ffffff;
-  /* Drench ground for brand surfaces (landing hero, auth panel). */
-  --brand-deep: #047857;
-  --brand-deep-foreground: #ecfdf5;
-  --hover: rgba(9, 14, 12, 0.05);
-  --canvas-muted: rgba(9, 14, 12, 0.025);
-  --secondary: #edf2ef;
-  --secondary-foreground: #090e0c;
-  --muted: #edf2ef;
-  --muted-foreground: #52635c;
-  --accent: #e5ede8;
-  --accent-foreground: #090e0c;
-  --destructive: #e11d48;
-  --positive: #059669;
+  /* Engraving green: the one dark ground (balance panels, landing hero). */
+  --brand-deep: #0b3d31;
+  --brand-deep-foreground: #e9f3ee;
+  --brass: #a87a2f;
+  --hover: rgba(16, 38, 31, 0.05);
+  --canvas-muted: rgba(16, 38, 31, 0.025);
+  --secondary: #e8eeea;
+  --secondary-foreground: #10261f;
+  --muted: #e8eeea;
+  --muted-foreground: #56685f;
+  --accent: #e1e9e4;
+  --accent-foreground: #10261f;
+  --destructive: #b23a2e;
+  --positive: #0d6e55;
   --positive-foreground: #ffffff;
-  --negative: #e11d48;
+  --negative: #b23a2e;
   --negative-foreground: #ffffff;
-  --border: rgba(9, 14, 12, 0.08);
-  --input: rgba(9, 14, 12, 0.12);
-  --ring: #059669;
-  --chart-1: #059669;
-  --chart-2: #0284c7;
-  --chart-3: #f59e0b;
-  --chart-4: #e11d48;
-  --chart-5: #8b5cf6;
-  /* 10px base radius; controls and surfaces derive their sizes from it. */
-  --radius: 0.625rem;
+  --border: #dbe3de;
+  --input: #ccd6d0;
+  --ring: #0d6e55;
+  --chart-1: #0d6e55;
+  --chart-2: #2f6f9e;
+  --chart-3: #a87a2f;
+  --chart-4: #b23a2e;
+  --chart-5: #6b5b95;
+  --radius: 0.5rem;
   --sidebar: #ffffff;
-  --sidebar-foreground: #090e0c;
-  --sidebar-primary: #059669;
+  --sidebar-foreground: #10261f;
+  --sidebar-primary: #0d6e55;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #edf2ef;
-  --sidebar-accent-foreground: #090e0c;
-  --sidebar-border: rgba(9, 14, 12, 0.08);
-  --sidebar-ring: #059669;
+  --sidebar-accent: #e8eeea;
+  --sidebar-accent-foreground: #10261f;
+  --sidebar-border: #dbe3de;
+  --sidebar-ring: #0d6e55;
 }
 
-/* Emerald-infused dark mode: deep forest ground, emerald slate surfaces,
-   crisp mint-tinted ink, translucent emerald hairlines and vibrant emerald accents. */
+/* Dark: the same inks under lamplight. Green-black paper, pale engraving lines. */
 .dark {
-  --background: #07100b;
-  --foreground: #edf5f0;
-  --card: #0c1812;
-  --card-foreground: #edf5f0;
-  --popover: #0f1f17;
-  --popover-foreground: #edf5f0;
-  --primary: #10b981;
-  --primary-foreground: #041a10;
-  --brand: #10b981;
-  --brand-foreground: #041a10;
-  --brand-deep: #064e3b;
-  --brand-deep-foreground: #ecfdf5;
-  --hover: rgba(52, 211, 153, 0.08);
-  --canvas-muted: rgba(16, 185, 129, 0.035);
-  --secondary: #13241b;
-  --secondary-foreground: #d1fae5;
-  --muted: #122219;
-  --muted-foreground: #8fa79b;
-  --accent: #172c21;
-  --accent-foreground: #edf5f0;
-  --destructive: #fb7185;
-  --positive: #10b981;
-  --positive-foreground: #041a10;
-  --negative: #fb7185;
-  --negative-foreground: #2a080e;
-  --border: rgba(52, 211, 153, 0.12);
-  --input: rgba(52, 211, 153, 0.18);
-  --ring: #10b981;
-  --chart-1: #10b981;
-  --chart-2: #38bdf8;
-  --chart-3: #fbbf24;
-  --chart-4: #fb7185;
-  --chart-5: #a78bfa;
-  --sidebar: #050d08;
-  --sidebar-foreground: #edf5f0;
-  --sidebar-primary: #10b981;
-  --sidebar-primary-foreground: #041a10;
-  --sidebar-accent: #122219;
-  --sidebar-accent-foreground: #edf5f0;
-  --sidebar-border: rgba(52, 211, 153, 0.1);
-  --sidebar-ring: #10b981;
+  --background: #0a1512;
+  --foreground: #e4eee8;
+  --card: #0f1f1a;
+  --card-foreground: #e4eee8;
+  --popover: #13261f;
+  --popover-foreground: #e4eee8;
+  --primary: #4fbf98;
+  --primary-foreground: #062019;
+  --brand: #4fbf98;
+  --brand-foreground: #062019;
+  --brand-deep: #0e3a2f;
+  --brand-deep-foreground: #e9f3ee;
+  --brass: #d6a95e;
+  --hover: rgba(228, 238, 232, 0.06);
+  --canvas-muted: rgba(228, 238, 232, 0.03);
+  --secondary: #16291f;
+  --secondary-foreground: #e4eee8;
+  --muted: #15271f;
+  --muted-foreground: #96aaa0;
+  --accent: #1a2f26;
+  --accent-foreground: #e4eee8;
+  --destructive: #ef8a7d;
+  --positive: #4fbf98;
+  --positive-foreground: #062019;
+  --negative: #ef8a7d;
+  --negative-foreground: #2a0c08;
+  --border: #22352d;
+  --input: #2c4338;
+  --ring: #4fbf98;
+  --chart-1: #4fbf98;
+  --chart-2: #6fa8d6;
+  --chart-3: #d6a95e;
+  --chart-4: #ef8a7d;
+  --chart-5: #a596cf;
+  --sidebar: #0c1a16;
+  --sidebar-foreground: #e4eee8;
+  --sidebar-primary: #4fbf98;
+  --sidebar-primary-foreground: #062019;
+  --sidebar-accent: #15271f;
+  --sidebar-accent-foreground: #e4eee8;
+  --sidebar-border: #1e3029;
+  --sidebar-ring: #4fbf98;
 }
 
 @layer base {
@@ -180,7 +179,7 @@
   }
   /* Headings: a touch tighter for presence. */
   h1, h2, h3 {
-    letter-spacing: -0.018em;
+    letter-spacing: -0.01em;
     text-wrap: balance;
   }
 }
@@ -247,24 +246,17 @@
 }
 
 /* Household workspace: content stays readable; navigation recedes. */
-.app-shell, .workspace-surface {
-  --brand: #087f6b;
-  --positive: #087f6b;
-  --negative: #b84343;
-  --foreground: #1c2925;
-  --muted-foreground: #64716b;
-  --border: #e1e7e3;
-  background: #f7f9f8;
+.app-shell, .workspace-surface { background: var(--background); }
+
+/* Display voice: page titles and headline balances, set like engraved numerals. */
+.font-display, .display-figure {
+  font-family: var(--font-display), ui-serif, Georgia, serif;
+  font-optical-sizing: auto;
+  font-variant-numeric: lining-nums tabular-nums;
+  letter-spacing: -0.015em;
 }
-.dark .app-shell, .dark .workspace-surface {
-  --brand: #5bc4a8;
-  --positive: #5bc4a8;
-  --negative: #f28e8a;
-  --foreground: #edf2ef;
-  --muted-foreground: #a2afa8;
-  --border: #29342e;
-  background: #07100b;
-}
+.display-figure { font-weight: 600; line-height: 1; }
+
 .dashboard-panel, .balance-summary {
   min-width: 0;
   border: 1px solid var(--border);
@@ -469,7 +461,7 @@ button:focus-visible, a:focus-visible, summary:focus-visible { outline:2px solid
     font-weight: 650;
   }
   .mobile-tab-add .mobile-tab-icon { stroke-width: 2.2; }
-  .dark .mobile-tab-bar { --mobile-tab-active: #6ee7b7; }
+  .dark .mobile-tab-bar { --mobile-tab-active: #8fdcbf; }
   .mobile-tab-item:focus-visible { outline-offset: -3px; }
   @supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
     .mobile-tab-bar {
@@ -540,7 +532,15 @@ button:focus-visible, a:focus-visible, summary:focus-visible { outline:2px solid
   .manager-panel [data-slot="sheet-close"] { width:36px; height:36px; }
   .manager-panel [data-slot="tabs-list"] { padding:2px; }
 }
-.app-shell h1 { font-size:1.5rem; line-height:1.3; }
+/* Every page title speaks in the display voice; everything below it stays in Plex. */
+.app-shell h1 {
+  font-family: var(--font-display), ui-serif, Georgia, serif;
+  font-optical-sizing: auto;
+  font-size: clamp(1.625rem, 1.2vw + 1.2rem, 2rem);
+  font-weight: 600;
+  line-height: 1.15;
+  letter-spacing: -0.015em;
+}
 .app-shell [data-slot="card"] { border-radius:12px; box-shadow:none; }
 .app-shell [data-slot="card-title"] { font-weight:600; }
 

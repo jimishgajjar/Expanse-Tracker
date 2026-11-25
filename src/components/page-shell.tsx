@@ -1,6 +1,7 @@
 import Link from "next/link";
+import { BrandMark } from "@/components/brand-mark";
 import type { ReactNode } from "react";
-import { ArrowLeft, Wallet } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { ThemeToggle } from "./theme-toggle";
 import { cn } from "@/lib/utils";
 
@@ -48,9 +49,9 @@ export function PageShell({
             <Link
               href="/"
               aria-label="Expense Tracker overview"
-              className="grid size-7 shrink-0 place-items-center rounded-lg bg-brand text-brand-foreground"
+              className="grid size-8 shrink-0 place-items-center rounded-lg text-brand hover:bg-muted"
             >
-              <Wallet className="size-3.5" aria-hidden />
+              <BrandMark className="size-6" />
             </Link>
             <span className="text-muted-foreground/40" aria-hidden>/</span>
             <Link

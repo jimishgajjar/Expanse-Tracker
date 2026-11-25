@@ -3,13 +3,11 @@
 import { useActionState, useState } from "react";
 import Link from "next/link";
 import {
-  ArrowRight,
   Eye,
   EyeOff,
   Loader2,
   Lock,
   Mail,
-  ShieldCheck,
 } from "lucide-react";
 import { login } from "@/lib/auth";
 import { AuthHeading } from "@/components/auth-heading";
@@ -109,8 +107,7 @@ export function LoginForm({ next }: { next: string }) {
             </>
           ) : (
             <>
-              <span>Sign in to Ledger</span>
-              <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
+              <span>Sign in</span>
             </>
           )}
         </Button>
@@ -120,7 +117,7 @@ export function LoginForm({ next }: { next: string }) {
         <div className="absolute inset-0 flex items-center">
           <span className="w-full border-t border-border/70" />
         </div>
-        <div className="relative flex justify-center text-xs uppercase">
+        <div className="relative flex justify-center text-xs">
           <span className="bg-background px-2 text-[11px] font-medium text-muted-foreground">
             Don&apos;t have an account?
           </span>
@@ -134,10 +131,6 @@ export function LoginForm({ next }: { next: string }) {
         Create an account
       </Link>
 
-      <div className="flex items-center justify-center gap-1.5 pt-1 text-[11px] text-muted-foreground/75">
-        <ShieldCheck className="size-3.5 text-brand shrink-0" />
-        <span>256-bit encryption · Private local session</span>
-      </div>
     </div>
   );
 }

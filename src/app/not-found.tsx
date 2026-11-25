@@ -12,7 +12,7 @@ export default function NotFound() {
         <span className="grid size-11 place-items-center rounded-xl bg-brand/10 text-brand">
           <Compass className="size-5" />
         </span>
-        <h1 className="mt-5 text-2xl font-semibold tracking-tight">No page here</h1>
+        <h1 className="font-display mt-5 text-3xl font-semibold">No page here</h1>
         <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
           That address doesn&apos;t match anything in the app. It may have moved, or the link may be mistyped.
         </p>

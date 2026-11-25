@@ -2,7 +2,7 @@
 
 ## Direction
 
-A calm household finance workspace: clear balances, useful context, and quick access to every existing tool. The signed-in application uses a persistent sidebar on desktop and a labeled bottom navigation on phones and tablets. Marketing pages retain their existing composition.
+A calm household finance workspace: clear balances, useful context, and quick access to every existing tool. The signed-in application uses a persistent sidebar on desktop and a labeled bottom navigation on phones and tablets. Marketing and sign-in pages share the engraving-green ground and display type.
 
 ## Structure
 
@@ -15,19 +15,26 @@ A calm household finance workspace: clear balances, useful context, and quick ac
 
 At 1024px and wider the sidebar is 240px and scrolls independently on short screens. Below that, Home / Activity / Add / Insights / More remains reachable at the bottom. More includes Accounts and Planning. Content is capped at 1440px with 16–40px gutters.
 
-## Tokens
+## Tokens ("Intaglio")
+
+The identity borrows from the inks of a cheque or banknote: cool green-white paper, deep engraving green, a seal red for money going out, and brass used only for engraved line work.
 
 | Purpose | Light | Dark |
 | --- | --- | --- |
-| App canvas | #f6f8f7 | #171b19 |
-| Surface | #ffffff | #202020 |
-| Main ink | #25342e | #d3d3d3 |
-| Secondary ink | #65716b | #9b9a97 |
-| Brand | #0f7b6c | #2f9e89 |
-| Positive | #0f7b6c | #4dab9a |
-| Negative | #bf3e38 | #ff7369 |
+| Paper (canvas) | #f3f6f4 | #0a1512 |
+| Surface | #ffffff | #0f1f1a |
+| Ink | #10261f | #e4eee8 |
+| Secondary ink | #56685f | #96aaa0 |
+| Brand / positive | #0d6e55 | #4fbf98 |
+| Engraving green (dark grounds) | #0b3d31 | #0e3a2f |
+| Seal red (negative) | #b23a2e | #ef8a7d |
+| Brass (line work only) | #a87a2f | #d6a95e |
 
-Inter remains the primary typeface. Use tabular numerals for amounts, a single prominent balance, 28–32px page titles, 14px body copy, and 12px secondary labels. Use a 10px base radius, 8px controls, and 13–17px major surfaces. Reserve shadows for overlays; use spacing and thin borders for content structure.
+Type: IBM Plex Sans for the interface, with tabular figures in every money column. Source Serif 4 (`font-display`, `.display-figure`) only for page titles (every `.app-shell h1`), the headline balance, and marketing headlines; panel and section headings stay in Plex. 8px base radius. Reserve shadows for overlays and the landing ledger page.
+
+The one signature element is the guilloché (`components/guilloche.tsx`): a band of engraved sine lines across the top of the engraving-green balance panels, like a cheque border, and along the foot of the landing and sign-in grounds. Do not use it elsewhere. The brand mark (`components/brand-mark.tsx`) is a seal with the double rule drawn under a final total.
+
+Landing: one engraving-green hero with a ruled ledger page (red margin rule, a transfer row marked as not spending, Spent and Kept at the foot), then quiet paper sections set in type. Marketing copy makes only claims the product supports: no encryption or speed claims.
 
 ## Interaction
 
@@ -100,3 +107,8 @@ Activity rows offer "Not really spending…" / "Not really income…". The dialo
 ## Consistent headers
 
 Account and category detail pages reuse the Overview's deep-emerald balance panel (account: running-balance sparkline; category: the total tile). Insights' view switcher uses the shared `.segmented` control. The Overview layout is stored per person in `user_preferences` (migration 0034) and mirrored in browser storage for instant loads; without the table it stays per device.
+
+## Tools are pages, not drawers
+
+Categories, Subscriptions & bills, Savings goals, Shared expenses and Members & sharing are dashboard pages (`?tab=categories|recurring|goals|split|members`) with the normal page title. `ManagerPanel` renders inline inside `<ManagerPage>`. Everywhere else (receipts, refund links, statement checks, budgets, the Overview layout) it opens as a centred window, which becomes a bottom sheet on phones. Nothing slides in from the side. On phones, More (`?tab=more`) is a page listing every destination.
+

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BrandMark } from "@/components/brand-mark";
 import type { ReactNode } from "react";
 import {
   ArrowLeft,
@@ -8,7 +9,6 @@ import {
   Landmark,
   CalendarDays,
   Settings,
-  Wallet,
   Download,
 } from "lucide-react";
 import { ThemeToggle } from "./theme-toggle";
@@ -51,11 +51,9 @@ export async function DetailShell({
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 min-w-60 max-w-60 shrink-0 flex-col overflow-y-auto border-r border-border/80 bg-sidebar px-3 py-4 lg:flex">
         <div className="mb-6 flex items-center justify-between px-3">
           <Link href="/" className="flex items-center gap-2.5 group">
-            <span className="grid size-8 place-items-center rounded-xl bg-brand text-brand-foreground">
-              <Wallet className="size-4" />
-            </span>
+            <BrandMark className="size-8 text-brand" />
             <div>
-              <span className="block text-sm font-semibold tracking-tight text-foreground group-hover:text-brand transition-colors">
+              <span className="font-display block text-base font-semibold text-foreground group-hover:text-brand transition-colors">
                 Expense Tracker
               </span>
               <span className="block text-[10px] font-medium text-muted-foreground">

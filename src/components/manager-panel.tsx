@@ -1,19 +1,32 @@
 "use client";
 
-import type { ReactElement, ReactNode } from "react";
+import { createContext, use, type ReactElement, type ReactNode } from "react";
 import { ChevronDown, Plus, type LucideIcon } from "lucide-react";
 import {
-  Sheet,
-  SheetClose,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "./ui/sheet";
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "./ui/dialog";
 import { Button } from "./ui/button";
 
-/** Shared presentation only; each tool retains its existing actions and state. */
+/**
+ * Inside a <ManagerPage>, a tool renders straight into the page: the page supplies
+ * the title, so the panel shows only its body and no trigger.
+ */
+const InPage = createContext(false);
+export function ManagerPage({ children }: { children: ReactNode }) {
+  return <InPage value={true}>{children}</InPage>;
+}
+
+/**
+ * Shared presentation only; each tool retains its existing actions and state.
+ * On its own page it renders inline. Anywhere else it opens as a centred window,
+ * never a side drawer.
+ */
 export function ManagerPanel({
   trigger,
   title,
@@ -33,43 +46,34 @@ export function ManagerPanel({
   defaultOpen?: boolean;
   onOpenChange?: (open: boolean) => void;
 }) {
+  if (use(InPage)) {
+    return <div className="manager-panel manager-panel-body manager-page min-w-0 max-w-3xl space-y-5">{children}</div>;
+  }
   return (
-    <Sheet defaultOpen={defaultOpen} open={open} onOpenChange={onOpenChange}>
-      <SheetTrigger render={trigger} />
-      <SheetContent className="manager-panel gap-0 overflow-hidden p-0 data-[side=right]:w-full data-[side=right]:sm:max-w-[520px]">
-        <SheetHeader className="shrink-0 gap-0 border-b border-border bg-card p-5 pr-16">
+    <Dialog defaultOpen={defaultOpen} open={open} onOpenChange={onOpenChange}>
+      <DialogTrigger render={trigger} />
+      <DialogContent className="manager-panel form-dialog flex max-h-[min(88dvh,760px)] flex-col gap-0 overflow-hidden p-0 sm:max-w-xl">
+        <DialogHeader className="shrink-0 gap-0 border-b border-border bg-card p-5 pr-14">
           <div className="flex items-start gap-3">
             <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-brand/10 text-brand">
               <Icon className="size-5" aria-hidden />
             </span>
             <div className="min-w-0">
-              <SheetTitle className="break-words text-base font-semibold leading-tight">
-                {title}
-              </SheetTitle>
-              <SheetDescription className="mt-1 text-xs leading-relaxed">
-                {description}
-              </SheetDescription>
+              <DialogTitle className="break-words text-base font-semibold leading-tight">{title}</DialogTitle>
+              <DialogDescription className="mt-1 text-xs leading-relaxed">{description}</DialogDescription>
             </div>
           </div>
-        </SheetHeader>
+        </DialogHeader>
         <div className="manager-panel-body min-h-0 min-w-0 flex-1 space-y-5 overflow-x-hidden overflow-y-auto overscroll-contain bg-background p-4 sm:p-5">
           {children}
         </div>
         <div className="flex shrink-0 justify-end border-t border-border bg-card px-5 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-          <SheetClose
-            render={
-              <Button
-                type="button"
-                variant="outline"
-                className="min-h-11 sm:min-h-9 min-w-20"
-              />
-            }
-          >
+          <DialogClose render={<Button type="button" variant="outline" className="min-h-11 min-w-20 sm:min-h-9" />}>
             Done
-          </SheetClose>
+          </DialogClose>
         </div>
-      </SheetContent>
-    </Sheet>
+      </DialogContent>
+    </Dialog>
   );
 }
 

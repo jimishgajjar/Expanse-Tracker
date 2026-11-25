@@ -1,15 +1,18 @@
 "use client";
 
+import { BrandMark } from "@/components/brand-mark";
 import { useSearchParams } from "next/navigation";
 import { Conversation } from "./transaction-comments";
 import Link from "next/link";
 import { use, useEffect, useState } from "react";
-import { DeferredTools, DeferredPlanning, DeferredAnalytics } from "./deferred-sections";
+import { DeferredToolPage, DeferredPlanning, DeferredAnalytics } from "./deferred-sections";
+import { ManagerPage } from "./manager-panel";
 import { PagedActivity } from "./paged-activity";
 import { CommandPalette, CommandSearchTrigger, ShortcutHint } from "./command-palette";
 import {
   CalendarDays,
   Download,
+  Handshake,
   House,
   LogOut,
   Menu,
@@ -19,19 +22,15 @@ import {
   Search,
   Settings,
   Tags,
+  Target,
   TrendingUp,
+  Users,
   Wallet,
   type LucideIcon,
 } from "lucide-react";
 import { logout } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { CommentsAvailable, SettingsProvider } from "@/components/settings-provider";
 import { isPersonalLedger, trackerExportHref } from "@/lib/household-access";
@@ -61,7 +60,10 @@ import type {
 } from "@/lib/queries";
 import type { WorkspaceSummary } from "@/lib/workspace";
 
-type Tab = "overview" | "transactions" | "analytics" | "accounts" | "planning" | "settings";
+type Tab = "overview" | "transactions" | "analytics" | "accounts" | "planning" | "settings"
+  | "categories" | "recurring" | "goals" | "split" | "members" | "more";
+/** Workspace tools that used to slide in from the side; each is now its own page. */
+const MANAGE: Tab[] = ["categories", "recurring", "goals", "split", "members"];
 const pages: {
   id: Tab;
   label: string;
@@ -104,15 +106,14 @@ const pages: {
     icon: Settings,
     description: "Manage preferences, currency, data portability, and account security.",
   },
+  { id: "categories", label: "Categories", icon: Tags, description: "Names, icons and colours for your income and spending." },
+  { id: "recurring", label: "Subscriptions & bills", icon: Repeat, description: "Payments and income that repeat, and when they are next due." },
+  { id: "goals", label: "Savings goals", icon: Target, description: "What you are saving for and how far along you are." },
+  { id: "split", label: "Shared expenses", icon: Handshake, description: "Costs split between people, and who owes whom." },
+  { id: "members", label: "Members & sharing", icon: Users, description: "Who can see and edit this tracker." },
+  { id: "more", label: "More", icon: Menu, description: "Everything else in this tracker." },
 ];
-function toolButton(Icon: LucideIcon, label: string) {
-  return (
-    <button type="button" className="nav-item group">
-      <Icon className="size-[18px] shrink-0 text-muted-foreground group-hover:text-foreground transition-colors" />
-      <span className="truncate">{label}</span>
-    </button>
-  );
-}
+const MAIN: Tab[] = ["overview", "transactions", "accounts", "planning", "analytics"];
 export function Dashboard({
   accounts,
   categories,
@@ -190,7 +191,6 @@ export function Dashboard({
   const tab: Tab = pages.some((p) => p.id === requestedTab)
     ? (requestedTab as Tab)
     : activeTab;
-  const [moreOpen, setMoreOpen] = useState(false);
   const [commandOpen, setCommandOpen] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogType, setDialogType] = useState<"expense" | "income" | "transfer">("expense");
@@ -210,7 +210,6 @@ export function Dashboard({
   const page = pages.find((p) => p.id === tab)!;
 
   function changeTab(value: Tab) {
-    setMoreOpen(false);
     setActiveTab(value);
     const url = new URL(window.location.href);
     if (value === "overview") url.searchParams.delete("tab");
@@ -218,44 +217,26 @@ export function Dashboard({
     window.history.replaceState(null, "", url);
   }
 
-  const tools = (
-    <>
-      {canEdit && (
-        <CategoryManager
-          categories={categories}
-          trigger={toolButton(Tags, "Categories")}
-        />
-      )}
-      {canEdit && (
-        <RecurringManager
-          recurring={recurring}
-          accounts={liveAccounts}
-          categories={categories}
-          trigger={toolButton(Repeat, "Subscriptions & bills")}
-        />
-      )}
-      <DeferredTools revision={accounts} key={activeWorkspaceId} workspace={activeWorkspaceId} currentEmail={userEmail} workspaceName={workspaceName} isOwner={isOwner} canEdit={canEdit} />
-    </>
-  );
+  const navButton = (id: Tab) => {
+    const item = pages.find((p) => p.id === id)!;
+    return (
+      <button
+        key={id}
+        type="button"
+        onClick={() => changeTab(id)}
+        aria-current={tab === id ? "page" : undefined}
+        className={cn("nav-item relative group focus-visible:outline-2 focus-visible:outline-brand", tab === id && "nav-item-active font-semibold")}
+      >
+        <item.icon className="size-[18px] shrink-0" />
+        <span className="truncate">{item.label}</span>
+      </button>
+    );
+  };
+  const manageTabs = MANAGE.filter((id) => canEdit || id === "members");
+  const tools = <>{manageTabs.map(navButton)}</>;
   const navigation = (
     <nav aria-label="Main navigation" className="grid gap-1">
-      {pages
-        .filter((item) => item.id !== "settings")
-        .map((item) => (
-          <button
-          key={item.id}
-          type="button"
-          onClick={() => changeTab(item.id)}
-          aria-current={tab === item.id ? "page" : undefined}
-          className={cn(
-            "nav-item relative group focus-visible:outline-2 focus-visible:outline-brand disabled:opacity-50",
-            tab === item.id && "nav-item-active font-semibold",
-          )}
-        >
-          <item.icon className="size-[18px] shrink-0" />
-          <span className="truncate">{item.label}</span>
-        </button>
-      ))}
+      {MAIN.map(navButton)}
     </nav>
   );
 
@@ -272,11 +253,9 @@ export function Dashboard({
           {/* Brand & Workspace Hub */}
           <div className="mb-4 px-2">
             <div className="flex items-center gap-2.5">
-              <span className="grid size-8 place-items-center rounded-lg bg-brand text-brand-foreground shadow-xs">
-                <Wallet className="size-4" />
-              </span>
+              <BrandMark className="size-8 text-brand" />
               <div className="min-w-0">
-                <span className="block text-sm font-semibold tracking-tight text-foreground truncate">
+                <span className="font-display block text-base font-semibold text-foreground truncate">
                   Expense Tracker
                 </span>
                 <span className="block text-[11px] text-muted-foreground truncate">
@@ -382,7 +361,7 @@ export function Dashboard({
           <header className="border-b border-border bg-card pt-safe">
             <div className="mx-auto flex h-12 max-w-[1440px] items-center justify-between gap-3 px-4 sm:px-6 xl:px-8">
               <div className="flex min-w-0 items-center gap-2 sm:gap-2.5">
-                <Wallet className="size-4 shrink-0 text-brand lg:hidden" />
+                <BrandMark className="size-6 text-brand lg:hidden" />
                 <span className="truncate text-sm font-semibold text-foreground">
                   {workspaceName}
                 </span>
@@ -426,7 +405,7 @@ export function Dashboard({
                 <button
                   type="button"
                   className="grid size-9 place-items-center rounded-lg hover:bg-muted lg:hidden"
-                  onClick={() => setMoreOpen(true)}
+                  onClick={() => changeTab("more")}
                   aria-label="Open navigation"
                 >
                   <Menu className="size-5" />
@@ -449,8 +428,8 @@ export function Dashboard({
                   {page.description}
                 </p>
               </div>
-              {canEdit && tab !== "settings" && reviewedBook && !showOriginal && <Link href="/financial-position" className="inline-flex h-9 items-center rounded-lg bg-brand px-3.5 text-xs font-medium text-brand-foreground transition-colors hover:bg-brand/90">Book activity</Link>}
-              {canEdit && tab !== "settings" && showOriginalTools && (
+              {canEdit && MAIN.includes(tab) && reviewedBook && !showOriginal && <Link href="/financial-position" className="inline-flex h-9 items-center rounded-lg bg-brand px-3.5 text-xs font-medium text-brand-foreground transition-colors hover:bg-brand/90">Book activity</Link>}
+              {canEdit && MAIN.includes(tab) && showOriginalTools && (
                 <TransactionDialog
                   accounts={liveAccounts}
                   categories={categories}
@@ -477,7 +456,7 @@ export function Dashboard({
               {(tab === "overview" || tab === "analytics") && showOriginalTools && (
                 <CardBillAdvice workspace={activeWorkspaceId} categories={categories} transactions={transactions} canEdit={canEdit} />
               )}
-              {reviewedBook && tab!=="settings" && <div className="space-y-2 text-xs text-muted-foreground"><p>Original tracker reports, budgets and forecasts use a single display currency ({currencyCode}). They may combine accounts with different denominations.</p>
+              {reviewedBook && MAIN.includes(tab) && <div className="space-y-2 text-xs text-muted-foreground"><p>Original tracker reports, budgets and forecasts use a single display currency ({currencyCode}). They may combine accounts with different denominations.</p>
                 <button type="button" aria-expanded={showOriginal} className="font-medium text-brand underline" onClick={()=>setShowOriginal(!showOriginal)}>{showOriginal?"Hide":"Show"} original tracker tools</button></div>}
               {tab === "overview" && showOriginalTools && (
                 <OverviewTab
@@ -565,6 +544,36 @@ export function Dashboard({
                   showAuthors={showAuthors}
                 />
               )}
+              {canEdit && tab === "categories" && (
+                <ManagerPage><CategoryManager categories={categories} trigger={<span />} /></ManagerPage>
+              )}
+              {canEdit && tab === "recurring" && (
+                <ManagerPage><RecurringManager recurring={recurring} accounts={liveAccounts} categories={categories} trigger={<span />} /></ManagerPage>
+              )}
+              {(tab === "goals" || tab === "split" || tab === "members") && (canEdit || tab === "members") && (
+                <DeferredToolPage key={`${activeWorkspaceId}:${tab}`} tool={tab} revision={accounts} workspace={activeWorkspaceId}
+                  currentEmail={userEmail} workspaceName={workspaceName} isOwner={isOwner} />
+              )}
+              {tab === "more" && (
+                <div className="grid max-w-xl gap-5">
+                  <section className="dashboard-panel p-2" aria-label="Workspace">{navigation}</section>
+                  <section className="dashboard-panel grid gap-1 p-2" aria-label="Manage">{tools}</section>
+                  <section className="dashboard-panel grid gap-1 p-2" aria-label="Account">
+                    {navButton("settings")}
+                    <a href={trackerExportHref(activeWorkspaceId)} className="nav-item">
+                      <Download className="size-[18px]" />
+                      <span>Export data</span>
+                    </a>
+                    <InstallAppButton />
+                    <form action={logout}>
+                      <button type="submit" className="nav-item w-full font-medium text-negative hover:bg-negative/10">
+                        <LogOut className="size-[18px]" />
+                        <span>Log out</span>
+                      </button>
+                    </form>
+                  </section>
+                </div>
+              )}
               {tab === "settings" && (
                 <SettingsTab
                   pilot={pilot}
@@ -593,20 +602,18 @@ export function Dashboard({
             const isAdd = id === "add";
             if (isAdd && !canEdit) return null;
             const isActive = tab === id ||
-              (id === "more" && ["accounts", "planning", "settings"].includes(tab));
+              (id === "more" && !["overview", "transactions", "analytics"].includes(tab));
             const button = (
               <button
                 key={id}
                 type="button"
                 aria-label={isAdd ? "Add transaction" : label}
                 aria-current={tab === id ? "page" : undefined}
-                aria-expanded={id === "more" ? moreOpen : undefined}
-                aria-haspopup={id === "more" ? "dialog" : undefined}
                 data-active={isActive || undefined}
                 onClick={
                   isAdd
                     ? undefined
-                    : () => (id === "more" ? setMoreOpen(true) : changeTab(id))
+                    : () => changeTab(id)
                 }
                 className={cn(
                   "mobile-tab-item",
@@ -627,47 +634,6 @@ export function Dashboard({
             ) : button;
           })}
         </nav>
-        <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
-          <SheetContent
-            side="left"
-            className="w-[min(320px,90vw)] overflow-y-auto lg:hidden"
-          >
-            <SheetHeader>
-              <SheetTitle>Your workspace</SheetTitle>
-            </SheetHeader>
-            <div className="space-y-4 px-4 pb-8">
-              {navigation}
-              <div className="grid gap-1 border-t pt-4">
-                {tools}
-                <button
-                  type="button"
-                  onClick={() => changeTab("settings")}
-                  className={cn(
-                    "nav-item w-full text-left",
-                    tab === "settings" && "nav-item-active font-semibold",
-                  )}
-                >
-                  <Settings className="size-[18px]" />
-                  <span>Settings</span>
-                </button>
-                <a href={trackerExportHref(activeWorkspaceId)} className="nav-item">
-                  <Download className="size-[18px]" />
-                  Export data
-                </a>
-                <InstallAppButton />
-                <form action={logout}>
-                  <button
-                    type="submit"
-                    className="nav-item text-negative hover:bg-negative/10 w-full font-medium"
-                  >
-                    <LogOut className="size-[18px]" />
-                    <span>Log out</span>
-                  </button>
-                </form>
-              </div>
-            </div>
-          </SheetContent>
-        </Sheet>
         {canEdit && (
           <TransactionDialog
             accounts={liveAccounts}

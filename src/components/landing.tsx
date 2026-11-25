@@ -1,716 +1,193 @@
-/* Hallmark · shape: workbench · genre: modern-minimal · theme: brand · redesign: full
- * paper: var(--background) · accent: var(--brand) · display: var(--font-sans) · body: var(--font-sans) · hero: stage · nav: edge-aligned · footer: mast
- * axes: dark/grotesk-sans/cool · posture: restrained · contrast: pass · fold: pass · v2.0.0 */
+/* Landing · "Intaglio": the household money book. One dark engraving-green hero with a
+ * ruled ledger page; everything after it is quiet paper and type. */
 
 import Link from "next/link";
-import {
-  ArrowRight,
-  ArrowRightLeft,
-  CalendarCheck,
-  Check,
-  CheckCircle2,
-  CreditCard,
-  FileSpreadsheet,
-  Landmark,
-  Lock,
-  PiggyBank,
-  Repeat,
-  ShieldCheck,
-  Sparkles,
-  Users,
-  Wallet,
-  X,
-} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getVisitorMoney } from "@/lib/visitor-currency";
-import { buttonVariants } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { LandingCockpit } from "@/components/landing-cockpit";
+import { Guilloche } from "@/components/guilloche";
+import { BrandMark } from "@/components/brand-mark";
 
-const primary = cn(
-  buttonVariants(),
-  "h-11 rounded-lg px-5 text-sm font-semibold bg-brand text-brand-foreground hover:bg-brand-deep active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand transition-colors motion-reduce:transition-none shadow-xs",
-);
-const quiet = cn(
-  buttonVariants({ variant: "outline" }),
-  "h-11 rounded-lg px-5 text-sm font-medium border border-border bg-card text-foreground hover:bg-muted active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring transition-colors motion-reduce:transition-none",
-);
+const focus = "focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-ring";
 
-/** Server-rendered product presentation: zero client JS overhead, ultra-fast initial paint. */
+/** Server-rendered marketing page: no client JavaScript beyond the theme toggle. */
 export async function Landing() {
-  const { format, sample, currency } = await getVisitorMoney();
+  const { format, sample } = await getVisitorMoney();
   const [salary, rent, groceries, utilities] = sample;
-  const outflow = rent + groceries + utilities;
-  const balance = salary - outflow;
-  const savingsRate = Math.max(0, Math.round(((salary - outflow) / salary) * 100));
+  const saved = Math.round(salary * 0.15);
+  const spent = rent + groceries + utilities;
+  const kept = salary - spent;
+  const minus = (n: number) => `−${format(n)}`;
+
+  const rows: { day: string; entry: string; who: string; amount: string; kind: "in" | "out" | "move" }[] = [
+    { day: "Nov 1", entry: "Pay", who: "Sam", amount: `+${format(salary)}`, kind: "in" },
+    { day: "Nov 1", entry: "Rent", who: "Shared", amount: minus(rent), kind: "out" },
+    { day: "Nov 3", entry: "To savings", who: "Sam", amount: format(saved), kind: "move" },
+    { day: "Nov 6", entry: "Groceries", who: "Priya", amount: minus(groceries), kind: "out" },
+    { day: "Nov 12", entry: "Hydro and internet", who: "Shared", amount: minus(utilities), kind: "out" },
+  ];
+
+  const points = [
+    {
+      title: "Moving money isn't spending",
+      body: "Put money into savings or pay a card from chequing and it shows as a transfer. Both balances update. Your spending and income don't.",
+      example: <>Chequing to Savings <span className="text-foreground">{format(saved)}</span>, spending unchanged</>,
+    },
+    {
+      title: "Shared, and private when you want",
+      body: "Keep one tracker for the household and invite your partner. Each of you can also keep a private tracker that only you can open.",
+      example: <>Household tracker for two, plus one private tracker each</>,
+    },
+    {
+      title: "See the month before it happens",
+      body: "Budgets warn you before a category runs over. Bills and subscriptions show up with their due dates, and goals show what is left to save.",
+      example: <>Groceries <span className="text-foreground">{format(groceries)}</span> of {format(Math.round(groceries * 1.25))} with 9 days to go</>,
+    },
+    {
+      title: "Take your records with you",
+      body: "Export every entry, account and category to an Excel workbook whenever you like. Import a bank statement file to fill in a month quickly.",
+      example: <>Excel export and statement import, both in Settings</>,
+    },
+  ];
 
   return (
-    <div
-      suppressHydrationWarning
-      className="relative min-h-dvh overflow-x-clip bg-background text-foreground selection:bg-brand/20 selection:text-brand"
-    >
-      <a
-        href="#landing-content"
-        className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:rounded-lg focus:bg-card focus:p-3 focus:shadow-md"
-      >
+    <div className="min-h-dvh overflow-x-clip bg-background text-foreground">
+      <a href="#landing-content" className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:rounded-lg focus:bg-card focus:p-3">
         Skip to content
       </a>
 
-      {/* Edge-aligned Precision Header */}
-      <header className="sticky top-0 z-40 w-full border-b border-border/80 bg-background/95 backdrop-blur-xs transition-colors">
-        <nav
-          aria-label="Main navigation"
-          className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4 sm:px-6"
-        >
-          <div className="flex items-center gap-6 lg:gap-8">
-            <Link href="/" className="flex items-center gap-2.5 font-semibold">
-              <span className="grid size-8 place-items-center rounded-lg bg-brand text-brand-foreground shadow-xs">
-                <Wallet className="size-4" />
-              </span>
-              <span className="text-sm font-semibold tracking-tight">
-                Expense Tracker
-              </span>
-              <span className="hidden rounded-md border border-border bg-muted/60 px-2 py-0.5 text-[11px] font-medium text-muted-foreground sm:inline-block">
-                Personal ledger
-              </span>
-            </Link>
+      <div className="relative isolate bg-brand-deep text-brand-deep-foreground">
+        <Guilloche className="absolute inset-x-0 bottom-0 -z-10 h-40 w-full text-brass opacity-40 [mask-image:linear-gradient(to_bottom,transparent,black_55%)] sm:h-56" />
 
-            <div className="hidden items-center gap-6 text-xs font-medium text-muted-foreground md:flex">
-              <a
-                href="#features"
-                className="transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-brand rounded-xs"
-              >
-                Capabilities
-              </a>
-              <a
-                href="#comparison"
-                className="transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-brand rounded-xs"
-              >
-                Spreadsheets
-              </a>
-              <a
-                href="#security"
-                className="transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-brand rounded-xs"
-              >
-                Data security
-              </a>
+        <header>
+          <nav aria-label="Main navigation" className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
+            <Link href="/" className={cn("flex items-center gap-2.5 rounded-sm", focus)}>
+              <BrandMark className="size-8 text-brand-deep-foreground" />
+              <span className="font-display text-lg font-semibold">Expense Tracker</span>
+            </Link>
+            <div className="flex items-center gap-1 sm:gap-2">
+              <a href="#how" className={cn("hidden rounded-md px-3 py-2 text-sm opacity-85 hover:opacity-100 md:inline-block", focus)}>How it works</a>
+              <a href="#privacy" className={cn("hidden rounded-md px-3 py-2 text-sm opacity-85 hover:opacity-100 md:inline-block", focus)}>Privacy</a>
+              <ThemeToggle />
+              <Link href="/login" className={cn("rounded-md px-3 py-2 text-sm font-medium hover:bg-white/10", focus)}>Sign in</Link>
             </div>
-          </div>
+          </nav>
+        </header>
 
-          <div className="flex items-center gap-2 sm:gap-3">
-            <ThemeToggle />
-            <Link
-              href="/login"
-              className={cn(
-                buttonVariants({ variant: "ghost", size: "sm" }),
-                "rounded-lg px-3.5 text-xs font-medium hover:bg-muted focus-visible:outline-2 focus-visible:outline-brand",
-              )}
-            >
-              Sign in
-            </Link>
-            <Link
-              href="/signup"
-              className={cn(
-                buttonVariants({ size: "sm" }),
-                "rounded-lg bg-brand px-4 text-xs font-semibold text-brand-foreground hover:bg-brand-deep focus-visible:outline-2 focus-visible:outline-brand shadow-xs",
-              )}
-            >
-              Get started
-            </Link>
-          </div>
-        </nav>
-      </header>
-
-      <main id="landing-content">
-        {/* Stage Hero Section */}
-        <section className="mx-auto max-w-6xl px-4 pt-12 pb-16 sm:px-6 sm:pt-16 sm:pb-24 lg:pt-20">
-          <div className="grid items-center gap-12 lg:grid-cols-[1fr_1.15fr] lg:gap-14">
-            <div>
-              <div className="inline-flex items-center gap-2 rounded-md border border-border bg-muted/40 px-3 py-1 text-xs text-muted-foreground">
-                <span className="size-1.5 rounded-full bg-brand animate-pulse motion-reduce:animate-none" />
-                <span>Private personal finance</span>
-              </div>
-
-              {/* Headline <= 7 words (50 characters), no 3-stop gradient text */}
-              <h1 className="mt-5 text-[clamp(2.2rem,4.4vw,3.5rem)] leading-[1.08] font-bold tracking-[-0.035em] text-balance">
-                Financial clarity, completely private.
+        <main id="landing-content">
+          <section className="mx-auto grid max-w-6xl items-center gap-12 px-4 pt-10 pb-20 sm:px-6 sm:pt-16 sm:pb-28 lg:grid-cols-[1fr_minmax(0,30rem)] lg:gap-16">
+            <div className="max-w-xl">
+              <h1 className="font-display text-[clamp(2.6rem,6vw,4.4rem)] leading-[1.02] font-semibold tracking-[-0.025em] text-balance">
+                One money book for the whole household
               </h1>
-
-              {/* One sentence, <= 12 words */}
-              <p className="mt-4 max-w-lg text-base leading-relaxed text-muted-foreground">
-                Keep accounts, transfers, budgets and household splits in one private workspace.
+              <p className="mt-6 max-w-md text-lg leading-relaxed opacity-85">
+                Write down what comes in and goes out, move money between your accounts, and see where the month stands. No bank logins.
               </p>
-
-              <div className="mt-8 flex flex-wrap items-center gap-3">
-                <Link href="/signup" className={primary}>
-                  Start private ledger
+              <div className="mt-9 flex flex-wrap gap-3">
+                <Link href="/signup" className={cn("inline-flex h-12 items-center rounded-lg bg-brand-deep-foreground px-6 text-[15px] font-semibold text-brand-deep transition-colors hover:bg-white", focus)}>
+                  Create a free account
                 </Link>
-                <a href="#features" className={quiet}>
-                  Explore capabilities
-                </a>
-              </div>
-
-              {/* Verified Ledger Attributes */}
-              <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-2 text-xs text-muted-foreground">
-                <span className="flex items-center gap-1.5">
-                  <Check className="size-3.5 text-brand" /> Zero bank credentials stored
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <Check className="size-3.5 text-brand" /> Separate transfer records
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <Check className="size-3.5 text-brand" /> Excel export (.xlsx)
-                </span>
-              </div>
-            </div>
-
-            {/* Interactive Machined Ledger Cockpit */}
-            <LandingCockpit
-              currencyCode={currency.code}
-              formattedBalance={format(balance)}
-              formattedSalary={format(salary)}
-              formattedRent={format(rent)}
-              formattedGroceries={format(groceries)}
-              formattedUtilities={format(utilities)}
-              formattedInflow={format(salary)}
-              formattedOutflow={format(outflow)}
-              savingsRate={savingsRate}
-            />
-          </div>
-        </section>
-
-        {/* Product capabilities strip: sentence case, no tracked uppercase */}
-        <section className="border-y border-border bg-muted/25 py-10">
-          <div className="mx-auto max-w-6xl px-4 sm:px-6">
-            <div className="grid grid-cols-2 gap-6 sm:grid-cols-4 sm:gap-8">
-              <div className="space-y-1">
-                <p className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground num">
-                  Search
-                </p>
-                <p className="text-xs font-medium text-foreground">
-                  Find activity
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Filter transactions by account, category, and date range.
-                </p>
-              </div>
-
-              <div className="space-y-1">
-                <p className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground num">
-                  Manual
-                </p>
-                <p className="text-xs font-medium text-foreground">
-                  Direct entry
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Record entries directly without connecting external bank credentials.
-                </p>
-              </div>
-
-              <div className="space-y-1">
-                <p className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground num">
-                  .xlsx
-                </p>
-                <p className="text-xs font-medium text-foreground">
-                  Data export
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Download transactions, accounts, and categories in a clean workbook.
-                </p>
-              </div>
-
-              <div className="space-y-1">
-                <p className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground num">
-                  Shared
-                </p>
-                <p className="text-xs font-medium text-foreground">
-                  Workspaces
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Manage household accounts and split joint spending together.
-                </p>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Hairline Panels Section */}
-        <section id="features" className="scroll-mt-16 py-16 sm:py-24">
-          <div className="mx-auto max-w-6xl px-4 sm:px-6">
-            <div className="max-w-2xl">
-              <p className="text-xs font-medium text-brand">
-                Accounting structure
-              </p>
-              <h2 className="mt-2 text-2xl sm:text-3xl font-bold tracking-tight text-balance">
-                Everything in its place. Nothing counted twice.
-              </h2>
-              <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-                Move money between accounts without inflating spending. Keep household splits alongside everyday cash flow.
-              </p>
-            </div>
-
-            {/* Hairline Grid */}
-            <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {/* Panel 1: Multi-Account Balance Engine */}
-              <div className="lg:col-span-2 rounded-xl border border-border bg-card p-6 sm:p-8 flex flex-col justify-between shadow-xs">
-                <div>
-                  <div className="flex items-center gap-2.5">
-                    <span className="grid size-8 place-items-center rounded-lg bg-muted text-foreground">
-                      <Landmark className="size-4" />
-                    </span>
-                    <span className="text-xs font-medium text-muted-foreground">
-                      Multi-account engine
-                    </span>
-                  </div>
-                  <h3 className="mt-4 text-lg sm:text-xl font-bold tracking-tight">
-                    Accounts that reconcile without double-counting
-                  </h3>
-                  <p className="mt-2 text-xs sm:text-sm leading-relaxed text-muted-foreground max-w-xl">
-                    Checking accounts, high-yield savings, credit cards, and cash. Internal transfers move money with dedicated paired records so they never distort expense analytics.
-                  </p>
-                </div>
-
-                {/* Account Transfer Simulation */}
-                <div className="mt-8 space-y-3">
-                  <div className="rounded-lg border border-border bg-muted/30 p-3.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-xs">
-                    <div className="flex items-center gap-3">
-                      <div className="grid size-7 place-items-center rounded-md bg-brand/10 text-brand">
-                        <ArrowRightLeft className="size-3.5" />
-                      </div>
-                      <div>
-                        <p className="font-semibold text-foreground">
-                          Internal transfer: Checking to Savings
-                        </p>
-                        <p className="text-[11px] text-muted-foreground">
-                          Paired transfer record / net expense: $0.00
-                        </p>
-                      </div>
-                    </div>
-                    <span className="rounded-md bg-positive/10 px-2 py-0.5 text-[11px] font-medium text-positive num">
-                      Net: $0.00
-                    </span>
-                  </div>
-
-                  <div className="grid gap-3 sm:grid-cols-3">
-                    <div className="rounded-lg border border-border bg-muted/20 p-3">
-                      <div className="flex items-center justify-between text-xs text-muted-foreground">
-                        <span>Checking Account</span>
-                        <CreditCard className="size-3.5 text-muted-foreground" />
-                      </div>
-                      <p className="mt-1.5 text-base font-bold text-foreground num">
-                        {format(salary * 0.42)}
-                      </p>
-                      <p className="text-[11px] text-muted-foreground">
-                        Daily operating
-                      </p>
-                    </div>
-
-                    <div className="rounded-lg border border-border bg-muted/20 p-3">
-                      <div className="flex items-center justify-between text-xs text-muted-foreground">
-                        <span>Savings Account</span>
-                        <PiggyBank className="size-3.5 text-muted-foreground" />
-                      </div>
-                      <p className="mt-1.5 text-base font-bold text-foreground num">
-                        {format(balance)}
-                      </p>
-                      <p className="text-[11px] text-positive font-medium num">
-                        +4.85% APY compounding
-                      </p>
-                    </div>
-
-                    <div className="rounded-lg border border-border bg-muted/20 p-3">
-                      <div className="flex items-center justify-between text-xs text-muted-foreground">
-                        <span>Rewards Card</span>
-                        <Sparkles className="size-3.5 text-muted-foreground" />
-                      </div>
-                      <p className="mt-1.5 text-base font-bold text-foreground num">
-                        {format(groceries)}
-                      </p>
-                      <p className="text-[11px] text-muted-foreground">
-                        Monthly statement
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Panel 2: Recurring Intelligence */}
-              <div className="rounded-xl border border-border bg-card p-6 sm:p-8 flex flex-col justify-between shadow-xs">
-                <div>
-                  <div className="flex items-center gap-2.5">
-                    <span className="grid size-8 place-items-center rounded-lg bg-muted text-foreground">
-                      <Repeat className="size-4" />
-                    </span>
-                    <span className="text-xs font-medium text-muted-foreground">
-                      Recurring obligations
-                    </span>
-                  </div>
-                  <h3 className="mt-4 text-lg sm:text-xl font-bold tracking-tight">
-                    Subscriptions without surprises
-                  </h3>
-                  <p className="mt-2 text-xs sm:text-sm leading-relaxed text-muted-foreground">
-                    Keep memberships, recurring utilities, and annual charges forecasted. Calendar reminders keep cash reserves prepared.
-                  </p>
-                </div>
-
-                <div className="mt-6 space-y-2.5 rounded-lg border border-border bg-muted/20 p-3 text-xs">
-                  <div className="flex items-center justify-between py-1">
-                    <span className="text-foreground">Cloud Dev Workspace</span>
-                    <span className="font-semibold text-foreground num">{format(20)}/mo</span>
-                  </div>
-                  <div className="flex items-center justify-between py-1 border-t border-border/50">
-                    <span className="text-foreground">Fiber Gigabit Internet</span>
-                    <span className="font-semibold text-foreground num">{format(utilities)}/mo</span>
-                  </div>
-                  <div className="flex items-center justify-between pt-1 text-[11px] text-muted-foreground">
-                    <span>Due in 3 days</span>
-                    <span className="flex items-center gap-1 text-positive font-medium">
-                      <CheckCircle2 className="size-3" /> Auto-reconciled
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Panel 3: Shared Workspaces */}
-              <div className="rounded-xl border border-border bg-card p-6 sm:p-8 flex flex-col justify-between shadow-xs">
-                <div>
-                  <div className="flex items-center gap-2.5">
-                    <span className="grid size-8 place-items-center rounded-lg bg-muted text-foreground">
-                      <Users className="size-4" />
-                    </span>
-                    <span className="text-xs font-medium text-muted-foreground">
-                      Household splits
-                    </span>
-                  </div>
-                  <h3 className="mt-4 text-lg sm:text-xl font-bold tracking-tight">
-                    Fair splits, zero friction
-                  </h3>
-                  <p className="mt-2 text-xs sm:text-sm leading-relaxed text-muted-foreground">
-                    Invite household partners. Record joint groceries or utility bills and settle balances cleanly.
-                  </p>
-                </div>
-
-                <div className="mt-6 rounded-lg border border-border bg-muted/20 p-3 text-xs">
-                  <div className="flex items-center justify-between">
-                    <span className="font-medium">Joint apartment expenses</span>
-                    <span className="font-semibold text-foreground num">{format(groceries)}</span>
-                  </div>
-                  <div className="mt-2 flex items-center justify-between text-[11px] text-muted-foreground">
-                    <span>Equal 50 / 50 split</span>
-                    <span className="rounded bg-brand/10 px-2 py-0.5 font-medium text-brand num">
-                      Alex owes {format(groceries / 2)}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Panel 4: Envelope Pacing */}
-              <div className="lg:col-span-2 rounded-xl border border-border bg-card p-6 sm:p-8 flex flex-col justify-between shadow-xs">
-                <div>
-                  <div className="flex items-center gap-2.5">
-                    <span className="grid size-8 place-items-center rounded-lg bg-muted text-foreground">
-                      <CalendarCheck className="size-4" />
-                    </span>
-                    <span className="text-xs font-medium text-muted-foreground">
-                      Pacing gauge
-                    </span>
-                  </div>
-                  <h3 className="mt-4 text-lg sm:text-xl font-bold tracking-tight">
-                    Paced envelope budgeting for everyday spending
-                  </h3>
-                  <p className="mt-2 text-xs sm:text-sm leading-relaxed text-muted-foreground max-w-xl">
-                    Set targets on groceries, dining out, and leisure. Pacing indicators show whether spending velocity aligns with calendar days.
-                  </p>
-                </div>
-
-                {/* Progress bars: explicit transition on width, motion-reduce fallback */}
-                <div className="mt-6 space-y-3">
-                  {[
-                    {
-                      name: "Everyday Groceries",
-                      spent: 58,
-                      label: "Within safe trajectory",
-                      tone: "bg-brand",
-                    },
-                    {
-                      name: "Dining Out & Coffee",
-                      spent: 42,
-                      label: "Buffer preserved",
-                      tone: "bg-brand",
-                    },
-                    {
-                      name: "Household Utilities",
-                      spent: 85,
-                      label: "Approaching planned limit",
-                      tone: "bg-amber-500",
-                    },
-                  ].map((cat) => (
-                    <div key={cat.name} className="space-y-1">
-                      <div className="flex justify-between text-xs font-medium">
-                        <span className="text-foreground">{cat.name}</span>
-                        <span className="text-muted-foreground num">
-                          {cat.spent}% used / {cat.label}
-                        </span>
-                      </div>
-                      <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
-                        <div
-                          className={cn("h-full rounded-full", cat.tone)}
-                          style={{ width: `${cat.spent}%` }}
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Comparison Section */}
-        <section id="comparison" className="scroll-mt-16 border-t border-border bg-muted/20 py-16 sm:py-24">
-          <div className="mx-auto max-w-6xl px-4 sm:px-6">
-            <div className="max-w-2xl">
-              <p className="text-xs font-medium text-brand">
-                Comparison
-              </p>
-              <h2 className="mt-2 text-2xl sm:text-3xl font-bold tracking-tight text-balance">
-                Built to solve the spreadsheet paradox
-              </h2>
-              <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-                Spreadsheets break on phone keyboards. Bank aggregators disconnect and resell spending data. Expense Tracker gives you structured clarity without third-party exposure.
-              </p>
-            </div>
-
-            <div className="mt-12 grid gap-6 md:grid-cols-2">
-              <div className="rounded-xl border border-destructive/30 bg-card p-6 sm:p-8 space-y-5">
-                <div className="flex items-center gap-3">
-                  <div className="grid size-9 place-items-center rounded-lg bg-destructive/10 text-destructive">
-                    <X className="size-4.5" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-foreground text-sm sm:text-base">Fragile spreadsheets & bank aggregators</h3>
-                    <p className="text-xs text-muted-foreground">Disconnected state and manual friction</p>
-                  </div>
-                </div>
-
-                <ul className="space-y-3 text-xs text-muted-foreground">
-                  <li className="flex items-start gap-2.5">
-                    <X className="size-4 shrink-0 text-destructive mt-0.5" />
-                    <span>Bank connections drop and leave missing entries</span>
-                  </li>
-                  <li className="flex items-start gap-2.5">
-                    <X className="size-4 shrink-0 text-destructive mt-0.5" />
-                    <span>Aggregators place credit card promotions alongside spending</span>
-                  </li>
-                  <li className="flex items-start gap-2.5">
-                    <X className="size-4 shrink-0 text-destructive mt-0.5" />
-                    <span>Transfers distort expense charts unless manually adjusted</span>
-                  </li>
-                  <li className="flex items-start gap-2.5">
-                    <X className="size-4 shrink-0 text-destructive mt-0.5" />
-                    <span>Spreadsheet formulas break easily on mobile screens</span>
-                  </li>
-                </ul>
-              </div>
-
-              <div className="rounded-xl border border-brand/50 bg-card p-6 sm:p-8 space-y-5 shadow-xs">
-                <div className="flex items-center gap-3">
-                  <div className="grid size-9 place-items-center rounded-lg bg-brand/10 text-brand">
-                    <Check className="size-4.5" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-foreground text-sm sm:text-base">Expense Tracker</h3>
-                    <p className="text-xs text-muted-foreground">Structured accounts, activity, and exports</p>
-                  </div>
-                </div>
-
-                <ul className="space-y-3 text-xs text-muted-foreground">
-                  <li className="flex items-start gap-2.5">
-                    <Check className="size-4 shrink-0 text-brand mt-0.5" />
-                    <span className="text-foreground font-medium">Recorded activity stays in your verified private database</span>
-                  </li>
-                  <li className="flex items-start gap-2.5">
-                    <Check className="size-4 shrink-0 text-brand mt-0.5" />
-                    <span className="text-foreground font-medium">Zero bank credentials or third-party scraper access required</span>
-                  </li>
-                  <li className="flex items-start gap-2.5">
-                    <Check className="size-4 shrink-0 text-brand mt-0.5" />
-                    <span className="text-foreground font-medium">Internal transfers tracked separately from income and expenses</span>
-                  </li>
-                  <li className="flex items-start gap-2.5">
-                    <Check className="size-4 shrink-0 text-brand mt-0.5" />
-                    <span className="text-foreground font-medium">Excel workbook export (.xlsx) for complete data ownership</span>
-                  </li>
-                </ul>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Security & Export Section */}
-        <section id="security" className="scroll-mt-16 border-t border-border py-16 sm:py-24">
-          <div className="mx-auto max-w-6xl px-4 sm:px-6">
-            <div className="grid gap-10 md:grid-cols-2 md:items-center">
-              <div>
-                <p className="text-xs font-medium text-brand">
-                  Data ownership
-                </p>
-                <h2 className="mt-2 text-2xl sm:text-3xl font-bold tracking-tight text-balance">
-                  Your records, completely under your control
-                </h2>
-                <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-                  Track your household cash flow without sharing bank login credentials. Export full ledger workbooks whenever you choose.
-                </p>
-
-                <div className="mt-6 space-y-3.5 text-xs sm:text-sm">
-                  {[
-                    {
-                      title: "Authenticated sessions",
-                      desc: "Salted scrypt password hashing and HTTP-only session cookies.",
-                    },
-                    {
-                      title: "No bank credentials needed",
-                      desc: "Record accounts and ledger entries directly with zero scraper access.",
-                    },
-                    {
-                      title: "Excel workbook (.xlsx) export",
-                      desc: "Complete export containing transactions, accounts, and categories.",
-                    },
-                  ].map((item) => (
-                    <div key={item.title} className="flex items-start gap-3">
-                      <div className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-brand/10 text-brand">
-                        <Check className="size-3" />
-                      </div>
-                      <div>
-                        <p className="font-semibold text-foreground text-xs sm:text-sm">{item.title}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">{item.desc}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Data Export Card */}
-              <div className="rounded-xl border border-border bg-card p-6 sm:p-8 shadow-xs space-y-6">
-                <div className="flex items-center gap-3">
-                  <div className="grid size-9 place-items-center rounded-lg bg-muted text-foreground">
-                    <Lock className="size-4" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-foreground text-sm sm:text-base">Data portability</h3>
-                    <p className="text-xs text-muted-foreground">Transactions / Accounts / Categories</p>
-                  </div>
-                </div>
-
-                <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-2 text-xs">
-                  <div className="flex items-center justify-between">
-                    <span className="flex items-center gap-2 font-medium text-foreground">
-                      <FileSpreadsheet className="size-4 text-brand" /> Excel workbook (.xlsx)
-                    </span>
-                    <span className="rounded bg-brand/10 px-2 py-0.5 text-[10px] font-medium text-brand">
-                      Built-in export
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-muted-foreground leading-relaxed">
-                    Download verified transactions, accounts, and category structures in separate tabular sheets.
-                  </p>
-                </div>
-
-                <div className="flex items-center justify-between text-xs text-muted-foreground pt-2 border-t border-border">
-                  <span className="flex items-center gap-1.5">
-                    <ShieldCheck className="size-3.5 text-brand" /> Export available in Settings
-                  </span>
-                  <Link
-                    href="/signup"
-                    className="font-medium text-brand hover:underline inline-flex items-center gap-1 focus-visible:outline-2 focus-visible:outline-brand rounded-xs"
-                  >
-                    Start private ledger <ArrowRight className="size-3" />
-                  </Link>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Action Callout */}
-        <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24">
-          <div className="rounded-2xl border border-border bg-muted/40 p-8 sm:p-12 md:p-14">
-            <div className="max-w-xl space-y-4">
-              <span className="inline-block rounded-md border border-border bg-background px-3 py-1 text-xs font-medium text-foreground">
-                Get started today
-              </span>
-              <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-balance text-foreground">
-                Take back your financial clarity.
-              </h2>
-              <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
-                Set up your accounts, record your transactions, and share a household workspace when you are ready.
-              </p>
-              <div className="pt-2 flex flex-wrap items-center gap-3">
-                <Link
-                  href="/signup"
-                  className={cn(primary, "h-11 px-6 text-xs sm:text-sm font-semibold")}
-                >
-                  Create your account
-                </Link>
-                <Link
-                  href="/login"
-                  className={cn(quiet, "h-11 px-6 text-xs sm:text-sm")}
-                >
+                <Link href="/login" className={cn("inline-flex h-12 items-center rounded-lg border border-white/25 px-6 text-[15px] font-medium transition-colors hover:bg-white/10", focus)}>
                   Sign in
                 </Link>
               </div>
-              <p className="text-xs text-muted-foreground pt-1">
-                Local encrypted storage / Private household workspace
-              </p>
             </div>
-          </div>
-        </section>
-      </main>
 
-      {/* Hallmark Mast Footer */}
-      <footer className="border-t border-border bg-card/60 text-xs text-muted-foreground">
-        <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
-          <div className="flex flex-col gap-8 sm:flex-row sm:items-center sm:justify-between">
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <span className="grid size-6 place-items-center rounded-md bg-brand text-brand-foreground">
-                  <Wallet className="size-3.5" />
-                </span>
-                <span className="font-semibold text-sm text-foreground">
-                  Expense Tracker
-                </span>
+            {/* A page from the book: ruled lines, a red margin rule, a running total at the foot. */}
+            <figure className="relative min-w-0 rounded-lg bg-card text-card-foreground shadow-[0_24px_60px_-20px_rgb(0_0_0/0.55)]">
+              <div className="flex items-baseline justify-between gap-3 border-b border-border px-5 pt-5 pb-3 sm:px-6">
+                <p className="font-display text-xl font-semibold">November</p>
+                <p className="text-sm text-muted-foreground">Sam and Priya</p>
               </div>
-              <p className="text-xs text-muted-foreground max-w-sm">
-                Quiet clarity for your everyday money. Multi-account tracking, envelope budgeting, and split settlements.
-              </p>
-            </div>
+              <table className="w-full text-sm">
+                <caption className="sr-only">Sample month of household entries</caption>
+                <thead className="sr-only"><tr><th>Date</th><th>Entry</th><th>Who</th><th>Amount</th></tr></thead>
+                <tbody>
+                  {rows.map((r) => (
+                    <tr key={r.entry} className="border-b border-border/70 last:border-b-0">
+                      <td className="w-[4.75rem] py-3 pl-5 align-top whitespace-nowrap text-muted-foreground sm:pl-6">{r.day}</td>
+                      <td className="border-l-2 border-negative/35 py-3 pl-3 align-top">
+                        <span className={cn("block font-medium", r.kind === "move" && "text-muted-foreground")}>{r.entry}</span>
+                        <span className="block text-xs text-muted-foreground">{r.kind === "move" ? "Transfer, not counted as spending" : r.who}</span>
+                      </td>
+                      <td className={cn("amount py-3 pr-5 text-right align-top font-medium whitespace-nowrap sm:pr-6",
+                        r.kind === "in" ? "text-positive" : r.kind === "out" ? "text-foreground" : "text-muted-foreground")}>
+                        {r.amount}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <figcaption className="grid grid-cols-2 gap-4 rounded-b-lg border-t-2 border-double border-border bg-muted/50 px-5 py-4 sm:px-6">
+                <div>
+                  <p className="text-xs text-muted-foreground">Spent</p>
+                  <p className="display-figure mt-1 text-2xl">{format(spent)}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs text-muted-foreground">Kept</p>
+                  <p className="display-figure mt-1 text-2xl text-positive">{format(kept)}</p>
+                </div>
+              </figcaption>
+            </figure>
+          </section>
+        </main>
+      </div>
 
-            <div className="flex flex-wrap items-center gap-6 text-xs">
-              <a href="#features" className="hover:text-foreground transition-colors focus-visible:outline-2 focus-visible:outline-brand rounded-xs">
-                Capabilities
-              </a>
-              <a href="#comparison" className="hover:text-foreground transition-colors focus-visible:outline-2 focus-visible:outline-brand rounded-xs">
-                Spreadsheets
-              </a>
-              <a href="#security" className="hover:text-foreground transition-colors focus-visible:outline-2 focus-visible:outline-brand rounded-xs">
-                Security
-              </a>
-              <Link href="/login" className="hover:text-foreground transition-colors focus-visible:outline-2 focus-visible:outline-brand rounded-xs">
-                Log in
-              </Link>
-              <Link href="/signup" className="hover:text-foreground transition-colors focus-visible:outline-2 focus-visible:outline-brand rounded-xs">
-                Register
-              </Link>
-            </div>
-          </div>
+      <section id="how" aria-labelledby="how-title" className="scroll-mt-4 mx-auto max-w-6xl px-4 py-20 sm:px-6 sm:py-28">
+        <h2 id="how-title" className="font-display max-w-2xl text-[clamp(1.9rem,3.5vw,2.75rem)] leading-tight font-semibold tracking-[-0.02em] text-balance">
+          Built around how a household actually handles money
+        </h2>
+        <div className="mt-14 grid gap-x-16 gap-y-12 md:grid-cols-2">
+          {points.map((p) => (
+            <article key={p.title} className="border-t border-foreground/15 pt-6">
+              <h3 className="text-lg font-semibold">{p.title}</h3>
+              <p className="mt-2 max-w-[60ch] leading-relaxed text-muted-foreground">{p.body}</p>
+              <p className="amount mt-4 text-sm text-muted-foreground">{p.example}</p>
+            </article>
+          ))}
+        </div>
+      </section>
 
-          <div className="mt-8 flex flex-col gap-3 border-t border-border pt-6 sm:flex-row sm:items-center sm:justify-between text-[11px]">
-            <div className="flex items-center gap-2">
-              <span className="size-2 rounded-full bg-positive" />
-              <span>Accounts, activity, and planning together</span>
-            </div>
-            <Link href="/help" className="py-2 underline">Privacy, support &amp; limitations</Link>
+      <section id="privacy" aria-labelledby="privacy-title" className="scroll-mt-4 border-y border-border bg-card">
+        <div className="mx-auto grid max-w-6xl gap-10 px-4 py-20 sm:px-6 sm:py-24 lg:grid-cols-[1.2fr_1fr] lg:gap-20">
+          <h2 id="privacy-title" className="font-display text-[clamp(1.75rem,3vw,2.5rem)] leading-tight font-semibold tracking-[-0.02em] text-balance">
+            You type it in, or import a statement file you chose. We never ask for your bank login.
+          </h2>
+          <ul className="grid content-start gap-5 text-[15px] leading-relaxed text-muted-foreground">
+            <li><strong className="font-semibold text-foreground">Nothing connects to your bank.</strong> There are no bank passwords to store and no connection to break.</li>
+            <li><strong className="font-semibold text-foreground">Only the people you invite.</strong> Shared trackers are open to the members you add, and private trackers only to you.</li>
+            <li><strong className="font-semibold text-foreground">Yours to keep.</strong> Export everything to Excel at any time, or delete your account and its data.</li>
+          </ul>
+        </div>
+      </section>
+
+      <section aria-labelledby="start-title" className="mx-auto max-w-6xl px-4 py-20 sm:px-6 sm:py-24">
+        <div className="flex flex-col items-start justify-between gap-8 md:flex-row md:items-end">
+          <div className="max-w-xl">
+            <h2 id="start-title" className="font-display text-[clamp(1.9rem,3.5vw,2.75rem)] leading-tight font-semibold tracking-[-0.02em]">
+              Start this month&apos;s page
+            </h2>
+            <p className="mt-3 leading-relaxed text-muted-foreground">
+              Add your accounts with the balance in each, then write down the next thing you spend.
+            </p>
           </div>
+          <Link href="/signup" className={cn("inline-flex h-12 shrink-0 items-center rounded-lg bg-brand px-6 text-[15px] font-semibold text-brand-foreground transition-colors hover:bg-brand-deep", focus)}>
+            Create a free account
+          </Link>
+        </div>
+      </section>
+
+      <footer className="border-t border-border">
+        <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-8 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:px-6">
+          <div className="flex items-center gap-2 text-foreground">
+            <BrandMark className="size-6 text-brand" />
+            <span className="font-display font-semibold">Expense Tracker</span>
+          </div>
+          <nav aria-label="Footer" className="flex flex-wrap gap-x-6 gap-y-2">
+            <Link href="/help" className={cn("rounded-sm hover:text-foreground", focus)}>Privacy and support</Link>
+            <Link href="/login" className={cn("rounded-sm hover:text-foreground", focus)}>Sign in</Link>
+            <Link href="/signup" className={cn("rounded-sm hover:text-foreground", focus)}>Create an account</Link>
+          </nav>
         </div>
       </footer>
     </div>

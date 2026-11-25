@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { ArrowDownLeft, ArrowUpRight, Scale, TrendingDown, TrendingUp } from "lucide-react";
 import { useFormat } from "./settings-provider";
 import { cn } from "@/lib/utils";
+import { Guilloche } from "./guilloche";
 
 type Entry = { type: string; amount: number; date: string };
 const BINS = 24;
@@ -108,10 +109,11 @@ export function SummaryCards({
   return (
     <section aria-label={decisionView ? "Current position" : "Financial summary"} className="grid gap-3 xl:grid-cols-[minmax(320px,1fr)_minmax(0,2fr)]">
       {/* The one committed moment on this screen: the household's position. */}
-      <div className="relative flex min-w-0 flex-col justify-between overflow-hidden rounded-2xl bg-brand-deep p-5 text-brand-deep-foreground sm:p-6">
+      <div className="relative isolate flex min-w-0 flex-col justify-between overflow-hidden rounded-xl bg-brand-deep p-5 text-brand-deep-foreground pt-12 sm:p-6 sm:pt-14">
+        <Guilloche className="absolute inset-x-0 top-0 -z-10 h-11 w-full text-brass opacity-60 [mask-image:linear-gradient(to_bottom,black_40%,transparent)]" />
         <div>
-          <p className="text-xs font-medium opacity-80">{decisionView ? "Current position" : "Total balance"}</p>
-          <h2 className="amount mt-1.5 break-words text-[clamp(1.9rem,3vw,2.6rem)] font-bold leading-none tracking-tight">
+          <p className="text-sm font-medium opacity-85">{decisionView ? "Current position" : "Total balance"}</p>
+          <h2 className="display-figure mt-2 break-words text-[clamp(2.2rem,3.4vw,3rem)]">
             {balanceMoney(totalBalance)}
           </h2>
           <p className="mt-2 text-xs opacity-80">

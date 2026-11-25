@@ -511,13 +511,13 @@ export function CategoryDetailView({
       {/* 2. Primary Financial Calculations Metric Cards */}
       <section className="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {/* Card 1: Filtered / Total Volume */}
-        <div className="flex flex-col justify-between rounded-2xl bg-brand-deep p-4 text-brand-deep-foreground">
+        <div className="flex flex-col justify-between rounded-xl bg-brand-deep p-4 text-brand-deep-foreground">
           <div>
             <span className="text-[11px] font-semibold opacity-80">
               {hasActiveFilters ? "Filtered total" : "All-time total"}
             </span>
             <p
-              className="amount mt-2 truncate text-xl font-bold tracking-tight sm:text-2xl"
+              className="display-figure mt-2 truncate text-2xl sm:text-[1.75rem]"
             >
               {money(hasActiveFilters ? filteredTotal : lifetimeStats.totalLifetime)}
             </p>

@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Geist_Mono } from "next/font/google";
+import { IBM_Plex_Sans, Source_Serif_4, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { PreviewFeatures } from "@/components/settings-provider";
@@ -9,10 +9,11 @@ import { ServiceWorkerRegister } from "@/components/service-worker-register";
 import { DensityPreference } from "@/components/display-density";
 import { Toaster } from "@/components/ui/sonner";
 
-// Inter is the product's typeface (the Notion register); Geist Mono stays for
-// the few code-like values. Money figures render in Inter with tabular
-// numerals, which it supports natively.
-const inter = Inter({ variable: "--font-sans", subsets: ["latin"] });
+// IBM Plex Sans carries the interface: sturdy, engineered, with true tabular figures
+// for every money column. Source Serif 4 is the "engraved" voice used only for page
+// titles and headline balances, the way a passbook or banknote sets its numerals.
+const plex = IBM_Plex_Sans({ variable: "--font-sans", subsets: ["latin"], axes: ["wdth"] });
+const serif = Source_Serif_4({ variable: "--font-display", subsets: ["latin"], axes: ["opsz"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
 export const metadata: Metadata = {
@@ -41,7 +42,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       lang="en"
       data-scroll-behavior="smooth"
       suppressHydrationWarning
-      className={`${inter.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${plex.variable} ${serif.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full bg-background text-foreground">
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>

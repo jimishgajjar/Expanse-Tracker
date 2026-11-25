@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, type ComponentProps } from "react";
+import { type ComponentProps } from "react";
 import dynamic from "next/dynamic";
-import { Target, Handshake, Users } from "lucide-react";
+import { ManagerPage } from "./manager-panel";
 import { useRemoteData } from "./use-remote-data";
 import { Button } from "./ui/button";
 import type { GoalDTO, SplitData, MemberDTO, TransactionDTO, NetWorthPoint } from "@/lib/queries";
@@ -18,17 +18,16 @@ function LoadingSection({error, retry}: {error?: string; retry: () => void}) {
   return <div className="rounded-lg border p-4" role={error ? "alert" : "status"}><p className="text-sm text-muted-foreground">{error ?? "Loading this section…"}</p>{error && <Button variant="outline" onClick={retry}>Try again</Button>}</div>;
 }
 
-export function DeferredTools({workspace, currentEmail, workspaceName, isOwner, canEdit, revision}: {revision:unknown;workspace:string;currentEmail:string;workspaceName:string;isOwner:boolean;canEdit:boolean}) {
-  const [selected,setSelected] = useState<"goals"|"split"|"members"|null>(null);
-  const {data,error,retry} = useRemoteData<ToolsData>(selected ? `/api/workspace-section?section=tools&workspace=${encodeURIComponent(workspace)}` : null, revision);
-  const options = [{id:"goals",label:"Savings goals",icon:Target},{id:"split",label:"Shared expenses",icon:Handshake},{id:"members",label:"Members & sharing",icon:Users}] as const;
-  return <>{options.filter(o => canEdit || o.id === "members").map(o => {
-    const trigger = <button type="button" className="nav-item" onClick={() => setSelected(o.id)}><o.icon className="size-[18px]" /><span>{o.label}</span></button>;
-    if (!data || selected !== o.id) return <div key={o.id}>{trigger}</div>;
-    if(o.id === "goals") return <GoalsManager key={o.id} defaultOpen goals={data.goals} trigger={trigger} />;
-    if(o.id === "split") return <SplitManager key={o.id} defaultOpen data={data.split} trigger={trigger} />;
-    return <MembersManager key={o.id} defaultOpen members={data.members} invites={data.invites} currentEmail={currentEmail} workspaceName={workspaceName} isOwner={isOwner} trigger={trigger} />;
-  })}{selected && !data && <LoadingSection error={error} retry={retry} />}</>;
+/** Savings goals, shared expenses and members each load their data, then render as a page. */
+export function DeferredToolPage({tool, workspace, currentEmail, workspaceName, isOwner, revision}: {tool:"goals"|"split"|"members";revision:unknown;workspace:string;currentEmail:string;workspaceName:string;isOwner:boolean}) {
+  const {data,error,retry} = useRemoteData<ToolsData>(`/api/workspace-section?section=tools&workspace=${encodeURIComponent(workspace)}`, revision);
+  if (!data) return <LoadingSection error={error} retry={retry} />;
+  const trigger = <span />;
+  return <ManagerPage>
+    {tool === "goals" ? <GoalsManager goals={data.goals} trigger={trigger} />
+      : tool === "split" ? <SplitManager data={data.split} trigger={trigger} />
+      : <MembersManager members={data.members} invites={data.invites} currentEmail={currentEmail} workspaceName={workspaceName} isOwner={isOwner} trigger={trigger} />}
+  </ManagerPage>;
 }
 
 export function DeferredPlanning(props: Omit<ComponentProps<typeof PlanningTab>,"goals"|"split"> & {workspace:string}) {

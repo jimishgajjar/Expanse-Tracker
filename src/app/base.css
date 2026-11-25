@@ -22,7 +22,8 @@ body {
 a { color: inherit; text-decoration-thickness: 1px; text-underline-offset: 0.16em; }
 h1, h2, h3 {
   margin: 0;
-  font-family: var(--font-display, var(--font-sans));
+  /* Headings default to the interface face; titles opt into the display face. */
+  font-family: var(--font-sans);
   font-weight: var(--display-weight, 600);
   font-synthesis: none;
   letter-spacing: -0.02em;

@@ -1,5 +1,6 @@
 "use client";
 
+import { Guilloche } from "./guilloche";
 import Link from "next/link";
 import { ArrowLeft, Pencil, Plus, ArrowRightLeft, TrendingUp, TrendingDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -123,10 +124,11 @@ export function AccountDetailView({
 
       {/* Balance: the one committed colour moment, same as Overview. */}
       <section aria-label="Account balance" className="grid gap-3 lg:grid-cols-[minmax(300px,1fr)_minmax(0,1.6fr)]">
-        <div className="flex min-w-0 flex-col justify-between overflow-hidden rounded-2xl bg-brand-deep p-5 text-brand-deep-foreground sm:p-6">
+        <div className="relative isolate flex min-w-0 flex-col justify-between overflow-hidden rounded-xl bg-brand-deep p-5 text-brand-deep-foreground pt-12 sm:p-6 sm:pt-14">
+          <Guilloche className="absolute inset-x-0 top-0 -z-10 h-11 w-full text-brass opacity-60 [mask-image:linear-gradient(to_bottom,black_40%,transparent)]" />
           <div>
-            <p className="text-xs font-medium opacity-80">Current balance</p>
-            <p className="amount mt-1.5 break-words text-[clamp(1.75rem,3vw,2.4rem)] font-bold leading-none tracking-tight">
+            <p className="text-sm font-medium opacity-85">Current balance</p>
+            <p className="display-figure mt-2 break-words text-[clamp(2rem,3.2vw,2.75rem)]">
               {balanceMoney(account.balance)}
             </p>
             <p className="mt-2 text-xs opacity-80">{history.length ? `Running balance over ${history.length} entries` : "No entries yet"}</p>

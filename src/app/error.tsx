@@ -31,7 +31,7 @@ export default function ErrorPage({
         <span className="grid size-11 place-items-center rounded-xl bg-negative/10 text-negative">
           <TriangleAlert className="size-5" />
         </span>
-        <h1 className="mt-5 text-2xl font-semibold tracking-tight">That didn&apos;t load</h1>
+        <h1 className="font-display mt-5 text-3xl font-semibold">That didn&apos;t load</h1>
         <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
           We couldn’t load your tracker. Try again. If you just saved a change, check your activity before submitting it again.
         </p>
