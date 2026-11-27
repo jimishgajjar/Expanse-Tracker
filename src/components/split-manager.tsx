@@ -4,7 +4,9 @@ import { useState, useTransition, type ReactElement } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Check, Plus, Trash2, Handshake } from "lucide-react";
+import Link from "next/link";
 import { ManagerPanel, PanelCreate } from "./manager-panel";
+import { ToolEmpty, ToolPage, ToolSection, ToolSummary } from "./tool-page";
 import { ReimbursementDialog, SettlementHistory } from "./reimbursement-dialog";
 import {
   Select,
@@ -37,6 +39,10 @@ export function SplitManager({
   const { money } = useFormat();
   const { meId, otherMembers } = data;
 
+  const owedToMe = data.balances.filter((b) => b.net > 0).reduce((sum, b) => sum + b.net, 0);
+  const iOwe = data.balances.filter((b) => b.net < 0).reduce((sum, b) => sum - b.net, 0);
+  const alone = otherMembers.length === 0 && data.splits.length === 0;
+
   return (
     <ManagerPanel
       defaultOpen={defaultOpen}
@@ -45,82 +51,58 @@ export function SplitManager({
       icon={Handshake}
       description="See who owes whom, record shared costs, and settle up."
     >
-      <div className="space-y-4">
-        {otherMembers.length === 0 && data.splits.length === 0 ? (
-          <p className="py-6 text-center text-sm text-muted-foreground">
-            Invite someone to your tracker (via Sharing) to split expenses with
-            them.
-          </p>
-        ) : (
-          <>
-            <div className="space-y-2">
-              {data.balances.length === 0 && (
-                <div className="rounded-xl border bg-card p-4 text-center text-sm text-muted-foreground">
-                  You have no outstanding reimbursements.
-                </div>
-              )}
-              {data.balances.map((b) => (
-                <div
-                  key={b.userId}
-                  className="flex items-center justify-between rounded-xl border bg-card p-3"
-                >
-                  <div className="min-w-0">
-                    <div className="truncate text-sm">
-                      {b.net > 0 ? (
-                        <>
-                          <span className="font-medium">{b.name}</span> owes you
-                        </>
-                      ) : (
-                        <>
-                          You owe <span className="font-medium">{b.name}</span>
-                        </>
-                      )}
-                    </div>
-                    <div
-                      className={cn(
-                        "amount text-lg font-semibold",
-                        b.net > 0 ? "text-positive" : "text-negative",
-                      )}
-                    >
-                      {money(Math.abs(b.net))}
-                    </div>
-                  </div>
-                  {canEdit && (!data.reimbursementWorkspace || otherMembers.some(member => member.id === b.userId)) && (data.reimbursementWorkspace
-                    ? <ReimbursementDialog workspace={data.reimbursementWorkspace} peer={b.userId} name={b.name}/>
-                    : <SettleButton userId={b.userId} name={b.name} />)}
-                </div>
-              ))}
-            </div>
-
-            {canEdit && otherMembers.length > 0 && (
-              <PanelCreate
-                title="Add a shared expense"
-                defaultOpen={data.splits.length === 0}
-              >
-                <AddForm meId={meId} otherMembers={otherMembers} />
-              </PanelCreate>
-            )}
-
-            {data.splits.length > 0 && (
-              <div className="space-y-1.5">
-                <div className="px-0.5 text-xs font-semibold text-muted-foreground">
-                  Open items · {data.splits.length}
-                </div>
-                {data.splits.map((s) => (
-                  <SplitRow
-                    canEdit={canEdit}
-                    key={s.id}
-                    split={s}
-                    meId={meId}
-                    otherMembers={otherMembers}
-                  />
-                ))}
-              </div>
-            )}
-          </>
+      <ToolPage
+        summary={!alone && (
+          <ToolSummary
+            items={[
+              { label: "Owed to you", value: money(owedToMe), tone: owedToMe > 0 ? "positive" : undefined, hint: owedToMe > 0 ? "Waiting to be paid back" : "Nobody owes you" },
+              { label: "You owe", value: money(iOwe), tone: iOwe > 0 ? "negative" : undefined, hint: iOwe > 0 ? "To pay back" : "You owe nobody" },
+              { label: "Open items", value: String(data.splits.length), hint: data.splits.length ? "Not yet settled" : "All settled" },
+            ]}
+          />
         )}
-        {data.reimbursementWorkspace && data.settlements && <SettlementHistory workspace={data.reimbursementWorkspace} rows={data.settlements} canEdit={canEdit}/>}
-      </div>
+        main={
+          alone ? (
+            <ToolEmpty title="Shared expenses need a second person">
+              Invite your partner to this tracker, then record who paid for what and settle up when you are ready.{" "}
+              <Link href="/?tab=members" className="text-link">Invite someone</Link>
+            </ToolEmpty>
+          ) : (
+            <>
+              <ToolSection title="Balances">
+                {data.balances.length === 0 && <p className="px-4 py-6 text-sm text-muted-foreground">You are all square. Nobody owes anything right now.</p>}
+                {data.balances.map((b) => (
+                  <div key={b.userId} className="flex flex-wrap items-center gap-3 px-4 py-3.5">
+                    <span className="grid size-9 shrink-0 place-items-center rounded-full bg-muted text-sm font-semibold" aria-hidden>{b.name.slice(0, 1).toUpperCase()}</span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm">
+                        {b.net > 0 ? <><span className="font-medium">{b.name}</span> owes you</> : <>You owe <span className="font-medium">{b.name}</span></>}
+                      </p>
+                      <p className={cn("amount text-lg font-semibold", b.net > 0 ? "text-positive" : "text-negative")}>{money(Math.abs(b.net))}</p>
+                    </div>
+                    {canEdit && (!data.reimbursementWorkspace || otherMembers.some((member) => member.id === b.userId)) && (data.reimbursementWorkspace
+                      ? <ReimbursementDialog workspace={data.reimbursementWorkspace} peer={b.userId} name={b.name} />
+                      : <SettleButton userId={b.userId} name={b.name} />)}
+                  </div>
+                ))}
+              </ToolSection>
+              {data.splits.length > 0 && (
+                <ToolSection title={`Open items (${data.splits.length})`} meta={money(data.splits.reduce((sum, x) => sum + x.amount, 0))}>
+                  {data.splits.map((x) => (
+                    <SplitRow canEdit={canEdit} key={x.id} split={x} meId={meId} otherMembers={otherMembers} />
+                  ))}
+                </ToolSection>
+              )}
+              {data.reimbursementWorkspace && data.settlements && <SettlementHistory workspace={data.reimbursementWorkspace} rows={data.settlements} canEdit={canEdit} />}
+            </>
+          )
+        }
+        aside={canEdit && otherMembers.length > 0 && (
+          <PanelCreate title="Add a shared expense" defaultOpen={data.splits.length === 0}>
+            <AddForm meId={meId} otherMembers={otherMembers} />
+          </PanelCreate>
+        )}
+      />
     </ManagerPanel>
   );
 }
@@ -191,7 +173,7 @@ function AddForm({
         aria-label="Expense description"
         value={note}
         onChange={(e) => setNote(e.target.value)}
-        placeholder="What for? (e.g. Groceries split)"
+        placeholder="What was it for? For example, groceries"
       />
       <div className="grid grid-cols-2 gap-2">
         <Input
@@ -247,7 +229,7 @@ function AddForm({
         ))}
       </div>
       <Button type="submit" size="sm" className="w-full" disabled={pending}>
-        <Plus className="size-4" /> Add
+        <Plus className="size-4" /> Add shared expense
       </Button>
     </form>
   );
@@ -276,11 +258,11 @@ function SplitRow({
     else toast.error(res.error);
   }
   return (
-    <div className="flex items-center gap-2 rounded-xl border bg-card p-3">
+    <div className="flex items-center gap-3 px-4 py-3">
       <div className="min-w-0 flex-1">
         <div className="truncate text-sm">{split.note || "Shared expense"}</div>
         <div className="text-xs text-muted-foreground">
-          {nameOf(split.debtorId)} → {nameOf(split.creditorId)}
+          {nameOf(split.debtorId)} {split.debtorId === meId ? "owe" : "owes"} {nameOf(split.creditorId) === "You" ? "you" : nameOf(split.creditorId)}
         </div>
       </div>
       <span className="amount shrink-0 text-sm font-medium">

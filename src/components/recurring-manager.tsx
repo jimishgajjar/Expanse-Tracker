@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { differenceInCalendarDays, format, parseISO } from "date-fns";
 import { Bell, History, Pencil, Plus, Trash2, X, Repeat } from "lucide-react";
 import { ManagerPanel, PanelCreate } from "./manager-panel";
+import { ToolEmpty, ToolPage, ToolSection, ToolSummary } from "./tool-page";
 import {
   Select,
   SelectContent,
@@ -65,7 +66,7 @@ export function RecurringManager({
     setItems((x) => x.map((it) => (it.id === r.id ? r : it)));
   // Ended rules (past their end date or out of repeats) still list below for
   // reference, but they no longer cost anything so they stay out of the total.
-  const { expenses, monthly } = commitmentTotals(items, todayISO());
+  const { expenses, monthly, monthlyIncome } = commitmentTotals(items, todayISO());
 
   const known = ["subscription", "bill", "emi"];
   const groups = [
@@ -104,6 +105,8 @@ export function RecurringManager({
     },
   ].filter((g) => g.rules.length > 0);
 
+  const next = [...expenses].sort((x, y) => x.nextDate.localeCompare(y.nextDate))[0];
+
   return (
     <ManagerPanel
       trigger={trigger}
@@ -111,69 +114,44 @@ export function RecurringManager({
       icon={Repeat}
       description="Manage scheduled payments, installments, and recurring income."
     >
-      <div className="space-y-4">
-        <div className="rounded-xl border bg-card p-4">
-          <div className="text-xs font-medium text-muted-foreground">
-            Monthly commitment
-          </div>
-          <div className="amount mt-1 text-xl font-semibold">
-            {money(monthly)}
-            <span className="ml-1.5 text-sm font-normal text-muted-foreground">
-              /mo
-            </span>
-          </div>
-          <div className="mt-0.5 text-xs text-muted-foreground">
-            {money(monthly * 12)} / year · {expenses.length} active
-          </div>
-        </div>
-
-        <PanelCreate
-          title="Add a subscription or bill"
-          defaultOpen={items.length === 0}
-        >
-          <RecurringForm
-            accounts={accounts}
-            categories={categories}
-            onSaved={onAdded}
+      <ToolPage
+        summary={
+          <ToolSummary
+            items={[
+              { label: "Committed each month", value: money(monthly), hint: `${expenses.length} active ${expenses.length === 1 ? "payment" : "payments"}` },
+              { label: "Over a year", value: money(monthly * 12), hint: "At today's prices" },
+              next
+                ? { label: "Next payment", value: money(next.amount), hint: `${next.note || "Recurring"}, ${format(parseISO(next.nextDate), "EEE d MMM")}` }
+                : { label: "Next payment", value: "None", hint: "Nothing scheduled" },
+              ...(monthlyIncome > 0 ? [{ label: "Recurring income", value: money(monthlyIncome), hint: "Each month", tone: "positive" as const }] : []),
+            ]}
           />
-        </PanelCreate>
-
-        {groups.map((g) => (
-          <div key={g.key} className="space-y-1.5">
-            <div className="flex items-center justify-between px-0.5">
-              <span className="text-xs font-semibold text-muted-foreground">
-                {g.label} · {g.rules.length}
-              </span>
-              {g.key !== "income" && (
-                <span className="amount text-xs text-muted-foreground">
-                  {money(
-                    g.rules.reduce(
-                      (s, r) => s + perMonth(r.amount, r.frequency),
-                      0,
-                    ),
-                  )}
-                  /mo
-                </span>
-              )}
-            </div>
-            {g.rules.map((r) => (
-              <RuleRow
-                key={r.id}
-                rule={r}
-                accounts={accounts}
-                categories={categories}
-                onRemoved={onRemoved}
-                onUpdated={onUpdated}
-              />
-            ))}
-          </div>
-        ))}
-        {items.length === 0 && (
-          <p className="py-4 text-center text-sm text-muted-foreground">
-            Nothing recurring yet — add your first subscription or bill above.
-          </p>
-        )}
-      </div>
+        }
+        main={
+          items.length === 0 ? (
+            <ToolEmpty title="Nothing recurring yet">
+              Add rent, phone plans, streaming and loan instalments once. They show up on your forecast and remind you before they are due.
+            </ToolEmpty>
+          ) : (
+            groups.map((g) => (
+              <ToolSection
+                key={g.key}
+                title={`${g.label} (${g.rules.length})`}
+                meta={g.key !== "income" ? `${money(g.rules.reduce((sum, r) => sum + perMonth(r.amount, r.frequency), 0))} a month` : undefined}
+              >
+                {g.rules.map((r) => (
+                  <RuleRow key={r.id} rule={r} accounts={accounts} categories={categories} onRemoved={onRemoved} onUpdated={onUpdated} />
+                ))}
+              </ToolSection>
+            ))
+          )
+        }
+        aside={
+          <PanelCreate title="Add a subscription or bill" defaultOpen={items.length === 0}>
+            <RecurringForm accounts={accounts} categories={categories} onSaved={onAdded} />
+          </PanelCreate>
+        }
+      />
     </ManagerPanel>
   );
 }
@@ -603,7 +581,7 @@ function RuleRow({
 
   if (editing) {
     return (
-      <div className="rounded-lg border bg-muted/30 p-2">
+      <div className="bg-muted/30 p-4">
         <div className="mb-2 flex items-center justify-between px-0.5">
           <span className="text-xs font-medium text-muted-foreground">
             Edit {rule.note || cat?.name || "recurring"}
@@ -664,10 +642,10 @@ function RuleRow({
           : { label: `in ${daysUntil} days`, tone: "text-muted-foreground" };
 
   return (
-    <div className="rounded-lg border px-2.5 py-2">
+    <div className="px-4 py-3 transition-colors hover:bg-muted/30">
       <div className="flex items-center gap-2.5">
         <span
-          className="grid size-8 shrink-0 place-items-center rounded-md"
+          className="grid size-9 shrink-0 place-items-center rounded-lg"
           style={{ backgroundColor: `${color}22`, color }}
         >
           <Icon name={cat?.icon ?? "tag"} size={15} />

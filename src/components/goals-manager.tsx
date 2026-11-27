@@ -3,9 +3,10 @@
 import { use, useState, useTransition, type ReactElement } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import {SheetClose} from "./ui/sheet";
 import { toast } from "sonner";
-import { Plus, Trash2, Target } from "lucide-react";
+import { CheckCircle2, Plus, Trash2, Target } from "lucide-react";
+import { ToolEmpty, ToolPage, ToolSection, ToolSummary } from "./tool-page";
+import { shortDay } from "@/lib/dates";
 import { ManagerPanel, PanelCreate } from "./manager-panel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,6 +38,9 @@ export function GoalsManager({
   const onRemoved = (id: string) =>
     setItems((x) => x.filter((g) => g.id !== id));
 
+  const left = Math.max(0, totalTarget - totalSaved);
+  const reached = items.filter((g) => g.targetAmount > 0 && g.savedAmount >= g.targetAmount).length;
+
   return (
     <ManagerPanel
       defaultOpen={defaultOpen}
@@ -45,42 +49,35 @@ export function GoalsManager({
       icon={Target}
       description="Set targets and track your progress, one contribution at a time."
     >
-      <div className="space-y-4">
-        {items.length > 0 && (
-          <div className="rounded-xl border bg-card p-4">
-            <div className="text-xs font-medium text-muted-foreground">
-              Saved across {items.length} goal{items.length === 1 ? "" : "s"}
-            </div>
-            <div className="amount mt-1 text-xl font-semibold">
-              {money(totalSaved)}
-              <span className="ml-1.5 text-sm font-normal text-muted-foreground">
-                of {money(totalTarget)}
-              </span>
-            </div>
-          </div>
+      <ToolPage
+        summary={items.length > 0 && (
+          <ToolSummary
+            items={[
+              { label: "Saved so far", value: money(totalSaved), hint: `Across ${items.length} ${items.length === 1 ? "goal" : "goals"}`, tone: "positive" },
+              { label: "Total of targets", value: money(totalTarget), hint: totalTarget > 0 ? `${Math.round((totalSaved / totalTarget) * 100)}% of the way` : undefined },
+              { label: "Still to save", value: money(left), hint: reached ? `${reached} ${reached === 1 ? "goal" : "goals"} reached` : "No goal reached yet" },
+            ]}
+          />
         )}
-        <PanelCreate
-          title="Add a savings goal"
-          defaultOpen={items.length === 0}
-        >
-          <AddForm onAdded={onAdded} />
-        </PanelCreate>
-        <div className="space-y-2">
-          {items.map((g) => (
-            <GoalCard
-              key={g.id}
-              goal={g}
-              onContributed={onContributed}
-              onRemoved={onRemoved}
-            />
-          ))}
-          {items.length === 0 && (
-            <p className="py-4 text-center text-sm text-muted-foreground">
-              No goals yet — add one above to start saving.
-            </p>
-          )}
-        </div>
-      </div>
+        main={
+          items.length === 0 ? (
+            <ToolEmpty title="No savings goals yet">
+              Give each pot of money a name and a target, like an emergency fund or next year&apos;s car insurance, and record what you put aside.
+            </ToolEmpty>
+          ) : (
+            <ToolSection title={`Goals (${items.length})`}>
+              {items.map((g) => (
+                <GoalCard key={g.id} goal={g} onContributed={onContributed} onRemoved={onRemoved} />
+              ))}
+            </ToolSection>
+          )
+        }
+        aside={
+          <PanelCreate title="Add a savings goal" defaultOpen={items.length === 0}>
+            <AddForm onAdded={onAdded} />
+          </PanelCreate>
+        }
+      />
     </ManagerPanel>
   );
 }
@@ -237,29 +234,26 @@ function GoalCard({
   }
 
   return (
-    <div className="rounded-xl border bg-card p-4">
-      <div className="flex items-start justify-between gap-2">
+    <div className="px-4 py-4">
+      <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="truncate text-sm font-medium">
-            {goal.name}
-            {done && <span className="ml-1.5 text-positive">✓</span>}
-          </div>
-          <div className="text-xs text-muted-foreground">
-            {goal.deadline ? `by ${goal.deadline}` : "no deadline"}
-          </div>
+          <p className="flex items-center gap-1.5 text-sm font-medium">
+            <span className="truncate">{goal.name}</span>
+            {done && <CheckCircle2 className="size-4 shrink-0 text-positive" aria-label="Target reached" />}
+          </p>
+          <p className="text-xs text-muted-foreground">{goal.deadline ? `Target date ${shortDay(goal.deadline)}` : "No target date"}</p>
         </div>
-        <div className="flex items-center gap-1">
-          {backed?<SheetClose nativeButton={false} render={<Link className="text-xs font-medium text-brand" href="/?tab=planning#monthly-plan"/>}>Allocate cash</SheetClose>:<Button
-            size="icon-sm"
-            variant="ghost"
-            aria-label="Add money"
-            onClick={() => setAdding((v) => !v)}
-          >
-            <Plus className="size-3.5" />
-          </Button>}
+        <div className="flex shrink-0 items-center gap-1">
+          {backed ? (
+            <Link className="text-xs font-medium text-brand underline-offset-4 hover:underline" href="/?tab=planning#monthly-plan">Allocate cash</Link>
+          ) : (
+            <Button size="sm" variant="outline" aria-expanded={adding} onClick={() => setAdding((v) => !v)}>
+              <Plus className="size-3.5" /> Add money
+            </Button>
+          )}
           <ConfirmDialog
             trigger={
-              <Button size="icon-sm" variant="ghost" aria-label="Delete goal">
+              <Button size="icon-sm" variant="ghost" aria-label={`Delete ${goal.name}`} className="text-muted-foreground hover:bg-negative/10 hover:text-negative">
                 <Trash2 className="size-3.5" />
               </Button>
             }
@@ -268,21 +262,16 @@ function GoalCard({
           />
         </div>
       </div>
-      <div className="mt-2 flex items-center justify-between text-xs">
-        <span className="amount font-medium">{money(goal.savedAmount)}</span>
-        <span className="text-muted-foreground">
-          {pct}% · {money(goal.targetAmount)}
-        </span>
+      <div className="mt-3 flex items-baseline justify-between gap-3 text-sm">
+        <span><span className="amount font-semibold">{money(goal.savedAmount)}</span> <span className="text-muted-foreground">of <span className="amount">{money(goal.targetAmount)}</span></span></span>
+        <span className="amount text-xs font-medium text-muted-foreground">{pct}%</span>
       </div>
-      <div className="mt-1 h-2 overflow-hidden rounded-full bg-muted">
-        <div
-          className="h-full rounded-full transition-[width] duration-500 ease-out-quart"
-          style={{ width: `${pct}%`, backgroundColor: goal.color }}
-        />
+      <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-muted" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct} aria-label={`${goal.name} progress`}>
+        <div className="h-full rounded-full bg-brand transition-[width] duration-500 ease-out-quart" style={{ width: `${pct}%` }} />
       </div>
-      {backed&&<p className="mt-1 text-xs text-muted-foreground">{money(goal.reserved??0)} reserved · {money(goal.outside??0)} confirmed separate savings{(goal.openingProgress??0)>0&&<> · Original entry {money(goal.openingProgress??0)} ({goal.openingReviewed?"reviewed":"awaiting review"}) <SheetClose nativeButton={false} render={<Link className="underline" href="/?tab=planning#goal-opening-review"/>}>View review</SheetClose></>}</p>}
+      {backed && <p className="mt-1.5 text-xs text-muted-foreground">{money(goal.reserved ?? 0)} reserved, {money(goal.outside ?? 0)} confirmed separate savings{(goal.openingProgress ?? 0) > 0 && <>. Original entry {money(goal.openingProgress ?? 0)} ({goal.openingReviewed ? "reviewed" : "awaiting review"}). <Link className="underline" href="/?tab=planning#goal-opening-review">View review</Link></>}</p>}
       {adding && (
-        <form onSubmit={contribute} className="mt-2 flex gap-2">
+        <form onSubmit={contribute} className="mt-3 flex gap-2">
           <Input
             aria-label="Contribution amount"
             type="number"
@@ -290,8 +279,8 @@ function GoalCard({
             inputMode="decimal"
             value={amt}
             onChange={(e) => setAmt(e.target.value)}
-            placeholder="Add amount (− to withdraw)"
-            className="h-7"
+            placeholder="Amount (use − to take money out)"
+            className="h-9"
             autoFocus
           />
           <Button type="submit" size="sm" disabled={pending}>

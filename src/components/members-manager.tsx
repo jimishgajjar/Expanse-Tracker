@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Crown, LogOut, Plus, Trash2, UserRound, Users } from "lucide-react";
 import { ManagerPanel, PanelCreate } from "./manager-panel";
+import { ToolPage, ToolSection } from "./tool-page";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ConfirmDialog } from "@/components/confirm-dialog";
@@ -17,20 +18,29 @@ import {
 } from "@/lib/sharing";
 import type { MemberDTO } from "@/lib/queries";
 
-function RoleBadge({ role }: { role: string }) {
-  if (role === "owner")
-    return (
-      <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-        Owner
-      </span>
-    );
-  if (role === "viewer")
-    return (
-      <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-400">
-        Viewer
-      </span>
-    );
-  return null;
+const ROLE_LABEL: Record<string, string> = { owner: "Owner", member: "Can edit", viewer: "View only" };
+
+/** What each level of access allows, in the words the invite form uses. */
+function AccessGuide() {
+  const rows = [
+    { role: "Owner", text: "Everything, including inviting and removing people and handing over ownership." },
+    { role: "Can edit", text: "Add, change and delete entries, including ones someone else entered." },
+    { role: "View only", text: "See accounts, entries and reports, without changing anything." },
+  ];
+  return (
+    <section aria-labelledby="access-guide" className="rounded-xl border border-border bg-card">
+      <h2 id="access-guide" className="border-b border-border px-4 py-3 text-sm font-semibold">What each person can do</h2>
+      <dl className="divide-y divide-border">
+        {rows.map((r) => (
+          <div key={r.role} className="px-4 py-3">
+            <dt className="text-sm font-medium">{r.role}</dt>
+            <dd className="mt-0.5 text-xs leading-relaxed text-muted-foreground">{r.text}</dd>
+          </div>
+        ))}
+      </dl>
+      <p className="border-t border-border px-4 py-3 text-xs leading-relaxed text-muted-foreground">Everyone with access sees this tracker&apos;s accounts and entries.</p>
+    </section>
+  );
 }
 
 export function MembersManager({
@@ -95,44 +105,35 @@ export function MembersManager({
           : `You have shared access to ${workspaceName}.`
       }
     >
-      <div className="space-y-4">
-        <p className="rounded-lg border bg-muted/30 p-3 text-sm">Everyone listed here can see this tracker’s accounts and transactions. Owners and editing members can change entries, including ones entered by someone else. Viewers can read them.</p>
-        {isOwner && (
-          <PanelCreate title="Invite someone">
-            <InviteForm onInvited={onInvited} />
-          </PanelCreate>
-        )}
-        <div>
-          <div className="mb-2 text-xs font-medium text-muted-foreground">
-            Members · {members.length}
-          </div>
-          <div className="space-y-1.5">
-            {members.map((m) => (
-              <MemberRow
-                key={m.id}
-                member={m}
-                isMe={m.email === currentEmail}
-                canManage={isOwner}
-                onRemoved={onMemberRemoved}
-                onTransferred={onTransferred}
-              />
-            ))}
-          </div>
-        </div>
-        {isOwner && invites.length > 0 && (
-          <div>
-            <div className="mb-2 text-xs font-medium text-muted-foreground">
-              Pending invites · {invites.length}
-            </div>
-            <div className="space-y-1.5">
-              {invites.map((e) => (
-                <InviteRow key={e} email={e} onRemoved={onInviteRemoved} />
+      <ToolPage
+        main={
+          <>
+            <ToolSection title={`People with access to ${workspaceName} (${members.length})`}>
+              {members.map((m) => (
+                <MemberRow key={m.id} member={m} isMe={m.email === currentEmail} canManage={isOwner} onRemoved={onMemberRemoved} onTransferred={onTransferred} />
               ))}
-            </div>
-          </div>
-        )}
-        {!isOwner && <LeaveButton />}
-      </div>
+            </ToolSection>
+            {isOwner && invites.length > 0 && (
+              <ToolSection title={`Invited, not joined yet (${invites.length})`}>
+                {invites.map((e) => (
+                  <InviteRow key={e} email={e} onRemoved={onInviteRemoved} />
+                ))}
+              </ToolSection>
+            )}
+          </>
+        }
+        aside={
+          <>
+            {isOwner && (
+              <PanelCreate title="Invite someone" defaultOpen>
+                <InviteForm onInvited={onInvited} />
+              </PanelCreate>
+            )}
+            <AccessGuide />
+            {!isOwner && <LeaveButton />}
+          </>
+        }
+      />
     </ManagerPanel>
   );
 }
@@ -159,30 +160,22 @@ function InviteForm({
   }
   return (
     <form onSubmit={add} className="space-y-4">
-      <p className="text-xs text-muted-foreground">Invitees choose whether to receive alerts. For someone new, share the <a href="/signup" target="_blank" rel="noreferrer" className="text-brand underline">sign-up link</a> and ask them to verify the invited email.</p>
-      <div className="flex gap-2">
-        <Input
-          aria-label="Email address"
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="person@email.com"
-        />
-        <Button type="submit" disabled={pending}>
-          <Plus className="size-4" /> Invite
-        </Button>
-      </div>
-      <label className="flex items-center gap-2 text-xs text-muted-foreground">
-        Access:
-        <select
-          value={role}
-          onChange={(e) => setRole(e.target.value as "member" | "viewer")}
-          className="rounded-md border border-input bg-background px-2 py-1 text-foreground"
-        >
-          <option value="member">Can edit</option>
-          <option value="viewer">View only</option>
-        </select>
+      <label className="grid gap-1.5 text-xs font-medium">
+        Email address
+        <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@example.com" autoComplete="email" />
       </label>
+      <fieldset className="grid gap-1.5">
+        <legend className="mb-1.5 text-xs font-medium">Access</legend>
+        <div className="segmented w-full [&>button]:flex-1 [&>button]:justify-center">
+          {(["member", "viewer"] as const).map((r) => (
+            <button key={r} type="button" aria-pressed={role === r} onClick={() => setRole(r)}>{ROLE_LABEL[r]}</button>
+          ))}
+        </div>
+      </fieldset>
+      <Button type="submit" disabled={pending || !email.trim()} className="w-full">
+        <Plus className="size-4" /> {pending ? "Inviting…" : "Send invite"}
+      </Button>
+      <p className="text-xs leading-relaxed text-muted-foreground">They get access when they sign in with this email. Someone new can use the <a href="/signup" target="_blank" rel="noreferrer" className="text-link">sign-up page</a> first.</p>
     </form>
   );
 }
@@ -215,16 +208,16 @@ function MemberRow({
     } else toast.error(res.error);
   }
   return (
-    <div className="flex items-center gap-2.5 rounded-xl border bg-card p-3">
-      <span className="grid size-8 shrink-0 place-items-center rounded-full bg-muted">
-        <UserRound className="size-4" />
+    <div className="flex flex-wrap items-center gap-3 px-4 py-3">
+      <span className="grid size-9 shrink-0 place-items-center rounded-full bg-brand/10 text-sm font-semibold text-brand" aria-hidden>
+        {(member.name || member.email).slice(0, 1).toUpperCase()}
       </span>
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5">
           <span className="truncate text-sm font-medium">
             {member.name || member.email}
           </span>
-          <RoleBadge role={member.role} />
+          {isMe && <span className="text-xs text-muted-foreground">(you)</span>}
         </div>
         {member.name && (
           <div className="truncate text-xs text-muted-foreground">
@@ -232,8 +225,9 @@ function MemberRow({
           </div>
         )}
       </div>
+      <span className="w-20 shrink-0 text-right text-xs font-medium text-muted-foreground">{ROLE_LABEL[member.role] ?? member.role}</span>
       {isMe ? (
-        <span className="text-xs text-muted-foreground">You</span>
+        <span className="w-16 shrink-0" aria-hidden />
       ) : canManage ? (
         <>
           {member.role !== "owner" && (
@@ -283,13 +277,13 @@ function InviteRow({
     });
   }
   return (
-    <div className="flex items-center gap-2.5 rounded-xl border border-dashed bg-card p-3">
+    <div className="flex items-center gap-3 px-4 py-3">
       <span className="grid size-8 shrink-0 place-items-center rounded-full bg-muted text-muted-foreground">
         <UserRound className="size-4" />
       </span>
       <div className="min-w-0 flex-1">
         <div className="truncate text-sm">{email}</div>
-        <div className="text-xs text-muted-foreground">Pending</div>
+        <div className="text-xs text-muted-foreground">Joins when they sign in with this email</div>
       </div>
       <Button
         size="icon-sm"

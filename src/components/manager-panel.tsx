@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, use, type ReactElement, type ReactNode } from "react";
+import { createContext, use, useSyncExternalStore, type ReactElement, type ReactNode } from "react";
 import { ChevronDown, Plus, type LucideIcon } from "lucide-react";
 import {
   Dialog,
@@ -20,6 +20,21 @@ import { Button } from "./ui/button";
 const InPage = createContext(false);
 export function ManagerPage({ children }: { children: ReactNode }) {
   return <InPage value={true}>{children}</InPage>;
+}
+const WIDE = "(min-width: 80rem)";
+function subscribeWide(onChange: () => void) {
+  const mq = window.matchMedia(WIDE);
+  mq.addEventListener("change", onChange);
+  return () => mq.removeEventListener("change", onChange);
+}
+/** Wide enough for the page's second column (the add form sits beside the list). */
+function useWide() {
+  return useSyncExternalStore(subscribeWide, () => window.matchMedia(WIDE).matches, () => true);
+}
+
+/** True when the tool is rendered as its own page rather than in a window. */
+export function useInPage() {
+  return use(InPage);
 }
 
 /**
@@ -47,7 +62,7 @@ export function ManagerPanel({
   onOpenChange?: (open: boolean) => void;
 }) {
   if (use(InPage)) {
-    return <div className="manager-panel manager-panel-body manager-page min-w-0 max-w-3xl space-y-5">{children}</div>;
+    return <div className="manager-panel manager-panel-body manager-page min-w-0">{children}</div>;
   }
   return (
     <Dialog defaultOpen={defaultOpen} open={open} onOpenChange={onOpenChange}>
@@ -86,6 +101,19 @@ export function PanelCreate({
   children: ReactNode;
   defaultOpen?: boolean;
 }) {
+  const wide = useWide();
+  if (use(InPage) && wide) {
+    // On a wide page the form is always open: it is the page's second column, not a hidden extra.
+    return (
+      <section aria-label={title} className="rounded-xl border border-border bg-card">
+        <h2 className="flex items-center gap-2 border-b border-border px-4 py-3 text-sm font-semibold">
+          <Plus className="size-4 text-brand" aria-hidden />
+          {title}
+        </h2>
+        <div className="p-4 [&>form]:space-y-4 [&>form]:border-0 [&>form]:bg-transparent [&>form]:p-0">{children}</div>
+      </section>
+    );
+  }
   return (
     <details
       open={defaultOpen || undefined}

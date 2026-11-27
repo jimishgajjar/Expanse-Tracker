@@ -5,7 +5,9 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Check, Pencil, Plus, Trash2, X, Tags, Search } from "lucide-react";
 import { ManagerPanel, PanelCreate } from "./manager-panel";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import Link from "next/link";
+import { ToolEmpty, ToolPage, ToolSection } from "./tool-page";
+import { useFormat } from "./settings-provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Icon } from "@/components/icon";
@@ -18,14 +20,50 @@ import type { CategoryDTO } from "@/lib/queries";
 
 type Kind = "income" | "expense";
 
+export type CategoryUsage = Record<string, { count: number; total: number }>;
+
 export function CategoryManager({
   trigger,
   categories,
+  usage,
+  usageLabel,
 }: {
   trigger: ReactElement;
   categories: CategoryDTO[];
+  /** Entries and total per category for the selected period, when the page has them. */
+  usage?: CategoryUsage;
+  usageLabel?: string;
 }) {
   const [search, setSearch] = useState("");
+  const [kind, setKind] = useState<Kind>("expense");
+  const { money } = useFormat();
+  const list = categories.filter((c) => c.kind === kind);
+  const q = search.trim().toLocaleLowerCase();
+  const matches = list.filter((c) => c.name.toLocaleLowerCase().includes(q));
+  const presets = RECOMMENDED_CATEGORY_PRESETS.filter(
+    (p) => p.kind === kind && !list.some((existing) => existing.name.toLowerCase() === p.name.toLowerCase()),
+  );
+  const count = (k: Kind) => categories.filter((c) => c.kind === k).length;
+  const used = usage ? list.filter((c) => usage[c.id]?.count).length : 0;
+  const noun = kind === "expense" ? "spending" : "income";
+
+  const toolbar = (
+    <div className="flex flex-wrap items-center gap-3">
+      <div className="segmented" role="group" aria-label="Category type">
+        {(["expense", "income"] as Kind[]).map((k) => (
+          <button key={k} type="button" aria-pressed={kind === k} onClick={() => setKind(k)}>
+            {k === "expense" ? "Spending" : "Income"}
+            <span className="ml-1.5 text-muted-foreground">{count(k)}</span>
+          </button>
+        ))}
+      </div>
+      <div className="relative min-w-48 flex-1">
+        <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
+        <Input aria-label="Find a category" placeholder="Find a category" value={search} onChange={(e) => setSearch(e.currentTarget.value)} className="pl-9" />
+      </div>
+    </div>
+  );
+
   return (
     <ManagerPanel
       trigger={trigger}
@@ -33,51 +71,33 @@ export function CategoryManager({
       icon={Tags}
       description="Organise your income and spending. Choose names, icons, and colours that are easy to recognise."
     >
-      <div className="relative">
-        <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
-        <Input aria-label="Find a category" placeholder="Find a category…" value={search} onChange={(e) => setSearch(e.currentTarget.value)} className="pl-9" />
-      </div>
-      <Tabs defaultValue="expense" className="space-y-4">
-        <TabsList className="w-full">
-          <TabsTrigger value="expense">Expense</TabsTrigger>
-          <TabsTrigger value="income">Income</TabsTrigger>
-        </TabsList>
-        {(["expense", "income"] as Kind[]).map((kind) => {
-          const list = categories.filter((c) => c.kind === kind);
-          const matches = list.filter((c) =>
-            c.name.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase()),
-          );
-          const presets = RECOMMENDED_CATEGORY_PRESETS.filter(
-            (p) => p.kind === kind && !list.some((existing) => existing.name.toLowerCase() === p.name.toLowerCase()),
-          );
-
-          return (
-            <TabsContent key={kind} value={kind} className="space-y-4">
-              <PanelCreate
-                title={`Add ${kind} category`}
-                defaultOpen={list.length === 0}
+      <ToolPage
+        main={
+          <div className="space-y-4">
+            {toolbar}
+            {list.length === 0 ? (
+              <ToolEmpty title={`No ${noun} categories yet`}>
+                Add one with the form, or pick a suggestion to start.
+              </ToolEmpty>
+            ) : (
+              <ToolSection
+                title={q ? `${matches.length} of ${list.length} categories` : `${list.length} ${noun} categories`}
+                meta={usage && usageLabel ? `${used} used in ${usageLabel}` : undefined}
               >
-                <AddCategoryForm kind={kind} presets={presets} />
-              </PanelCreate>
-              <p className="text-xs font-medium text-muted-foreground">
-                {search.trim() ? `${matches.length} of ${list.length}` : list.length} {kind}{" "}
-                {list.length === 1 ? "category" : "categories"}
-              </p>
-              <div className="space-y-2">
                 {matches.map((c) => (
-                  <CategoryRow key={c.id} category={c} />
+                  <CategoryRow key={c.id} category={c} usage={usage?.[c.id]} usageLabel={usageLabel} money={money} />
                 ))}
-                {list.length > 0 && matches.length === 0 && <p className="py-6 text-center text-sm text-muted-foreground">No matching categories.</p>}
-                {list.length === 0 && (
-                  <p className="py-6 text-center text-sm text-muted-foreground">
-                    No {kind} categories yet.
-                  </p>
-                )}
-              </div>
-            </TabsContent>
-          );
-        })}
-      </Tabs>
+                {matches.length === 0 && <p className="px-4 py-8 text-center text-sm text-muted-foreground">No category matches that search.</p>}
+              </ToolSection>
+            )}
+          </div>
+        }
+        aside={
+          <PanelCreate key={kind} title={`Add a ${noun} category`} defaultOpen={list.length === 0}>
+            <AddCategoryForm kind={kind} presets={presets} />
+          </PanelCreate>
+        }
+      />
     </ManagerPanel>
   );
 }
@@ -119,7 +139,7 @@ function AddCategoryForm({
       {presets.length > 0 && (
         <div className="space-y-1.5 pb-2 border-b border-border/60">
           <div className="flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground">
-            <span>Suggested categories</span>
+            <span>Suggestions</span>
           </div>
           <div className="flex flex-wrap gap-1.5 pt-0.5">
             {presets.slice(0, 5).map((p) => (
@@ -148,7 +168,7 @@ function AddCategoryForm({
           aria-label="Category name"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder={`New ${kind} category name`}
+          placeholder="Category name"
           className="h-10 rounded-xl"
         />
         <Button
@@ -166,7 +186,7 @@ function AddCategoryForm({
   );
 }
 
-function CategoryRow({ category }: { category: CategoryDTO }) {
+function CategoryRow({ category, usage, usageLabel, money }: { category: CategoryDTO; usage?: { count: number; total: number }; usageLabel?: string; money: (n: number) => string }) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [pending, start] = useTransition();
@@ -201,33 +221,15 @@ function CategoryRow({ category }: { category: CategoryDTO }) {
 
   if (editing) {
     return (
-      <div className="space-y-4 rounded-xl border border-brand/40 bg-card p-3">
-        <div className="flex gap-2">
+      <div className="space-y-4 bg-muted/30 p-4">
+        <div className="flex flex-wrap gap-2">
           <IconPicker value={icon} color={color} onChange={setIcon} />
-          <Input
-            aria-label="Category name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="h-10 rounded-xl"
-          />
-          <Button
-            size="icon"
-            variant="ghost"
-            onClick={save}
-            disabled={pending || !name.trim()}
-            aria-label="Save"
-            className="size-10 rounded-xl text-positive hover:bg-positive/10"
-          >
-            <Check className="size-4" />
+          <Input aria-label="Category name" value={name} onChange={(e) => setName(e.target.value)} className="h-10 min-w-40 flex-1" />
+          <Button onClick={save} disabled={pending || !name.trim()} className="h-10 bg-brand text-brand-foreground hover:bg-brand/90">
+            <Check className="size-4" /> Save
           </Button>
-          <Button
-            size="icon"
-            variant="ghost"
-            onClick={cancel}
-            aria-label="Cancel"
-            className="size-10 rounded-xl text-muted-foreground hover:bg-muted"
-          >
-            <X className="size-4" />
+          <Button variant="ghost" onClick={cancel} className="h-10">
+            <X className="size-4" /> Cancel
           </Button>
         </div>
         <ColorPicker value={color} onChange={setColor} />
@@ -236,40 +238,29 @@ function CategoryRow({ category }: { category: CategoryDTO }) {
   }
 
   return (
-    <div className="group flex min-w-0 items-center gap-3 rounded-lg border border-border bg-card p-3 transition-colors hover:bg-muted/30">
+    <div className="flex min-w-0 items-center gap-3 px-4 py-3 transition-colors hover:bg-muted/40">
       <span
         className="grid size-9 shrink-0 place-items-center rounded-lg border"
-        style={{
-          backgroundColor: combo.background,
-          borderColor: combo.border,
-          color: combo.text,
-        }}
+        style={{ backgroundColor: combo.background, borderColor: combo.border, color: combo.text }}
       >
         <Icon name={category.icon} size={18} />
       </span>
       <div className="min-w-0 flex-1">
-        <span className="break-words text-sm font-medium text-foreground">
+        <Link href={`/categories/${category.id}`} className="break-words text-sm font-medium text-foreground underline-offset-4 hover:underline">
           {category.name}
-        </span>
+        </Link>
+        {usageLabel && usage?.count ? (
+          <p className="text-xs text-muted-foreground">{usage.count} {usage.count === 1 ? "entry" : "entries"} in {usageLabel}</p>
+        ) : null}
       </div>
-      <div className="flex items-center gap-1 opacity-80 group-hover:opacity-100 transition-opacity">
-        <Button
-          size="icon"
-          variant="ghost"
-          onClick={() => setEditing(true)}
-          aria-label={`Edit ${category.name}`}
-          className="size-8 rounded-lg text-muted-foreground hover:text-foreground"
-        >
+      {usage?.count ? <span className="amount shrink-0 text-sm font-medium">{money(usage.total)}</span> : null}
+      <div className="flex shrink-0 items-center gap-0.5">
+        <Button size="icon" variant="ghost" onClick={() => setEditing(true)} aria-label={`Edit ${category.name}`} className="size-8 rounded-lg text-muted-foreground hover:text-foreground">
           <Pencil className="size-3.5" />
         </Button>
         <ConfirmDialog
           trigger={
-            <Button
-              size="icon"
-              variant="ghost"
-              aria-label={`Delete ${category.name}`}
-              className="size-8 rounded-lg text-muted-foreground hover:text-negative hover:bg-negative/10"
-            >
+            <Button size="icon" variant="ghost" aria-label={`Delete ${category.name}`} className="size-8 rounded-lg text-muted-foreground hover:bg-negative/10 hover:text-negative">
               <Trash2 className="size-3.5" />
             </Button>
           }

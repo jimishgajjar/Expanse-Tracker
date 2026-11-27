@@ -112,3 +112,13 @@ Account and category detail pages reuse the Overview's deep-emerald balance pane
 
 Categories, Subscriptions & bills, Savings goals, Shared expenses and Members & sharing are dashboard pages (`?tab=categories|recurring|goals|split|members`) with the normal page title. `ManagerPanel` renders inline inside `<ManagerPage>`. Everywhere else (receipts, refund links, statement checks, budgets, the Overview layout) it opens as a centred window, which becomes a bottom sheet on phones. Nothing slides in from the side. On phones, More (`?tab=more`) is a page listing every destination.
 
+## Tool page layout
+
+The five tool pages share `components/tool-page.tsx`. Under the title sits a totals line (`ToolSummary`): two to four figures separated by hairlines in one surface, not a row of cards. Below 640px each figure becomes a label-and-value row. Lists are ledgers (`ToolSection`): a heading line with an optional subtotal, then ruled rows on a single surface instead of a box per item. From 1280px the "Add…" form is an always-open second column (22rem) that stays in view while the list scrolls. Narrower, it collapses under the list, open by default only when the list is empty. Empty states (`ToolEmpty`) say what to do next.
+
+- Categories: a Spending/Income switch with counts and search on one line. Each row links to the category history and shows entries and total for the selected period when used.
+- Subscriptions & bills: monthly and yearly commitment, next payment, and recurring income. Groups carry a monthly subtotal.
+- Savings goals: saved, total of targets, and still to save. Each goal is a ruled row with a full-width progress bar and an "Add money" action.
+- Shared expenses: owed to you, you owe, and open items. Balances come first, then open items. With nobody to share with, the page points to Members & sharing.
+- Members & sharing: one ledger of people, with roles in plain words (Owner, Can edit, View only) and pending invites. The side column holds the invite form and what each role can do.
+

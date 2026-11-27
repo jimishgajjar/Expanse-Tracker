@@ -113,6 +113,17 @@ const pages: {
   { id: "members", label: "Members & sharing", icon: Users, description: "Who can see and edit this tracker." },
   { id: "more", label: "More", icon: Menu, description: "Everything else in this tracker." },
 ];
+/** Entries and total per category in the selected period, for the Categories page. */
+function categoryUsage(entries: TransactionDTO[]) {
+  const out: Record<string, { count: number; total: number }> = {};
+  for (const t of entries) {
+    if (!t.categoryId) continue;
+    const u = (out[t.categoryId] ??= { count: 0, total: 0 });
+    u.count += 1;
+    u.total += t.amount;
+  }
+  return out;
+}
 const MAIN: Tab[] = ["overview", "transactions", "accounts", "planning", "analytics"];
 export function Dashboard({
   accounts,
@@ -545,7 +556,7 @@ export function Dashboard({
                 />
               )}
               {canEdit && tab === "categories" && (
-                <ManagerPage><CategoryManager categories={categories} trigger={<span />} /></ManagerPage>
+                <ManagerPage><CategoryManager categories={categories} trigger={<span />} usage={categoryUsage(transactions)} usageLabel={rangeLabel} /></ManagerPage>
               )}
               {canEdit && tab === "recurring" && (
                 <ManagerPage><RecurringManager recurring={recurring} accounts={liveAccounts} categories={categories} trigger={<span />} /></ManagerPage>
